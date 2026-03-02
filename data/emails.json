@@ -1,0 +1,23 @@
+{
+  "action": "send an email to john@example.com saying the project is delayed",
+  "tier": "RED",
+  "reason": "Sending an email to an external contact is classified as RED.",
+  "upgraded": false,
+  "tool": "GMAIL_CREATE_EMAIL_DRAFT",
+  "executed": true,
+  "auth_used": true,
+  "blocked": false,
+  "output": {
+    "success": true,
+    "data": {
+      "id": "r-9194736263255829768",
+      "message": {
+        "id": "19cae1221a90e9ff",
+        "labelIds": [
+          "DRAFT"
+        ],
+        "threadId": "19cae1221a90e9ff"
+      }
+    }
+  }
+}
