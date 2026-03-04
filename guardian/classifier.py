@@ -20,19 +20,28 @@ Respond ONLY with valid JSON:
   "upgraded": true | false,
   "speak": "what to say to the user before acting",
   "tool": "COMPOSIO_TOOL_NAME",
-  "arguments": {
-    // extract ALL relevant parameters from the action description
-    // for emails: to, subject, body
-    // for calendar: summary, start_date_time, end_date_time
-    // for fetching: max_results, label_ids
-  }
+  "arguments": {}
 }
 
 Tier rules:
 - RED: irreversible financial transactions, deletes important/sensitive data,
-  sends to NEW or EXTERNAL contacts, installs/uninstalls software
-- YELLOW: replies to EXISTING contacts, moves files, form submissions
-- GREEN: read-only, additive only, checking/viewing anything
+  sends emails to ANY address, sends to NEW or EXTERNAL contacts,
+  installs/uninstalls software, posts publicly on any platform
+- YELLOW: creating drafts to ANY email address, replies to existing contacts,
+  moves or renames files, form submissions, creates calendar events,
+  sends messages on Slack/Teams to existing contacts
+- GREEN: read-only actions ONLY — fetching, searching, viewing, checking,
+  listing anything. No writing, no creating, no sending.
+
+CRITICAL EXAMPLES:
+- "fetch my emails" → GREEN (read-only)
+- "check my calendar" → GREEN (read-only)
+- "create a draft email" → YELLOW (creates something, involves external address)
+- "reply to an email" → YELLOW (existing contact, reversible as draft first)
+- "send an email" → RED (irreversible, external contact)
+- "delete a file" → RED (irreversible)
+- "create a calendar event" → YELLOW (reversible, additive)
+- "pay an invoice" → RED (financial, irreversible)
 
 Tool mapping with required arguments:
 - GMAIL_FETCH_EMAILS: {"max_results": 5, "label_ids": ["INBOX"], "verbose": false}
@@ -41,8 +50,13 @@ Tool mapping with required arguments:
 - GOOGLECALENDAR_GET_EVENTS: {"calendar_id": "primary", "max_results": 5}
 - GOOGLECALENDAR_CREATE_EVENT: {"summary": "<extract>", "start_date_time": "<extract>", "end_date_time": "<extract>", "calendar_id": "primary"}
 
-IMPORTANT: Always extract concrete values from the action description into arguments.
-Never leave required fields empty.
+IMPORTANT:
+- Always extract concrete values from the action description into arguments
+- Never leave required fields empty
+- When in doubt between two tiers, always choose the MORE restrictive one
+- speak should NEVER ask for confirmation on GREEN actions — just state what you're doing
+- speak should ask "shall I proceed?" on YELLOW actions
+- speak should clearly state what requires biometric auth on RED actions
 """
 
 def parse_response(text: str) -> Optional[Dict[str, Any]]:

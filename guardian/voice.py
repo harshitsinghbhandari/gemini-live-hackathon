@@ -7,7 +7,6 @@ from google import genai
 from google.genai import types
 from . import config
 from .context import GuardianContext
-from .screen import capture_screen
 from .gate import gate_action
 
 logger = logging.getLogger("guardian.voice")
@@ -26,6 +25,10 @@ You speak naturally and concisely. You always tell the user:
 - What you're about to do
 - Whether it needs their fingerprint (RED actions)
 - What happened after execution
+
+When calling execute_action for the FIRST time on a prompt, ALWAYS set confirmed=False.
+If the execute_action returns needs_confirmation=True, ask the user to confirm.
+If the user confirms, call execute_action AGAIN with the SAME action and confirmed=True.
 
 You are calm, trustworthy, and never do anything without being clear about it.
 Keep responses short and conversational — this is voice, not text.
@@ -49,9 +52,13 @@ class GuardianVoiceAgent:
                             "action": {
                                 "type": "STRING",
                                 "description": "Plain english description of what to do, e.g. 'fetch my latest emails'"
+                            },
+                            "confirmed": {
+                                "type": "BOOLEAN",
+                                "description": "ALWAYS false initially. Set to true ONLY if you are re-calling this tool after the user verbally confirmed."
                             }
                         },
-                        "required": ["action"]
+                        "required": ["action", "confirmed"]
                     }
                 }]
             }]
@@ -84,22 +91,6 @@ class GuardianVoiceAgent:
         finally:
             stream.close()
 
-    async def _send_screen_loop(self, session):
-        """Sends screenshot to Gemini every few seconds for context"""
-        while True:
-            try:
-                if not self.context.is_executing_tool:
-                    screenshot_b64 = await capture_screen()
-                    if screenshot_b64:
-                        image_data = base64.b64decode(screenshot_b64)
-                        await session.send_realtime_input(
-                            video=types.Blob(data=image_data, mime_type="image/jpeg")
-                        )
-                await asyncio.sleep(config.SCREENSHOT_INTERVAL)
-            except Exception as e:
-                logger.error(f"Error in send_screen_loop: {e}")
-                await asyncio.sleep(1)
-
     async def _receive_and_play_loop(self, session):
         """Receives audio response and plays it + handles tool calls"""
         output_stream = await asyncio.to_thread(
@@ -127,22 +118,27 @@ class GuardianVoiceAgent:
                             for fn in response.tool_call.function_calls:
                                 if fn.name == "execute_action":
                                     action = fn.args.get("action", "")
-                                    logger.info(f"📥 Received action: '{action}'")
+                                    confirmed = fn.args.get("confirmed", False)
+                                    logger.info(f"📥 Received action: '{action}' (confirmed: {confirmed})")
 
-                                    result = await gate_action(action, self.context)
+                                    result = await gate_action(action, self.context, pre_confirmed=confirmed)
 
-                                    # Truncate to prevent hitting frame limits on websocket
-                                    if "output" in result and result["output"]:
-                                        out_str = str(result["output"])
-                                        result["output"] = out_str[:2000] + ("..." if len(out_str) > 2000 else "")
+                                    if result.get("needs_confirmation"):
+                                        tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm this action: " + result['speak'] + ". If they say yes, call execute_action again with confirmed=true."}
+                                    else:
+                                        # Truncate to prevent hitting frame limits on websocket
+                                        if "output" in result and result.get("output"):
+                                            out_str = str(result["output"])
+                                            result["output"] = out_str[:2000] + ("..." if len(out_str) > 2000 else "")
+                                        tool_response = {"result": json.dumps(result)}
 
-                                    logger.info("📤 Sending execution results back to Guardian...")
+                                    logger.info(f"📤 Sending tool response back to Guardian: {tool_response}")
                                     await session.send_tool_response(
-                                        function_responses=types.FunctionResponse(
+                                        function_responses=[types.FunctionResponse(
                                             id=fn.id,
                                             name=fn.name,
-                                            response=result
-                                        )
+                                            response=tool_response
+                                        )]
                                     )
                         except Exception as e:
                             logger.error(f"Error processing tool call: {e}")
@@ -170,7 +166,6 @@ class GuardianVoiceAgent:
 
                 await asyncio.gather(
                     self._send_audio_loop(session, mic_info),
-                    self._send_screen_loop(session),
                     self._receive_and_play_loop(session)
                 )
         except Exception as e:

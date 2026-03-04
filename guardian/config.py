@@ -11,7 +11,7 @@ COMPOSIO_API_KEY = os.environ.get("COMPOSIO_API_KEY")
 USER_ID = os.environ.get("USER_ID", "harshitbhandari0318")
 
 # Model Names
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_LIVE_MODEL = "gemini-2.5-flash-native-audio-latest"
 
 # Audio Config

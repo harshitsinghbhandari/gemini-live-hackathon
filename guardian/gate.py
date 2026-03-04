@@ -13,51 +13,7 @@ from . import config
 logger = logging.getLogger("guardian.gate")
 audit_logger = logging.getLogger("guardian_audit")
 
-async def request_yellow_confirmation(speak: str, context: GuardianContext) -> bool:
-    """
-    Guardian speaks the confirmation request and listens for yes/no.
-    Returns True if user confirms, False if denied.
-    """
-    if not context.session:
-        logger.warning("No live session — defaulting to blocked")
-        return False
 
-    try:
-        # Send confirmation request as text to Gemini
-        await context.session.send_client_content(
-            turns=[{
-                "role": "user",
-                "parts": [{
-                    "text": f"""
-                    YELLOW tier action detected.
-                    Say exactly this to the user: "{speak}. Should I proceed?"
-                    Then listen for their yes or no response.
-                    If they say yes or confirm → respond with exactly: CONFIRMED
-                    If they say no or cancel → respond with exactly: CANCELLED
-                    """
-                }]
-            }],
-            turn_complete=True
-        )
-
-        # Listen for Gemini's classification of the user's response
-        async for response in context.session.receive():
-            if response.server_content and response.server_content.model_turn:
-                for part in response.server_content.model_turn.parts:
-                    if hasattr(part, 'text') and part.text:
-                        text = part.text.strip().upper()
-                        logger.info(f"🟡 Confirmation response: {text}")
-                        if "CONFIRMED" in text:
-                            return True
-                        if "CANCELLED" in text:
-                            return False
-
-            if response.server_content and response.server_content.turn_complete:
-                break
-    except Exception as e:
-        logger.error(f"Error during verbal confirmation: {e}")
-
-    return False  # default to safe
 
 async def post_to_backend(endpoint: str, data: dict):
     """Fire and forget — don't block the agent"""
@@ -118,7 +74,7 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
         logger.error(f"Error in remote auth flow: {e}, falling back to local")
         return await request_touch_id(f"Guardian: {classification['speak']}")
 
-async def gate_action(proposed_action: str, context: GuardianContext) -> Dict[str, Any]:
+async def gate_action(proposed_action: str, context: GuardianContext, pre_confirmed: bool = False) -> Dict[str, Any]:
     start_time = datetime.datetime.now()
     logger.info(f"🤖 Processing proposed action: {proposed_action}")
 
@@ -129,7 +85,7 @@ async def gate_action(proposed_action: str, context: GuardianContext) -> Dict[st
     tool = classification.get("tool")
     arguments = classification.get("arguments", {})
 
-    logger.info(f"🎯 Tier: {tier} | Reason: {classification['reason']}")
+    logger.info(f"🎯 Tier: {tier} | Reason: {classification['reason']} | Pre-confirmed: {pre_confirmed}")
     logger.debug(f"🔧 Tool: {tool} | Args: {arguments}")
 
     result = {
@@ -137,10 +93,11 @@ async def gate_action(proposed_action: str, context: GuardianContext) -> Dict[st
         "tier": tier,
         "reason": classification["reason"],
         "upgraded": classification["upgraded"],
+        "speak": speak,
         "tool": tool,
         "executed": False,
         "auth_used": False,
-        "confirmed_verbally": False,
+        "confirmed_verbally": pre_confirmed,
         "blocked": False,
         "success": False,
         "error": None
@@ -161,15 +118,14 @@ async def gate_action(proposed_action: str, context: GuardianContext) -> Dict[st
                 logger.info("✅ Authenticated")
 
         elif tier == "YELLOW":
-            logger.info("🟡 YELLOW — requesting verbal confirmation...")
-            confirmed = await request_yellow_confirmation(speak, context)
-            if not confirmed:
-                logger.warning("🚫 User declined verbal confirmation.")
-                result["blocked"] = True
-                result["error"] = "Verbal confirmation declined"
+            if not pre_confirmed:
+                # Don't block — return to voice layer to handle conversationally
+                logger.info("� YELLOW — returning to voice for confirmation")
+                result["needs_confirmation"] = True
+                return result
             else:
-                result["confirmed_verbally"] = True
-                logger.info("✅ User confirmed verbally")
+                # User already confirmed verbally via Gemini
+                logger.info("🟡 YELLOW — pre-confirmed, executing")
 
         elif tier == "GREEN":
             logger.info("🟢 GREEN — proceeding with execution")
