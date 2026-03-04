@@ -9,7 +9,10 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
 # Mock Firestore and FCM before importing app
-with patch("google.cloud.firestore.AsyncClient"), patch("firebase_admin.initialize_app"), patch("firebase_admin.messaging.send"):
+with patch("google.cloud.firestore.AsyncClient"), \
+     patch("google.cloud.firestore.Client"), \
+     patch("firebase_admin.initialize_app"), \
+     patch("firebase_admin.messaging.send"):
     from main import app
 
 client = TestClient(app)

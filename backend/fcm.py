@@ -6,13 +6,23 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
+_firebase_initialized = False
+
 try:
     # Use default credentials for Cloud Run
     firebase_admin.initialize_app()
+    _firebase_initialized = True
 except Exception as e:
-    logger.warning(f"Firebase Admin initialization failed: {e}. If running locally, ensure GOOGLE_APPLICATION_CREDENTIALS is set.")
+    logger.warning(
+        f"Firebase Admin initialization failed: {e}. "
+        "If running locally, ensure GOOGLE_APPLICATION_CREDENTIALS is set."
+    )
 
 async def send_auth_push(request_id: str, action: str, device: str):
+    if not _firebase_initialized:
+        logger.warning("Skipping FCM push — Firebase not initialized.")
+        return None
+
     message = messaging.Message(
         notification=messaging.Notification(
             title="Guardian Auth Request",

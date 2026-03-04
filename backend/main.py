@@ -1,4 +1,6 @@
 import asyncio
+import json
+import logging
 from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
@@ -11,6 +13,9 @@ from firestore import (
     update_auth_status, get_audit_logs, listen_to_audit_log
 )
 from fcm import send_auth_push
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Guardian Backend")
 
@@ -73,7 +78,7 @@ async def audit_stream(request: Request):
                     break
                 data = await queue.get()
                 yield {
-                    "data": data
+                    "data": json.dumps(data, default=str)
                 }
         finally:
             watch.unsubscribe()

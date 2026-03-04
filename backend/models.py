@@ -6,14 +6,14 @@ class ActionLog(BaseModel):
     timestamp: str
     action: str
     tier: str
-    tool: Optional[str]
+    tool: Optional[str] = None
     toolkit: Optional[str] = None
     arguments: Dict[str, Any]
     auth_used: bool
     confirmed_verbally: bool
     blocked: bool
     success: bool
-    error: Optional[str]
+    error: Optional[str] = None
     duration_ms: int
     device: str
 

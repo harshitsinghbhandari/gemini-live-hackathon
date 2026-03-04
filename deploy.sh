@@ -17,9 +17,9 @@ if [ -f .env ]; then
   done < .env
 fi
 
-gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME ./backend
+gcloud builds submit --tag us-central1-docker.pkg.dev/$PROJECT_ID/guardian/$SERVICE_NAME ./backend
 gcloud run deploy $SERVICE_NAME \
-  --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+  --image us-central1-docker.pkg.dev/$PROJECT_ID/guardian/$SERVICE_NAME \
   --platform managed \
   --region $REGION \
   --allow-unauthenticated \
