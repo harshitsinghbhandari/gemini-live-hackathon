@@ -1,21 +1,33 @@
 import asyncio
 import sys
 import os
-
-# Add root project directory to sys.path so 'components' can be found
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from components.auth_gate import gate_action
 import json
+import logging
+
+# Add root project directory to sys.path
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
+
+from guardian.gate import gate_action
+from guardian.context import GuardianContext
+from guardian.config import setup_logging, USER_ID
 
 async def test():
-    # GREEN — should execute silently
+    # Setup logging to see results
+    setup_logging()
+
+    # Initialize context
+    context = GuardianContext(user_id=USER_ID)
+
+    # GREEN — should execute silently (reading calendar)
     print("=" * 50)
-    result = result = await gate_action("what are my calendar events today")
-    filename = "data/emails.json"
+    print("Test: Reading calendar (GREEN)")
+    result = await gate_action("what are my calendar events today", context)
+
+    filename = "data/calendar_test_result.json"
+    os.makedirs("data", exist_ok=True)
     with open(filename, "w") as f:
         json.dump(result, f, indent=2)
-    print("\n📋 Result:", filename)
+    print(f"\n📋 Result saved to: {filename}")
 
-
-asyncio.run(test())
+if __name__ == "__main__":
+    asyncio.run(test())
