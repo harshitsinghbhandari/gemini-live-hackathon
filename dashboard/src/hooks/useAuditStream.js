@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
 export const useAuditStream = (onNewEntry) => {
   const [status, setStatus] = useState('OFFLINE');
   const eventSourceRef = useRef(null);

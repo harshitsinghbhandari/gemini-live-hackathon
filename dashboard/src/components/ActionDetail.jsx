@@ -34,7 +34,6 @@ const ActionDetail = ({ entry, onClose }) => {
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-2">Tier & Reason</label>
             <TierBadge tier={entry.tier} />
-            <p className="text-[11px] text-slate-400 mt-2 italic">"{entry.reason}"</p>
           </div>
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-2">Tool</label>
@@ -52,9 +51,9 @@ const ActionDetail = ({ entry, onClose }) => {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-2">Risk Upgraded</label>
-            <p className={`text-xs font-bold ${entry.upgraded ? 'text-orange-400' : 'text-slate-500'}`}>
-              {entry.upgraded ? 'YES' : 'NO'}
+            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-2">Device</label>
+            <p className={`text-xs font-bold text-slate-300`}>
+              {entry.device || 'Unknown'}
             </p>
           </div>
           <div>

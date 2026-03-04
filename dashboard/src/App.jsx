@@ -31,7 +31,12 @@ const App = () => {
   const { status } = useAuditStream(onNewEntry);
 
   const stats = useMemo(() => {
-    return entries.reduce((acc, entry) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayEntries = entries.filter(e => {
+      if (!e.timestamp) return false;
+      return e.timestamp.slice(0, 10) === today;
+    });
+    return todayEntries.reduce((acc, entry) => {
       acc.total++;
       if (entry.tier === 'GREEN') acc.green++;
       else if (entry.tier === 'YELLOW') acc.yellow++;
@@ -42,6 +47,28 @@ const App = () => {
   }, [entries]);
 
   const lastEntry = entries[0];
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen overflow-hidden text-slate-100 bg-background font-sans">
+        <Header status="OFFLINE" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-slate-500 text-sm font-medium animate-pulse">Loading audit data…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-screen overflow-hidden text-slate-100 bg-background font-sans">
+        <Header status="OFFLINE" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-red-400 text-sm font-medium">Could not load audit history — {error}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden text-slate-100 bg-background font-sans">

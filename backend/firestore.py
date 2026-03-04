@@ -47,7 +47,7 @@ def listen_to_audit_log(callback):
     def on_snapshot(col_snapshot, changes, read_time):
         for change in changes:
             if change.type.name == 'ADDED':
-                callback(change.document.to_dict())
+                callback({**change.document.to_dict(), "id": change.document.id})
 
     col_query = (
         db_sync.collection("audit_log")
@@ -67,5 +67,5 @@ async def get_audit_logs(tier: str = None, limit: int = 50):
 
     logs = []
     async for doc in query.limit(limit).stream():
-        logs.append(doc.to_dict())
+        logs.append({**doc.to_dict(), "id": doc.id})
     return logs

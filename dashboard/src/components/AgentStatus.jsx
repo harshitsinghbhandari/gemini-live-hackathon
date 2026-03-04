@@ -3,10 +3,10 @@ import React from 'react';
 const AgentStatus = ({ lastEntry }) => {
   const getAgentStatusText = () => {
     if (!lastEntry) return "Listening";
+    if (lastEntry.tier === 'RED' && !lastEntry.auth_used) return "Waiting for auth";
+    if (!lastEntry.success && !lastEntry.blocked) return "Executing";
     if (lastEntry.blocked) return "Waiting for input";
-    if (lastEntry.auth_used && lastEntry.status === 'pending') return "Waiting for auth";
-    if (lastEntry.success) return "Listening";
-    return "Executing";
+    return "Listening";
   };
 
   const getStatusDotColor = () => {
