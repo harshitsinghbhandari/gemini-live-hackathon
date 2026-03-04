@@ -12,7 +12,7 @@ USER_ID = os.environ.get("USER_ID", "harshitbhandari0318")
 
 # Model Names
 GEMINI_MODEL = "gemini-2.0-flash"
-GEMINI_LIVE_MODEL = "gemini-2.0-flash-exp"
+GEMINI_LIVE_MODEL = "gemini-2.5-flash-native-audio-latest"
 
 # Audio Config
 SEND_SAMPLE_RATE = 16000
