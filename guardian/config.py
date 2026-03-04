@@ -24,6 +24,10 @@ SCREENSHOT_INTERVAL = 3
 TOUCH_ID_TIMEOUT = 30
 YELLOW_CONFIRM_TIMEOUT = 15
 
+# Backend Config
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8080")
+DEVICE_ID = "harshit-macbook"
+
 def setup_logging():
     log_format = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
     formatter = logging.Formatter(log_format)

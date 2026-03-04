@@ -2,5 +2,6 @@ google-genai==1.65.0
 composio-core==0.7.21
 Pillow==10.4.0
 pyaudio==0.2.14
+aiohttp==3.11.11
 python-dotenv==1.2.2
 pyobjc-framework-LocalAuthentication==12.1; sys_platform == 'darwin'
