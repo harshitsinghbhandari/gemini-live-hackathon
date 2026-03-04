@@ -19,7 +19,7 @@ SEND_SAMPLE_RATE = 16000
 RECEIVE_SAMPLE_RATE = 24000
 CHUNK_SIZE = 1024
 
-MODEL = "gemini-live-2.5-flash-native-audio"
+MODEL = "gemini-2.5-flash-native-audio-latest"
 
 SYSTEM_PROMPT = """
 You are Guardian, a trusted AI agent that controls the user's Mac computer.
@@ -39,9 +39,8 @@ You speak naturally and concisely. You always tell the user:
 You are calm, trustworthy, and never do anything without being clear about it.
 Keep responses short and conversational — this is voice, not text.
 """
-
 pya = pyaudio.PyAudio()
-
+is_executing_tool = False
 async def run_guardian():
     client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
     
@@ -53,10 +52,10 @@ async def run_guardian():
                 "name": "execute_action",
                 "description": "Execute an action on the user's computer after security check",
                 "parameters": {
-                    "type": "object",
+                    "type": "OBJECT",
                     "properties": {
                         "action": {
-                            "type": "string",
+                            "type": "STRING",
                             "description": "Plain english description of what to do, e.g. 'fetch my latest emails'"
                         }
                     },
@@ -66,12 +65,28 @@ async def run_guardian():
         }]
     )
     
+    # Open mic stream once
+    mic_info = pya.get_default_input_device_info()
+    input_stream = pya.open(
+        format=FORMAT,
+        channels=CHANNELS,
+        rate=SEND_SAMPLE_RATE,
+        input=True,
+        input_device_index=mic_info["index"],
+        frames_per_buffer=CHUNK_SIZE,
+    )
+    
+    print("🌐 Connecting to Gemini Live API...")
     async with client.aio.live.connect(model=MODEL, config=config) as session:
+        # Inject session into auth gate for YELLOW confirmations
+        from auth_gate import set_session
+        set_session(session)
+        print("✅ Connected to Gemini Live API")
         print("🎙️  Guardian is listening... (speak now)")
         
-        async def send_audio():
+        async def send_audio(session):
             """Captures mic and sends to Gemini"""
-            mic_info = pya.get_default_input_device_info()
+            global is_executing_tool
             stream = await asyncio.to_thread(
                 pya.open,
                 format=FORMAT,
@@ -82,11 +97,12 @@ async def run_guardian():
                 frames_per_buffer=CHUNK_SIZE
             )
             
-            # Also send screen every 3 seconds
-            screen_task = asyncio.create_task(send_screen_loop(session))
-            
             try:
                 while True:
+                    if is_executing_tool:
+                        await asyncio.sleep(0.1)
+                        continue
+                        
                     data = await asyncio.to_thread(
                         stream.read, CHUNK_SIZE, False
                     )
@@ -94,7 +110,6 @@ async def run_guardian():
                         audio=types.Blob(data=data, mime_type="audio/pcm;rate=16000")
                     )
             finally:
-                screen_task.cancel()
                 stream.close()
         
         async def send_screen_loop(session):
@@ -118,40 +133,59 @@ async def run_guardian():
             )
             
             try:
-                async for response in session.receive():
-                    
-                    # Handle interruptions gracefully
-                    if response.server_content and response.server_content.interrupted:
-                        print("⚡ Interrupted")
-                        continue
-                    
-                    # Play audio response
-                    if response.data:
-                        await asyncio.to_thread(output_stream.write, response.data)
-                    
-                    # Handle tool calls — this is where Guardian executes actions
-                    if response.tool_call:
-                        for fn in response.tool_call.function_calls:
-                            if fn.name == "execute_action":
-                                action = fn.args.get("action", "")
-                                print(f"\n🔧 Tool call: {action}")
-                                
-                                # Run through our auth gate
-                                result = await gate_action(action)
-                                
-                                # Send result back to Gemini so it can speak the outcome
-                                await session.send_tool_response(
-                                    function_responses=[types.FunctionResponse(
-                                        id=fn.id,
-                                        name=fn.name,
-                                        response={"result": json.dumps(result)}
-                                    )]
-                                )
+                while True:
+                    async for response in session.receive():
+                        
+                        # Handle interruptions gracefully
+                        if response.server_content and response.server_content.interrupted:
+                            print("⚡ Interrupted")
+                            continue
+                        
+                        # Play audio response
+                        if response.data:
+                            await asyncio.to_thread(output_stream.write, response.data)
+                        
+                        # Handle tool calls — this is where Guardian executes actions
+                        if response.tool_call:
+                            global is_executing_tool
+                            is_executing_tool = True
+                            print("\n⏳ Pausing audio input during execution...")
+                            try:
+                                for fn in response.tool_call.function_calls:
+                                    if fn.name == "execute_action":
+                                        action = fn.args.get("action", "")
+                                        print(f"📥 Command received")
+                                        print(f"🔄 Processing action: '{action}'...")
+                                        
+                                        # Run through our auth gate
+                                        result = await gate_action(action)
+                                        
+                                        print(f"✅ Action completed")
+                                        
+                                        # Truncate to prevent hitting 1007 Invalid Frame data limits on websocket 
+                                        if "output" in result:
+                                            out_str = str(result["output"])
+                                            result["output"] = out_str[:2000] + ("..." if len(out_str) > 2000 else "")
+                                        
+                                        print("📤 Sending results back to Guardian...")
+                                        # Send result back to Gemini so it can speak the outcome
+                                        await session.send_tool_response(
+                                            function_responses=types.FunctionResponse(
+                                                id=fn.id,
+                                                name=fn.name,
+                                                response=result
+                                            )
+                                        )
+                            finally:
+                                print("▶️ Resuming audio input...\n🎙️  Guardian is listening... (speak now)")
+                                is_executing_tool = False
+            except Exception as e:
+                print(f"Receive loop error: {e}")
             finally:
                 output_stream.close()
         
         # Run mic input and audio output concurrently
-        await asyncio.gather(send_audio(), receive_and_play())
+        await asyncio.gather(send_audio(session), receive_and_play())
 
 if __name__ == "__main__":
     print("🛡️  Guardian Agent starting...")

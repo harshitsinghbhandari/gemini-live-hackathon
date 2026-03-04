@@ -1,4 +1,10 @@
 import asyncio
+import sys
+import os
+
+# Add root project directory to sys.path so 'components' can be found
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from components.auth import request_touch_id
 
 async def test():

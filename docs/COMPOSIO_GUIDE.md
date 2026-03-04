@@ -68,7 +68,7 @@ def is_connected(user_id: str, toolkit_slug: str) -> bool:
     # Check if any active account belongs to the requested toolkit
     for account in accounts.items:
         # Note: toolkit info is nested in the auth_config or connection_data
-        if account.auth_config.toolkit.slug == toolkit_slug:
+        if account.toolkit.slug == toolkit_slug:
             return True
     return False
 

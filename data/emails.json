@@ -1,23 +1,17 @@
 {
-  "action": "send an email to john@example.com saying the project is delayed",
-  "tier": "RED",
-  "reason": "Sending an email to an external contact is classified as RED.",
+  "action": "what are my calendar events today",
+  "tier": "GREEN",
+  "reason": "The action is to read calendar events, which is a read-only operation.",
   "upgraded": false,
-  "tool": "GMAIL_CREATE_EMAIL_DRAFT",
+  "tool": "GOOGLECALENDAR_GET_EVENTS",
   "executed": true,
-  "auth_used": true,
+  "auth_used": false,
   "blocked": false,
   "output": {
     "success": true,
     "data": {
-      "id": "r-9194736263255829768",
-      "message": {
-        "id": "19cae1221a90e9ff",
-        "labelIds": [
-          "DRAFT"
-        ],
-        "threadId": "19cae1221a90e9ff"
-      }
+      "current_datetime": "2026-03-04T10:32:09.513548+00:00",
+      "yyyymmdd_datetime": "2026,3,4,10,32,9"
     }
   }
 }
