@@ -25,20 +25,16 @@ class FirestoreClient: ObservableObject {
                     var data = doc.data()
                     data["id"] = doc.documentID
 
-                    // Handle Firestore Timestamp or String to Date conversion for ActionCard
-                    if let timestamp = data["timestamp"] {
-                        let decoder = JSONDecoder()
-                        if let timestampStr = timestamp as? String {
-                            decoder.dateDecodingStrategy = .iso8601
-                        } else if let firestoreTimestamp = timestamp as? Timestamp {
-                            // If it's a Firestore Timestamp, convert it to ISO8601 string for the decoder
-                            data["timestamp"] = ISO8601DateFormatter().string(from: firestoreTimestamp.dateValue())
-                            decoder.dateDecodingStrategy = .iso8601
-                        }
+                    let decoder = JSONDecoder()
+                    decoder.dateDecodingStrategy = .iso8601
 
-                        if let jsonData = try? JSONSerialization.data(withJSONObject: data) {
-                            return try? decoder.decode(ActionCard.self, from: jsonData)
-                        }
+                    // Convert Firestore Timestamp to ISO8601 string for JSONDecoder
+                    if let timestamp = data["timestamp"] as? Timestamp {
+                        data["timestamp"] = ISO8601DateFormatter().string(from: timestamp.dateValue())
+                    }
+
+                    if let jsonData = try? JSONSerialization.data(withJSONObject: data) {
+                        return try? decoder.decode(ActionCard.self, from: jsonData)
                     }
                     return nil
                 }

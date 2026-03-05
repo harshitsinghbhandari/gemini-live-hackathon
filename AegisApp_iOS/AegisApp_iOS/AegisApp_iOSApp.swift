@@ -32,12 +32,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     private func registerTokenWithBackend(_ token: String) {
-        guard let url = URL(string: "https://apiaegis.projectalpha.in/device/register") else { return }
+        guard let url = URL(string: "\(Config.backendURL)/device/register") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = ["device_id": "harshit-iphone", "fcm_token": token]
+        let body = ["device_id": Config.deviceID, "fcm_token": token]
         request.httpBody = try? JSONEncoder().encode(body)
 
         URLSession.shared.dataTask(with: request).resume()

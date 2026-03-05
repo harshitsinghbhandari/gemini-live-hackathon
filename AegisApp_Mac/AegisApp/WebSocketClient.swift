@@ -3,7 +3,7 @@ import Combine
 
 class WebSocketClient: NSObject, ObservableObject {
     private var webSocketTask: URLSessionWebSocketTask?
-    private let url = URL(string: "ws://localhost:8765")!
+    private let url = URL(string: Config.wsURL)!
     private var reconnectTimer: Timer?
 
     let statusPublisher = PassthroughSubject<AgentStatus, Never>()
