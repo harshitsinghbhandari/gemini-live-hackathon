@@ -6,13 +6,13 @@ import pyaudio
 from google import genai
 from google.genai import types
 from . import config
-from .context import GuardianContext
+from .context import AegisContext
 from .gate import gate_action
 
-logger = logging.getLogger("guardian.voice")
+logger = logging.getLogger("aegis.voice")
 
 SYSTEM_PROMPT = """
-You are Guardian, a trusted AI agent that controls the user's Mac computer.
+You are Aegis, a trusted AI agent that controls the user's Mac computer.
 
 You can hear the user's voice and see their screen in real time.
 
@@ -34,8 +34,8 @@ You are calm, trustworthy, and never do anything without being clear about it.
 Keep responses short and conversational — this is voice, not text.
 """
 
-class GuardianVoiceAgent:
-    def __init__(self, context: GuardianContext):
+class AegisVoiceAgent:
+    def __init__(self, context: AegisContext):
         self.context = context
         self.pya = pyaudio.PyAudio()
         self.client = genai.Client(api_key=config.GOOGLE_API_KEY)
@@ -132,7 +132,7 @@ class GuardianVoiceAgent:
                                             result["output"] = out_str[:2000] + ("..." if len(out_str) > 2000 else "")
                                         tool_response = {"result": json.dumps(result)}
 
-                                    logger.info(f"📤 Sending tool response back to Guardian: {tool_response}")
+                                    logger.info(f"📤 Sending tool response back to Aegis: {tool_response}")
                                     await session.send_tool_response(
                                         function_responses=[types.FunctionResponse(
                                             id=fn.id,
@@ -162,13 +162,13 @@ class GuardianVoiceAgent:
             async with self.client.aio.live.connect(model=config.GEMINI_LIVE_MODEL, config=self.config) as session:
                 self.context.session = session
                 logger.info("✅ Connected to Gemini Live API")
-                logger.info("🎙️ Guardian is listening...")
+                logger.info("🎙️ Aegis is listening...")
 
                 await asyncio.gather(
                     self._send_audio_loop(session, mic_info),
                     self._receive_and_play_loop(session)
                 )
         except Exception as e:
-            logger.exception(f"Unexpected error in run_guardian: {e}")
+            logger.exception(f"Unexpected error in run_aegis: {e}")
         finally:
             self.pya.terminate()

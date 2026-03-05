@@ -25,7 +25,7 @@ async def send_auth_push(request_id: str, action: str, device: str):
 
     message = messaging.Message(
         notification=messaging.Notification(
-            title="Guardian Auth Request",
+            title="Aegis Auth Request",
             body=f"Approve action on {device}: {action}",
         ),
         data={

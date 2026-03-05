@@ -3,7 +3,7 @@ import logging
 import threading
 from . import config
 
-logger = logging.getLogger("guardian.auth")
+logger = logging.getLogger("aegis.auth")
 
 try:
     import objc

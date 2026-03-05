@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 @dataclass
-class GuardianContext:
+class AegisContext:
     session: Any = None
     user_id: str = "default_user"
     composio: Any = None

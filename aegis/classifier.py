@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional
 from google import genai
 from . import config
 
-logger = logging.getLogger("guardian.classifier")
+logger = logging.getLogger("aegis.classifier")
 
 RISK_PROMPT = """
 You are a security classifier for an AI agent controlling a Mac computer.

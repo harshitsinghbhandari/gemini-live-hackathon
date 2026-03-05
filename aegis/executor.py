@@ -3,11 +3,11 @@ import logging
 from typing import Dict, Any
 from composio import Composio
 from . import config
-from .context import GuardianContext
+from .context import AegisContext
 
-logger = logging.getLogger("guardian.executor")
+logger = logging.getLogger("aegis.executor")
 
-async def search_and_execute(action: str, tool_args: Dict[str, Any], context: GuardianContext) -> Dict[str, Any]:
+async def search_and_execute(action: str, tool_args: Dict[str, Any], context: AegisContext) -> Dict[str, Any]:
     """
     Step 1: Use Tool Router to find the right tool + plan
     Step 2: Execute it

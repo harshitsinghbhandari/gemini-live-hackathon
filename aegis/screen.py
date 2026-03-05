@@ -5,7 +5,7 @@ import logging
 from PIL import ImageGrab
 from . import config
 
-logger = logging.getLogger("guardian.screen")
+logger = logging.getLogger("aegis.screen")
 
 async def capture_screen() -> str:
     """Captures screen and returns base64 JPEG"""

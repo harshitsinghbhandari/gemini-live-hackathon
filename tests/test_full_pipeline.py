@@ -7,16 +7,16 @@ import logging
 # Add root project directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
 
-from guardian.gate import gate_action
-from guardian.context import GuardianContext
-from guardian.config import setup_logging, USER_ID
+from aegis.gate import gate_action
+from aegis.context import AegisContext
+from aegis.config import setup_logging, USER_ID
 
 async def test():
     # Setup logging to see results
     setup_logging()
 
     # Initialize context
-    context = GuardianContext(user_id=USER_ID)
+    context = AegisContext(user_id=USER_ID)
 
     # GREEN — should execute silently (reading calendar)
     print("=" * 50)

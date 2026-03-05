@@ -22,7 +22,7 @@ CHUNK_SIZE = 1024
 MODEL = "gemini-2.5-flash-native-audio-latest"
 
 SYSTEM_PROMPT = """
-You are Guardian, a trusted AI agent that controls the user's Mac computer.
+You are Aegis, a trusted AI agent that controls the user's Mac computer.
 
 You can hear the user's voice and see their screen in real time.
 
@@ -41,7 +41,7 @@ Keep responses short and conversational — this is voice, not text.
 """
 pya = pyaudio.PyAudio()
 is_executing_tool = False
-async def run_guardian():
+async def run_aegis():
     client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
     
     config = types.LiveConnectConfig(
@@ -82,7 +82,7 @@ async def run_guardian():
         from auth_gate import set_session
         set_session(session)
         print("✅ Connected to Gemini Live API")
-        print("🎙️  Guardian is listening... (speak now)")
+        print("🎙️  Aegis is listening... (speak now)")
         
         async def send_audio(session):
             """Captures mic and sends to Gemini"""
@@ -145,7 +145,7 @@ async def run_guardian():
                         if response.data:
                             await asyncio.to_thread(output_stream.write, response.data)
                         
-                        # Handle tool calls — this is where Guardian executes actions
+                        # Handle tool calls — this is where Aegis executes actions
                         if response.tool_call:
                             global is_executing_tool
                             is_executing_tool = True
@@ -167,7 +167,7 @@ async def run_guardian():
                                             out_str = str(result["output"])
                                             result["output"] = out_str[:2000] + ("..." if len(out_str) > 2000 else "")
                                         
-                                        print("📤 Sending results back to Guardian...")
+                                        print("📤 Sending results back to Aegis...")
                                         # Send result back to Gemini so it can speak the outcome
                                         await session.send_tool_response(
                                             function_responses=types.FunctionResponse(
@@ -177,7 +177,7 @@ async def run_guardian():
                                             )
                                         )
                             finally:
-                                print("▶️ Resuming audio input...\n🎙️  Guardian is listening... (speak now)")
+                                print("▶️ Resuming audio input...\n🎙️  Aegis is listening... (speak now)")
                                 is_executing_tool = False
             except Exception as e:
                 print(f"Receive loop error: {e}")
@@ -188,6 +188,6 @@ async def run_guardian():
         await asyncio.gather(send_audio(session), receive_and_play())
 
 if __name__ == "__main__":
-    print("🛡️  Guardian Agent starting...")
+    print("🛡️  Aegis starting...")
     print("🎧  Use headphones to prevent echo!\n")
-    asyncio.run(run_guardian())
+    asyncio.run(run_aegis())

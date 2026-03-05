@@ -1,10 +1,10 @@
-# Guardian Agent - Project Context
+# Aegis Agent - Project Context
 
-This file contains comprehensive context about the Guardian Agent repository to help any AI agent understand the architecture, core modules, and how everything interacts.
+This file contains comprehensive context about the Aegis Agent repository to help any AI agent understand the architecture, core modules, and how everything interacts.
 
 ## 1. Project Overview & Architecture
 
-**Guardian** is an AI agent that controls a Mac computer using the Gemini Live API and Composio. It uses a multi-modal approach (Voice + Screen) to interpret user intent, classifies the security risk of actions, and executes them (often via Composio). High-risk actions (categorized as "RED") trigger a native ToucID/FaceID prompt.
+**Aegis** is an AI agent that controls a Mac computer using the Gemini Live API and Composio. It uses a multi-modal approach (Voice + Screen) to interpret user intent, classifies the security risk of actions, and executes them (often via Composio). High-risk actions (categorized as "RED") trigger a native ToucID/FaceID prompt.
 
 **Key Technical Stack**:
 - **Python**: Main application language.

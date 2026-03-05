@@ -1,6 +1,6 @@
-# 🛡️ Guardian
+# 🛡️ Aegis
 
-Guardian is a voice-controlled, biometric-secured AI agent for macOS that uses Gemini Live to hear you and see your screen in real time. It intelligently classifies every proposed action into risk tiers, requiring Touch ID for sensitive operations before executing them via Composio. Guardian ensures that your AI assistant is both powerful and trustworthy by keeping you in control of every irreversible action.
+Aegis is a voice-controlled, biometric-secured AI agent for macOS that uses Gemini Live to hear you and see your screen in real time. It intelligently classifies every proposed action into risk tiers, requiring Touch ID for sensitive operations before executing them via Composio. Aegis ensures that your AI assistant is both powerful and trustworthy by keeping you in control of every irreversible action.
 
 ## 🏗️ Architecture
 
@@ -25,14 +25,14 @@ Voice/Screen → Gemini Live → Risk Classifier → Auth Gate → Composio → 
 ## 📂 Project Structure
 
 - `main.py`: Entry point that initializes the logging and starts the agent.
-- `guardian/config.py`: Centralized API keys, model names, and audio settings.
-- `guardian/context.py`: Dataclass for session state and shared resources.
-- `guardian/voice.py`: Core Gemini Live websocket logic and audio processing.
-- `guardian/screen.py`: Handles periodic high-quality screen captures.
-- `guardian/classifier.py`: Uses Gemini to map intent to tools and security tiers.
-- `guardian/gate.py`: The "Security Brain" that enforces tiers and logs actions.
-- `guardian/auth.py`: macOS-specific Touch ID integration.
-- `guardian/executor.py`: Routes and executes actions through the Composio ecosystem.
+- `aegis/config.py`: Centralized API keys, model names, and audio settings.
+- `aegis/context.py`: Dataclass for session state and shared resources.
+- `aegis/voice.py`: Core Gemini Live websocket logic and audio processing.
+- `aegis/screen.py`: Handles periodic high-quality screen captures.
+- `aegis/classifier.py`: Uses Gemini to map intent to tools and security tiers.
+- `aegis/gate.py`: The "Security Brain" that enforces tiers and logs actions.
+- `aegis/auth.py`: macOS-specific Touch ID integration.
+- `aegis/executor.py`: Routes and executes actions through the Composio ecosystem.
 
 ## 🚀 Setup Instructions
 
@@ -61,7 +61,7 @@ Voice/Screen → Gemini Live → Risk Classifier → Auth Gate → Composio → 
    composio add googlecalendar
    ```
 
-### Running Guardian
+### Running Aegis
 ```bash
 python main.py
 ```
@@ -69,15 +69,15 @@ python main.py
 
 ## 🛡️ How It Works (Security Tiers)
 
-Every action Guardian takes is filtered through a three-tier security gate:
+Every action Aegis takes is filtered through a three-tier security gate:
 
-- 🟢 **GREEN** (Read-only): Checking your calendar or reading emails. Guardian executes these silently and reports the findings.
-- 🟡 **YELLOW** (Sensitive): Replying to an existing email thread. Guardian will verbally ask "Should I proceed?" and wait for your confirmation.
-- 🔴 **RED** (Irreversible): Deleting data or creating new drafts for external contacts. Guardian triggers a system-level Touch ID prompt; execution only proceeds upon successful biometric scan.
+- 🟢 **GREEN** (Read-only): Checking your calendar or reading emails. Aegis executes these silently and reports the findings.
+- 🟡 **YELLOW** (Sensitive): Replying to an existing email thread. Aegis will verbally ask "Should I proceed?" and wait for your confirmation.
+- 🔴 **RED** (Irreversible): Deleting data or creating new drafts for external contacts. Aegis triggers a system-level Touch ID prompt; execution only proceeds upon successful biometric scan.
 
 ## 🎙️ Supported Actions
 
-Guardian currently supports deep integration with Gmail and Google Calendar:
+Aegis currently supports deep integration with Gmail and Google Calendar:
 
 - **Gmail**:
   - *"Do I have any new emails about the project?"*
@@ -88,7 +88,7 @@ Guardian currently supports deep integration with Gmail and Google Calendar:
   - *"Book a meeting with Dave for Friday at 2 PM."*
 
 ## 📝 Audit Trail
-Every action attempted by the agent is logged to `guardian_audit.jsonl`. Each entry includes a timestamp, the proposed action, security tier, auth status, success/failure, and the total execution time in milliseconds.
+Every action attempted by the agent is logged to `aegis_audit.jsonl`. Each entry includes a timestamp, the proposed action, security tier, auth status, success/failure, and the total execution time in milliseconds.
 
 ## 🏆 Hackathon Context
-Built for the **Gemini Live Agent Challenge**. Guardian demonstrates that AI agents can be both powerful and trustworthy — biometric-secured, context-aware, and fully transparent.
+Built for the **Gemini Live Agent Challenge**. Aegis demonstrates that AI agents can be both powerful and trustworthy — biometric-secured, context-aware, and fully transparent.

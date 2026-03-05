@@ -7,7 +7,7 @@ const AuditLog = ({ entries, onSelect, selectedId }) => {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-slate-500 gap-4">
         <div className="text-4xl">📜</div>
-        <div className="text-sm font-medium tracking-tight">No actions logged yet. Start talking to Guardian.</div>
+        <div className="text-sm font-medium tracking-tight">No actions logged yet. Start talking to Aegis.</div>
       </div>
     );
   }

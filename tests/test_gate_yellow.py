@@ -7,17 +7,17 @@ from unittest.mock import MagicMock, AsyncMock, patch
 # Add root project directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
 
-from guardian.context import GuardianContext
-from guardian.gate import gate_action
+from aegis.context import AegisContext
+from aegis.gate import gate_action
 
 class TestGateYellow(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        self.context = GuardianContext(user_id="test_user")
+        self.context = AegisContext(user_id="test_user")
         self.context.session = AsyncMock()
 
-    @patch("guardian.gate.classify_action")
-    @patch("guardian.gate.request_yellow_confirmation")
-    @patch("guardian.gate.search_and_execute")
+    @patch("aegis.gate.classify_action")
+    @patch("aegis.gate.request_yellow_confirmation")
+    @patch("aegis.gate.search_and_execute")
     async def test_gate_yellow_confirmed(self, mock_execute, mock_yellow, mock_classify):
         mock_classify.return_value = {
             "tier": "YELLOW",
@@ -37,9 +37,9 @@ class TestGateYellow(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["success"])
         mock_execute.assert_called_once()
 
-    @patch("guardian.gate.classify_action")
-    @patch("guardian.gate.request_yellow_confirmation")
-    @patch("guardian.gate.search_and_execute")
+    @patch("aegis.gate.classify_action")
+    @patch("aegis.gate.request_yellow_confirmation")
+    @patch("aegis.gate.search_and_execute")
     async def test_gate_yellow_declined(self, mock_execute, mock_yellow, mock_classify):
         mock_classify.return_value = {
             "tier": "YELLOW",

@@ -19,7 +19,7 @@ def set_session(session):
 
 async def request_yellow_confirmation(speak: str) -> bool:
     """
-    Guardian speaks the confirmation request and listens for yes/no.
+    Aegis speaks the confirmation request and listens for yes/no.
     Returns True if user confirms, False if denied.
     """
     if not _session:
@@ -140,7 +140,7 @@ async def gate_action(proposed_action: str) -> dict:
 
     if tier == "RED":
         print("\n🔴 RED — requesting Touch ID...")
-        authed = await request_touch_id(f"Guardian: {speak}")
+        authed = await request_touch_id(f"Aegis: {speak}")
         if not authed:
             print("🚫 Blocked!")
             result["blocked"] = True

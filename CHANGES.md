@@ -1,10 +1,10 @@
 # Changes Documentation
 
 ## Modularization
-- Reorganized project into a `guardian/` package with clear submodules:
+- Reorganized project into a `aegis/` package with clear submodules:
   - `config.py`: Centralized all environment variables, constants, and model names.
-  - `context.py`: Introduced `GuardianContext` dataclass to manage session state and dependencies, eliminating global mutable variables.
-  - `logging_config.py`: (Integrated into `config.py`) Setup structured logging with rotating file handlers for `guardian.log` and `guardian_audit.jsonl`.
+  - `context.py`: Introduced `AegisContext` dataclass to manage session state and dependencies, eliminating global mutable variables.
+  - `logging_config.py`: (Integrated into `config.py`) Setup structured logging with rotating file handlers for `aegis.log` and `aegis_audit.jsonl`.
   - `screen.py`: Refactored screen capture with proper error handling and async thread-safe calls.
   - `auth.py`: Refactored Touch ID authentication with better error reporting and timeout handling.
   - `classifier.py`: Modularized action classification with robust Gemini response parsing and fallbacks.
@@ -20,10 +20,10 @@
 ## Enhanced Logging & Audit
 - Replaced all `print()` statements with the Python `logging` module.
 - Implemented structured JSONL audit trail for every action, tracking tier, tool, arguments, authentication, and success status.
-- Added a rotating file handler to `guardian.log`.
+- Added a rotating file handler to `aegis.log`.
 
 ## Bug Fixes & Improvements
-- Fixed circular import potential by injecting `GuardianContext` instead of importing modules across each other.
+- Fixed circular import potential by injecting `AegisContext` instead of importing modules across each other.
 - Handled malformed JSON responses from Gemini with robust parsing and safe fallbacks.
 - Improved Touch ID handling for cases where biometrics are unavailable or timed out.
 - Handled Composio execution failures gracefully.

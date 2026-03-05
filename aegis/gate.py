@@ -7,11 +7,11 @@ from typing import Dict, Any
 from .classifier import classify_action
 from .auth import request_touch_id
 from .executor import search_and_execute
-from .context import GuardianContext
+from .context import AegisContext
 from . import config
 
-logger = logging.getLogger("guardian.gate")
-audit_logger = logging.getLogger("guardian_audit")
+logger = logging.getLogger("aegis.gate")
+audit_logger = logging.getLogger("aegis_audit")
 
 
 
@@ -48,7 +48,7 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
             async with session.post(f"{config.BACKEND_URL}/auth/request", json=auth_data, timeout=5) as resp:
                 if resp.status != 200:
                     logger.warning("Backend auth request failed, falling back to local")
-                    return await request_touch_id(f"Guardian: {classification['speak']}")
+                    return await request_touch_id(f"Aegis: {classification['speak']}")
 
                 res_json = await resp.json()
                 request_id = res_json.get("request_id")
@@ -68,13 +68,13 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
                 await asyncio.sleep(2)
 
             logger.warning("Remote auth timed out, falling back to local")
-            return await request_touch_id(f"Guardian: {classification['speak']}")
+            return await request_touch_id(f"Aegis: {classification['speak']}")
 
     except Exception as e:
         logger.error(f"Error in remote auth flow: {e}, falling back to local")
-        return await request_touch_id(f"Guardian: {classification['speak']}")
+        return await request_touch_id(f"Aegis: {classification['speak']}")
 
-async def gate_action(proposed_action: str, context: GuardianContext, pre_confirmed: bool = False) -> Dict[str, Any]:
+async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed: bool = False) -> Dict[str, Any]:
     start_time = datetime.datetime.now()
     logger.info(f"🤖 Processing proposed action: {proposed_action}")
 

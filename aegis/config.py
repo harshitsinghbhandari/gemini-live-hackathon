@@ -33,7 +33,7 @@ def setup_logging():
     formatter = logging.Formatter(log_format)
 
     # Root logger
-    logger = logging.getLogger("guardian")
+    logger = logging.getLogger("aegis")
     logger.setLevel(logging.DEBUG)
 
     # Avoid adding multiple handlers if setup_logging is called multiple times
@@ -45,18 +45,18 @@ def setup_logging():
         logger.addHandler(console_handler)
 
         # Rotating File Handler
-        file_handler = RotatingFileHandler("guardian.log", maxBytes=10*1024*1024, backupCount=5)
+        file_handler = RotatingFileHandler("aegis.log", maxBytes=10*1024*1024, backupCount=5)
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)
         logger.addHandler(file_handler)
 
     # Audit JSONL Logger
-    audit_logger = logging.getLogger("guardian_audit")
+    audit_logger = logging.getLogger("aegis_audit")
     audit_logger.propagate = False
     audit_logger.setLevel(logging.INFO)
 
     if not audit_logger.handlers:
-        audit_handler = RotatingFileHandler("guardian_audit.jsonl", maxBytes=10*1024*1024, backupCount=5)
+        audit_handler = RotatingFileHandler("aegis_audit.jsonl", maxBytes=10*1024*1024, backupCount=5)
         audit_handler.setFormatter(logging.Formatter("%(message)s"))
         audit_logger.addHandler(audit_handler)
 
