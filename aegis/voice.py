@@ -152,6 +152,9 @@ class AegisVoiceAgent:
                                     if result.get("needs_confirmation"):
                                         tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm this action: " + result['speak'] + ". If they say yes, call execute_action again with confirmed=true."}
                                     else:
+                                        if result.get("blocked") and result.get("tier") == "RED":
+                                            self._update_status("blocked")
+
                                         # Truncate to prevent hitting frame limits on websocket
                                         if "output" in result and result.get("output"):
                                             out_str = str(result["output"])

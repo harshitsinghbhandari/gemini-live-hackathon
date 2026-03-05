@@ -1,73 +1,58 @@
-"""
-aegis_menubar.py — Mac menu bar entry point for Aegis.
-
-Icons:
-  ◈  idle      — session not running
-  ◉  listening — connected, ready for voice input
-  ◌  executing — tool call in progress
-  ⊠  auth      — Touch ID / biometric prompt active
-  ⊗  error     — session crashed
-"""
-
 import rumps
 import asyncio
 import threading
 import webbrowser
 import logging
-
 from aegis.voice import run_aegis
 from aegis.config import DASHBOARD_URL, setup_logging
 
 setup_logging()
 logger = logging.getLogger("aegis.menubar")
 
-
 class AegisMenuBar(rumps.App):
 
-    ICON_IDLE    = "◈"
-    ICON_LISTEN  = "◉"
-    ICON_EXECUTE = "◌"
-    ICON_AUTH    = "⊠"
-    ICON_ERROR   = "⊗"
+    ICON_IDLE     = "◈"
+    ICON_LISTEN   = "◉"
+    ICON_EXECUTE  = "◌"
+    ICON_AUTH     = "⊠"
+    ICON_ERROR    = "⊗"
 
     def __init__(self):
         super().__init__(self.ICON_IDLE, quit_button=None)
         self.menu = [
-            rumps.MenuItem("Start Session", callback=self.toggle_session),
+            rumps.MenuItem("Start Session", callback=self.start_session),
             rumps.MenuItem("Open Dashboard", callback=self.open_dashboard),
             None,  # separator
-            rumps.MenuItem("Quit Aegis", callback=self.quit_app),
+            rumps.MenuItem("Quit", callback=self.quit_app)
         ]
+        self._session_thread = None
+        self._session_loop = None
         self._running = False
-        self._session_thread: threading.Thread | None = None
-        self._session_loop: asyncio.AbstractEventLoop | None = None
-        self._timeout_timer: threading.Timer | None = None
+        self._timeout_timer = None
 
-        # Attempt to register Cmd+Shift+A global hotkey via CGEventTap
+        # Register global hotkey Cmd+Shift+A
         self._register_hotkey()
 
-    # ─────────────────────────────────────────────
-    #  Hotkey
-    # ─────────────────────────────────────────────
     def _register_hotkey(self):
-        """Register Cmd+Shift+A as a system-wide hotkey using CGEventTap."""
+        """Register Cmd+Shift+A as global hotkey using CGEventTap"""
         try:
             from Quartz import (
-                CGEventTapCreate, CGEventTapEnable,
-                kCGSessionEventTap, kCGHeadInsertEventTap,
-                kCGEventKeyDown, CGEventGetFlags, CGEventGetIntegerValueField,
-                kCGKeyboardEventKeycode,
+                CGEventTapCreate, kCGSessionEventTap,
+                kCGHeadInsertEventTap, kCGEventKeyDown,
+                CGEventGetFlags, CGEventGetIntegerValueField,
+                kCGKeyboardEventKeycode, CGEventTapEnable
             )
             import CoreFoundation
 
-            def _callback(proxy, type_, event, refcon):
+            def hotkey_callback(proxy, type_, event, refcon):
                 try:
                     keycode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode)
                     flags = CGEventGetFlags(event)
-                    # Cmd = 0x100000 (NX_COMMANDMASK), Shift = 0x20000 (NX_SHIFTMASK)
-                    CMD_SHIFT = 0x100000 | 0x20000
-                    if keycode == 0 and (flags & CMD_SHIFT) == CMD_SHIFT:  # 'a' = keycode 0
-                        self.toggle_session()
+                    # Cmd = 0x100000, Shift = 0x20000
+                    cmd_shift = 0x100000 | 0x20000
+                    # keycode 0 = 'a'
+                    if keycode == 0 and (flags & cmd_shift) == cmd_shift:
+                        self.start_session()
                 except Exception:
                     pass
                 return event
@@ -77,128 +62,125 @@ class AegisMenuBar(rumps.App):
                 kCGHeadInsertEventTap,
                 0,
                 1 << kCGEventKeyDown,
-                _callback,
-                None,
+                hotkey_callback,
+                None
             )
             if tap:
                 source = CoreFoundation.CFMachPortCreateRunLoopSource(None, tap, 0)
                 CoreFoundation.CFRunLoopAddSource(
                     CoreFoundation.CFRunLoopGetMain(),
                     source,
-                    CoreFoundation.kCFRunLoopCommonModes,
+                    CoreFoundation.kCFRunLoopCommonModes
                 )
                 CGEventTapEnable(tap, True)
-                logger.info("⌨️  Global hotkey Cmd+Shift+A registered")
+                logger.info("⌨️ Global hotkey Cmd+Shift+A registered")
             else:
-                logger.warning("CGEventTap returned None — hotkey not registered (grant Accessibility permission)")
+                logger.warning("CGEventTap failed (needs Accessibility permissions)")
         except Exception as e:
-            logger.warning(f"Global hotkey unavailable: {e}")
+            logger.warning(f"Hotkey registration failed: {e}")
 
-    # ─────────────────────────────────────────────
-    #  Session lifecycle
-    # ─────────────────────────────────────────────
-    def toggle_session(self, _=None):
+    def set_status(self, icon: str, menu_label: str = None):
+        """Thread-safe icon + menu update"""
+        rumps.App.title.fset(self, icon)
+        if menu_label and "Start Session" in self.menu:
+            self.menu["Start Session"].title = menu_label
+
+    def start_session(self, _=None):
+        """Start Aegis voice session"""
         if self._running:
-            self._stop_session(reason="manual")
-        else:
-            self._start_session()
+            self.stop_session(reason="manual")
+            return
 
-    def _start_session(self):
         self._running = True
-        self._set_icon(self.ICON_LISTEN)
+        self.set_status(self.ICON_LISTEN)
         self.menu["Start Session"].title = "Stop Session"
 
-        # 60 second auto-stop timer
-        self._timeout_timer = threading.Timer(60.0, self._auto_stop)
+        rumps.notification("Aegis", "", "Aegis is listening 🎙️")
+
+        # Start 60 second timeout timer
+        self._timeout_timer = threading.Timer(60.0, self.auto_stop)
         self._timeout_timer.daemon = True
         self._timeout_timer.start()
 
+        # Run voice session in background thread
         self._session_thread = threading.Thread(
-            target=self._run_session_thread, daemon=True
+            target=self._run_session,
+            daemon=True
         )
         self._session_thread.start()
 
-        rumps.notification("Aegis", "", "Aegis is listening 🎙️")
-        logger.info("🟢 Menu bar session started")
-
-    def _run_session_thread(self):
-        """Runs the async voice session in its own event loop on a background thread."""
+    def _run_session(self):
+        """Runs async voice session in background thread"""
         self._session_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._session_loop)
         try:
             self._session_loop.run_until_complete(
-                run_aegis(status_callback=self._on_status_change)
+                run_aegis(status_callback=self.on_status_change)
             )
-        except asyncio.CancelledError:
-            pass
         except Exception as e:
             logger.error(f"Session error: {e}")
-            rumps.notification("Aegis", "Session Error", str(e)[:200])
-            self._set_icon(self.ICON_ERROR)
+            rumps.notification("Aegis", "Session Error", str(e))
+            self.set_status(self.ICON_ERROR)
         finally:
-            self._session_loop.close()
-            self._session_loop = None
-            # Reset UI on the main thread
             self._running = False
-            self._set_icon(self.ICON_IDLE)
+            self.set_status(self.ICON_IDLE)
             self.menu["Start Session"].title = "Start Session"
+            if self._timeout_timer:
+                self._timeout_timer.cancel()
 
-    def _stop_session(self, reason: str = "manual"):
-        """Signal the background event loop to stop, cancel the timer."""
+    def stop_session(self, _=None, reason="manual"):
+        """Manually stop session"""
         if self._timeout_timer:
             self._timeout_timer.cancel()
-            self._timeout_timer = None
-
-        loop = self._session_loop
-        if loop and loop.is_running():
-            loop.call_soon_threadsafe(loop.stop)
-
+        if self._session_loop:
+            self._session_loop.call_soon_threadsafe(
+                self._session_loop.stop
+            )
         self._running = False
-        self._set_icon(self.ICON_IDLE)
+        self.set_status(self.ICON_IDLE)
         self.menu["Start Session"].title = "Start Session"
 
-        if reason == "timeout":
-            rumps.notification("Aegis", "Session Ended", "60 second session limit reached.")
-        elif reason == "manual":
-            rumps.notification("Aegis", "Session Ended", "Session stopped.")
+        if reason == "manual":
+            rumps.notification("Aegis", "Session Ended", "Session ended")
 
-    def _auto_stop(self):
-        """Called by the timeout timer (on its own thread)."""
+    def auto_stop(self):
+        """Auto stop after 60 seconds of session"""
         if self._running:
-            logger.info("⏱️  Auto-stopping after 60 s")
-            self._stop_session(reason="timeout")
+            rumps.notification(
+                "Aegis",
+                "Session Ended",
+                "60 second session limit reached."
+            )
+            self.stop_session(reason="timeout")
 
-    # ─────────────────────────────────────────────
-    #  Status callback (called from background thread)
-    # ─────────────────────────────────────────────
-    def _on_status_change(self, status: str):
+    def on_status_change(self, status: str):
+        """Called by voice layer to update icon"""
         icons = {
-            "listening": self.ICON_LISTEN,
-            "executing": self.ICON_EXECUTE,
-            "auth":      self.ICON_AUTH,
-            "error":     self.ICON_ERROR,
-            "idle":      self.ICON_IDLE,
+            "listening":  self.ICON_LISTEN,
+            "executing":  self.ICON_EXECUTE,
+            "auth":       self.ICON_AUTH,
+            "error":      self.ICON_ERROR,
+            "idle":       self.ICON_IDLE,
+            "blocked":    self.ICON_ERROR  # Showing error icon for blocked? Or ICON_AUTH?
+                                           # The prompt says "RED action blocked: 'Action blocked — Touch ID failed'"
+                                           # Let's handle notification here.
         }
-        icon = icons.get(status, self.ICON_IDLE)
-        self._set_icon(icon)
 
-    # ─────────────────────────────────────────────
-    #  Helpers
-    # ─────────────────────────────────────────────
-    def _set_icon(self, icon: str):
-        """Thread-safe title update via rumps property setter."""
-        rumps.App.title.fset(self, icon)
+        if status == "blocked":
+            rumps.notification("Aegis", "Action Blocked", "Action blocked — Touch ID failed")
+            icon = self.ICON_ERROR
+        else:
+            icon = icons.get(status, self.ICON_IDLE)
 
-    # ─────────────────────────────────────────────
-    #  Menu actions
-    # ─────────────────────────────────────────────
+        # Thread safe UI update
+        self.set_status(icon)
+
     def open_dashboard(self, _):
         webbrowser.open(DASHBOARD_URL)
 
     def quit_app(self, _):
-        self._stop_session(reason="quit")
+        self.stop_session(reason="quit")
         rumps.quit_application()
-
 
 if __name__ == "__main__":
     AegisMenuBar().run()
