@@ -8,10 +8,14 @@ from sse_starlette.sse import EventSourceResponse
 from typing import List, Optional
 import datetime
 
-from models import ActionLog, AuthRequest, AuthApproval, AuthStatus
+from models import (
+    ActionLog, AuthRequest, AuthApproval, AuthStatus,
+    DeviceRegistration, SessionUpdate
+)
 from firestore import (
     save_action_log, create_auth_request, get_auth_request,
-    update_auth_status, get_audit_logs, listen_to_audit_log
+    update_auth_status, get_audit_logs, listen_to_audit_log,
+    register_device, update_session_status
 )
 from fcm import send_auth_push
 
@@ -101,3 +105,26 @@ async def audit_log(
 ):
     logs = await get_audit_logs(tier=tier, limit=limit)
     return logs
+
+@app.post("/device/register")
+async def post_device_register(registration: DeviceRegistration):
+    await register_device(registration.device_id, registration.fcm_token)
+    return {"status": "registered"}
+
+@app.get("/session/status")
+async def get_session_status():
+    from firestore import db
+    doc = await db.collection("app_state").document("session").get()
+    if doc.exists:
+        return doc.to_dict()
+    return {"is_active": False}
+
+@app.post("/session/status")
+async def post_session_status(update: SessionUpdate):
+    await update_session_status(update.is_active)
+    return {"status": "updated", "is_active": update.is_active}
+
+@app.post("/session/stop")
+async def post_session_stop():
+    await update_session_status(False)
+    return {"status": "stopped"}

@@ -1,59 +1,31 @@
-//
-//  ContentView.swift
-//  AegisApp
-//
-//  Created by Harshit Singh Bhandari on 05/03/26.
-//
-
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @StateObject var vm = AegisMacViewModel()
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        ZStack {
+            if !vm.isSessionActive {
+                IdleView(vm: vm)
+            } else if vm.actions.isEmpty {
+                ListeningView(vm: vm)
+            } else {
+                ActivityStreamView(vm: vm)
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
+
+            if vm.pendingYellow != nil {
+                YellowPauseView(vm: vm)
+                    .transition(.opacity)
             }
-        } detail: {
-            Text("Select an item")
-        }
-    }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            if vm.pendingRed != nil {
+                RedAuthView(vm: vm)
+                    .transition(.move(edge: .bottom))
             }
         }
+        .frame(width: 380, height: 680)
+        .preferredColorScheme(.dark)
+        .background(Color(hex: "0a0a0f").opacity(0.8))
+        .background(.ultraThinMaterial)
     }
-}
-
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }

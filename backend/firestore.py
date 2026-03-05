@@ -69,3 +69,17 @@ async def get_audit_logs(tier: str = None, limit: int = 50):
     async for doc in query.limit(limit).stream():
         logs.append({**doc.to_dict(), "id": doc.id})
     return logs
+
+
+async def register_device(device_id: str, fcm_token: str):
+    await db.collection("devices").document(device_id).set({
+        "fcm_token": fcm_token,
+        "updated_at": firestore.SERVER_TIMESTAMP
+    })
+
+
+async def update_session_status(is_active: bool):
+    await db.collection("app_state").document("session").set({
+        "is_active": is_active,
+        "updated_at": firestore.SERVER_TIMESTAMP
+    }, merge=True)
