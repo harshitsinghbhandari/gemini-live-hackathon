@@ -1,5 +1,5 @@
 import SwiftUI
-
+import Combine
 struct RedAuthView: View {
     @ObservedObject var vm: AegisMacViewModel
     @State private var progress: Double = 1.0

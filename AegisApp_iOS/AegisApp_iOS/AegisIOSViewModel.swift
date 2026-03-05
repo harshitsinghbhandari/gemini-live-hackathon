@@ -14,7 +14,7 @@ final class AegisIOSViewModel: ObservableObject {
 
     private var firestoreClient = FirestoreClient()
     private var cancellables = Set<AnyCancellable>()
-    private let baseURL = "https://apiaegis.projectalpha.in"
+    private let baseURL = "https://guardian-backend-1090554066699.us-central1.run.app"
 
     init() {
         setupHandlers()

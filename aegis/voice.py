@@ -214,7 +214,7 @@ class AegisVoiceAgent:
     async def run(self):
         # Notify backend that session has started
         from .gate import post_to_backend
-        await post_to_backend("/session/status", {"is_active": True})
+        await post_to_backend("/session/status", {"is_active": True}, await_response=True)
 
         # Start remote stop check
         asyncio.create_task(self._check_remote_stop())

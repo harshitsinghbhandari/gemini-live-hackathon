@@ -58,7 +58,7 @@ class WebSocketClient: NSObject, ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
             switch event {
             case "status":
                 if let value = json["value"] as? String {
@@ -144,3 +144,4 @@ class WebSocketClient: NSObject, ObservableObject {
         }
     }
 }
+

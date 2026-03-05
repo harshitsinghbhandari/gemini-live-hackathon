@@ -1,5 +1,5 @@
 import SwiftUI
-
+import Combine
 struct RedAuthRequestView: View {
     @ObservedObject var vm: AegisIOSViewModel
     let request: RedAuthRequest

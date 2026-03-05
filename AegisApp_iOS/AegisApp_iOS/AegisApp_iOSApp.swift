@@ -1,8 +1,13 @@
 import SwiftUI
+#if canImport(FirebaseCore)
 import FirebaseCore
+#endif
+#if canImport(FirebaseMessaging)
 import FirebaseMessaging
+#endif
 import UserNotifications
 
+#if canImport(FirebaseCore)
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         FirebaseApp.configure()
@@ -38,6 +43,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         URLSession.shared.dataTask(with: request).resume()
     }
 }
+#endif
+
+#if !canImport(FirebaseCore)
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+        UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { _, _ in }
+        application.registerForRemoteNotifications()
+        return true
+    }
+}
+#endif
 
 @main
 struct AegisApp_iOSApp: App {

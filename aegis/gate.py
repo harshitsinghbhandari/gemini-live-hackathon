@@ -17,18 +17,28 @@ audit_logger = logging.getLogger("aegis_audit")
 
 
 
-async def post_to_backend(endpoint: str, data: dict):
-    """Fire and forget — don't block the agent"""
+async def post_to_backend(endpoint: str, data: dict, await_response: bool = False):
+    """
+    Posts data to the backend. 
+    By default, it's fire-and-forget (spawned as a background task).
+    Set await_response=True to block until the request completes.
+    """
     async def _post():
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(f"{config.BACKEND_URL}{endpoint}", json=data, timeout=5) as resp:
                     if resp.status != 200:
                         logger.warning(f"Backend returned {resp.status} for {endpoint}")
+                    return resp.status == 200
         except Exception as e:
             logger.warning(f"Could not reach backend at {config.BACKEND_URL}: {e}")
+            return False
 
-    asyncio.create_task(_post())
+    if await_response:
+        return await _post()
+    else:
+        asyncio.create_task(_post())
+        return True
 
 async def request_remote_auth(proposed_action: str, classification: dict) -> bool:
     """
