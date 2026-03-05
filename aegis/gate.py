@@ -3,12 +3,14 @@ import json
 import datetime
 import aiohttp
 import asyncio
+import uuid
 from typing import Dict, Any
 from .classifier import classify_action
 from .auth import request_touch_id
 from .executor import search_and_execute
 from .context import AegisContext
 from . import config
+from . import ws_server
 
 logger = logging.getLogger("aegis.gate")
 audit_logger = logging.getLogger("aegis_audit")
@@ -112,6 +114,13 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
                     on_auth_request()
                 except Exception:
                     pass
+            
+            # Broadcast RED auth started
+            ws_server.broadcast("red_auth_started", data={
+                "request_id": str(uuid.uuid4()),
+                "action": proposed_action,
+                "speak": speak
+            })
             # Try remote auth first, falls back to local Touch ID automatically
             authed = await request_remote_auth(proposed_action, classification)
 
@@ -119,15 +128,25 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
                 logger.warning("🚫 Authentication failed or cancelled.")
                 result["blocked"] = True
                 result["error"] = "Authentication failed"
+                ws_server.broadcast("red_auth_result", data={"approved": False})
             else:
                 result["auth_used"] = True
                 logger.info("✅ Authenticated")
+                ws_server.broadcast("red_auth_result", data={"approved": True})
 
         elif tier == "YELLOW":
             if not pre_confirmed:
                 # Don't block — return to voice layer to handle conversationally
                 logger.info("� YELLOW — returning to voice for confirmation")
                 result["needs_confirmation"] = True
+                
+                # Broadcast YELLOW confirm request
+                ws_server.broadcast("yellow_confirm", data={
+                    "id": str(uuid.uuid4()),
+                    "action": proposed_action,
+                    "speak": speak,
+                    "tier": "YELLOW"
+                })
                 return result
             else:
                 # User already confirmed verbally via Gemini
@@ -173,5 +192,22 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
 
     # Post to Backend
     await post_to_backend("/action", audit_entry)
+
+    # Broadcast Action Card to WebSocket
+    ws_server.broadcast("action", data={
+        "id": str(uuid.uuid4()),
+        "timestamp": audit_entry["timestamp"],
+        "action": proposed_action,
+        "tier": tier,
+        "tool": tool,
+        "toolkit": tool.split("_")[0].lower() if tool else None,
+        "reason": classification["reason"],
+        "upgraded": classification["upgraded"],
+        "speak": speak,
+        "auth_used": result["auth_used"],
+        "blocked": result["blocked"],
+        "success": result["success"],
+        "duration_ms": duration_ms
+    })
 
     return result

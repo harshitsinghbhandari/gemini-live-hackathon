@@ -8,6 +8,7 @@ from google.genai import types
 from . import config
 from .context import AegisContext
 from .gate import gate_action
+from . import ws_server
 
 logger = logging.getLogger("aegis.voice")
 
@@ -67,12 +68,15 @@ class AegisVoiceAgent:
         )
 
     def _update_status(self, status: str):
-        """Thread-safe status update forwarded to the menu bar (or ignored in CLI)."""
+        """Thread-safe status update forwarded to the menu bar and WebSocket UI."""
         if self.status_callback:
             try:
                 self.status_callback(status)
             except Exception:
                 pass
+        
+        # Broadcast to WebSocket UI
+        ws_server.broadcast("status", value=status)
 
     async def _send_audio_loop(self, session, mic_info):
         """Captures mic and sends to Gemini"""
@@ -93,6 +97,13 @@ class AegisVoiceAgent:
                     continue
 
                 data = await asyncio.to_thread(stream.read, config.CHUNK_SIZE, False)
+                
+                # Waveform broadcast (mic amplitude)
+                import struct
+                shorts = struct.unpack(f"{len(data)//2}h", data)
+                peak = max(abs(s) for s in shorts) / 32768.0
+                ws_server.broadcast("waveform", value=round(peak, 3))
+
                 await session.send_realtime_input(
                     audio=types.Blob(data=data, mime_type=f"audio/pcm;rate={config.SEND_SAMPLE_RATE}")
                 )
@@ -181,6 +192,10 @@ class AegisVoiceAgent:
             output_stream.close()
 
     async def run(self):
+        # Start WebSocket server in background
+        server = ws_server.get_server()
+        asyncio.create_task(server.start())
+
         try:
             mic_info = self.pya.get_default_input_device_info()
         except Exception as e:
@@ -195,6 +210,7 @@ class AegisVoiceAgent:
                 logger.info("✅ Connected to Gemini Live API")
                 logger.info("🎙️ Aegis is listening...")
                 self._update_status("listening")
+                ws_server.broadcast("session_started")
 
                 await asyncio.gather(
                     self._send_audio_loop(session, mic_info),
@@ -206,6 +222,7 @@ class AegisVoiceAgent:
             raise
         finally:
             self._update_status("idle")
+            ws_server.broadcast("session_ended")
             self.pya.terminate()
 
 
