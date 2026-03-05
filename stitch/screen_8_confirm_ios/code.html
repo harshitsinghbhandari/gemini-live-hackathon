@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Confirmation - Approved</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#ec5b13",
+                "background-light": "#f8f6f6",
+                "background-dark": "#000000",
+              },
+              fontFamily: {
+                "display": ["Public Sans", "sans-serif"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="dark:bg-background-dark transition-colors duration-300 bg-black">
+<!-- Main Container: Centered Layout for Post Auth Confirmation -->
+<div class="relative flex min-h-screen w-full flex-col items-center justify-center dark:bg-background-dark p-6 overflow-hidden bg-black">
+<!-- System-like Confirmation Content -->
+<div class="flex flex-col items-center justify-center space-y-8">
+<!-- Large Success Icon -->
+<div class="relative flex items-center justify-center">
+<!-- Outer Glow/Ring -->
+<div class="absolute inset-0 scale-150 bg-green-500/10 dark:bg-green-500/5 rounded-full blur-2xl"></div>
+<!-- Main Circle Icon -->
+<div class="relative flex size-32 items-center justify-center rounded-full bg-green-500 text-white shadow-xl shadow-green-500/20">
+<span class="material-symbols-outlined text-[80px] font-light leading-none" style="font-variation-settings: 'wght' 300, 'opsz' 48;">
+                        check
+                    </span>
+</div>
+</div>
+<!-- Single Word Text -->
+<div class="text-center">
+<h1 class="text-slate-900 dark:text-white text-4xl font-semibold tracking-tight leading-tight">
+                    Approved
+                </h1>
+</div>
+</div>
+<!-- Subtle Navigation Hint (Optional, kept minimal) -->
+<div class="absolute bottom-12 left-0 right-0 flex justify-center">
+<div class="h-1.5 w-32 rounded-full bg-slate-300 dark:bg-slate-800 opacity-50"></div>
+</div>
+</div>
+<!-- Background decorative element for "System" feel -->
+<div class="fixed top-0 left-0 w-full h-full pointer-events-none z-[-1] overflow-hidden">
+<div class="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-green-500/5 rounded-full blur-[120px]"></div>
+</div>
+</body></html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#000000",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>Yellow Pause - Assistant</title>
+</head>
+<body class="bg-background-light font-display antialiased dark:bg-black">
+<!-- Main App Container: Narrow Window (380x680) -->
+<div class="relative mx-auto my-10 flex h-[680px] w-[380px] flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-background-light shadow-2xl dark:bg-black">
+<!-- Background Activity Stream (Dimmed 30% Opacity) -->
+<div class="absolute inset-0 z-0 opacity-30 pointer-events-none">
+<div class="flex flex-col gap-4 p-6">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded-full bg-primary/20"></div>
+<div class="h-4 w-32 rounded bg-slate-300 dark:bg-slate-700"></div>
+</div>
+<div class="space-y-3">
+<div class="h-20 w-full rounded-lg bg-slate-200 dark:bg-slate-800"></div>
+<div class="h-20 w-full rounded-lg bg-slate-200 dark:bg-slate-800"></div>
+<div class="h-20 w-full rounded-lg bg-slate-200 dark:bg-slate-800"></div>
+<div class="h-20 w-full rounded-lg bg-slate-200 dark:bg-slate-800"></div>
+</div>
+</div>
+<!-- Overlay to ensure dimming is consistent -->
+<div class="absolute inset-0 bg-background-light/40"></div>
+</div>
+<!-- Top Navigation Bar -->
+<header class="relative z-20 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-4 py-3 bg-background-light/80 backdrop-blur-md dark:bg-black/80">
+<div class="flex items-center gap-2">
+<div class="text-primary">
+<span class="material-symbols-outlined text-2xl">pause_circle</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-sm font-bold tracking-tight">Yellow Pause</h2>
+</div>
+<button class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+<span class="material-symbols-outlined text-xl">settings</span>
+</button>
+</header>
+<!-- Centered Floating Card -->
+<main class="relative z-30 flex flex-1 flex-col items-center justify-center px-6">
+<div class="w-full rounded-xl border-2 border-primary/50 bg-white dark:bg-slate-900 p-6 shadow-[0_0_20px_rgba(236,91,19,0.3)] ring-1 ring-primary/20">
+<div class="mb-4 flex justify-center">
+<div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-3xl">chat_bubble</span>
+</div>
+</div>
+<p class="text-center text-slate-900 dark:text-slate-100 text-lg font-medium leading-snug">
+                    Shall I create a draft reply to john@...?
+                </p>
+<div class="mt-8 flex gap-3">
+<button class="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors">
+                        Proceed
+                    </button>
+<button class="flex-1 rounded-lg bg-slate-200 dark:bg-slate-800 px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
+                        Skip
+                    </button>
+</div>
+</div>
+<p class="mt-6 text-center text-xs font-medium uppercase tracking-widest text-slate-500 dark:text-slate-400 opacity-60">
+                Background activity paused
+            </p>
+</main>
+<!-- Sidebar Mock Navigation (Icons Only for Narrow Window) -->
+<div class="absolute left-0 top-1/2 z-40 -translate-y-1/2 flex flex-col gap-4 p-2 bg-background-light/50 dark:bg-background-dark/50 rounded-r-xl border-y border-r border-slate-200 dark:border-slate-800 backdrop-blur-sm">
+<div class="p-2 text-primary">
+<span class="material-symbols-outlined">home</span>
+</div>
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">insights</span>
+</div>
+<div class="p-2 text-slate-400">
+<span class="material-symbols-outlined">drafts</span>
+</div>
+</div>
+<!-- Footer / Status Area -->
+<footer class="relative z-20 flex justify-center py-4 bg-background-light/80 backdrop-blur-sm dark:bg-black/80">
+<div class="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
+<span class="h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></span>
+                System Monitoring Active
+            </div>
+</footer>
+</div>
+</body></html>
