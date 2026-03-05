@@ -1,12 +1,13 @@
 #!/bin/bash
-# Builds and deploys backend to Cloud Run
-# Returns the Cloud Run URL when done
+# Builds and deploys all Aegis services to Cloud Run
+# Returns the Cloud Run URLs when done
 
-PROJECT_ID=guardian-agent-160706
-REGION=us-central1
-SERVICE_NAME=guardian-backend
+set -e # Exit on any error
 
-# Read .env file for environment variables if it exists
+PROJECT_ID="guardian-agent-160706"
+REGION="us-central1"
+
+# Read .env file for environment variables if it exists (used only for backend)
 ENV_VARS="PROJECT_ID=$PROJECT_ID"
 if [ -f .env ]; then
   # Basic parsing of .env file
@@ -17,10 +18,63 @@ if [ -f .env ]; then
   done < .env
 fi
 
-gcloud builds submit --tag us-central1-docker.pkg.dev/$PROJECT_ID/guardian/$SERVICE_NAME ./backend
-gcloud run deploy $SERVICE_NAME \
-  --image us-central1-docker.pkg.dev/$PROJECT_ID/guardian/$SERVICE_NAME \
-  --platform managed \
-  --region $REGION \
-  --allow-unauthenticated \
-  --set-env-vars "$ENV_VARS"
+# Define services list (Space separated: SERVICE_NAME:DIR)
+SERVICES=(
+  "guardian-backend:./backend"
+  "guardian-dashboard:./dashboard"
+  "guardian-mac-app:./mac-app"
+  "guardian-mobile-app:./mobile-app"
+)
+
+echo "🚀 Starting deployments for project $PROJECT_ID in $REGION..."
+
+# File to store deployed URLs since we can't use associative arrays
+rm -f deployed_urls.tmp
+touch deployed_urls.tmp
+
+for entry in "${SERVICES[@]}"; do
+  # Split entry into SERVICE_NAME and DIR using parameter expansion
+  SERVICE_NAME="${entry%%:*}"
+  DIR="${entry##*:}"
+  
+  echo "--------------------------------------------------------"
+  echo "📦 Building $SERVICE_NAME from $DIR..."
+  echo "--------------------------------------------------------"
+  
+  IMAGE_TAG="us-central1-docker.pkg.dev/$PROJECT_ID/guardian/$SERVICE_NAME"
+  
+  # Submit build
+  gcloud builds submit --tag "$IMAGE_TAG" "$DIR"
+  
+  echo "--------------------------------------------------------"
+  echo "☁️  Deploying $SERVICE_NAME to Cloud Run..."
+  echo "--------------------------------------------------------"
+  
+  # Deploy to Cloud Run
+  if [ "$SERVICE_NAME" == "guardian-backend" ]; then
+    # Backend needs environment variables
+    DEPLOY_CMD="gcloud run deploy $SERVICE_NAME --image $IMAGE_TAG --platform managed --region $REGION --allow-unauthenticated --set-env-vars $ENV_VARS"
+  else
+    # Frontend services
+    DEPLOY_CMD="gcloud run deploy $SERVICE_NAME --image $IMAGE_TAG --platform managed --region $REGION --allow-unauthenticated"
+  fi
+  
+  # Run deploy and capture output to extract URL
+  $DEPLOY_CMD --format="value(status.url)" > url.tmp
+  
+  SERVICE_URL=$(cat url.tmp)
+  echo "$SERVICE_NAME: $SERVICE_URL" >> deployed_urls.tmp
+  
+  echo "✅ $SERVICE_NAME deployed to $SERVICE_URL"
+done
+
+rm -f url.tmp
+
+echo ""
+echo "========================================================"
+echo "🎉 ALL SERVICES SUCCESSFULLY DEPLOYED"
+echo "========================================================"
+cat deployed_urls.tmp
+echo "========================================================"
+
+rm -f deployed_urls.tmp
