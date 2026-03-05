@@ -35,3 +35,10 @@ class AuthStatus(BaseModel):
 
 class AuditEntry(ActionLog):
     id: str
+
+class DeviceRegistration(BaseModel):
+    device_id: str
+    fcm_token: str
+
+class SessionUpdate(BaseModel):
+    is_active: bool

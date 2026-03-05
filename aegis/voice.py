@@ -191,7 +191,34 @@ class AegisVoiceAgent:
         finally:
             output_stream.close()
 
+    async def _check_remote_stop(self):
+        """Polls backend to see if session should stop (e.g. from iOS kill switch)"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                while True:
+                    async with session.get(f"{config.BACKEND_URL}/session/status", timeout=5) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            if data.get("is_active") is False:
+                                logger.info("🛑 Remote stop signal received.")
+                                # Trigger stop by setting an event or closing session
+                                if self.context.session:
+                                    # This will likely break the loops and trigger finally block
+                                    await self.context.session.close()
+                                return
+                    await asyncio.sleep(5)
+        except Exception as e:
+            logger.warning(f"Remote stop check failed: {e}")
+
     async def run(self):
+        # Notify backend that session has started
+        from .gate import post_to_backend
+        await post_to_backend("/session/status", {"is_active": True})
+
+        # Start remote stop check
+        asyncio.create_task(self._check_remote_stop())
+
         # Start WebSocket server in background
         server = ws_server.get_server()
         asyncio.create_task(server.start())
@@ -223,6 +250,9 @@ class AegisVoiceAgent:
         finally:
             self._update_status("idle")
             ws_server.broadcast("session_ended")
+            # Notify backend that session has ended
+            from .gate import post_to_backend
+            await post_to_backend("/session/status", {"is_active": False})
             self.pya.terminate()
 
 
