@@ -74,7 +74,7 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
         logger.error(f"Error in remote auth flow: {e}, falling back to local")
         return await request_touch_id(f"Aegis: {classification['speak']}")
 
-async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed: bool = False) -> Dict[str, Any]:
+async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed: bool = False, on_auth_request=None) -> Dict[str, Any]:
     start_time = datetime.datetime.now()
     logger.info(f"🤖 Processing proposed action: {proposed_action}")
 
@@ -106,6 +106,12 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
     try:
         if tier == "RED":
             logger.info("🔴 RED — requesting Auth...")
+            # Notify caller (e.g. menu bar) that auth is happening
+            if on_auth_request:
+                try:
+                    on_auth_request()
+                except Exception:
+                    pass
             # Try remote auth first, falls back to local Touch ID automatically
             authed = await request_remote_auth(proposed_action, classification)
 

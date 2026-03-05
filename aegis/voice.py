@@ -14,7 +14,7 @@ logger = logging.getLogger("aegis.voice")
 SYSTEM_PROMPT = """
 You are Aegis, a trusted AI agent that controls the user's Mac computer.
 
-You can hear the user's voice and see their screen in real time.
+You can hear the user's voice.
 
 When the user asks you to do something:
 1. Understand their intent
@@ -35,13 +35,15 @@ Keep responses short and conversational — this is voice, not text.
 """
 
 class AegisVoiceAgent:
-    def __init__(self, context: AegisContext):
+    def __init__(self, context: AegisContext, status_callback=None):
         self.context = context
+        self.status_callback = status_callback
         self.pya = pyaudio.PyAudio()
         self.client = genai.Client(api_key=config.GOOGLE_API_KEY)
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             system_instruction=SYSTEM_PROMPT,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
             tools=[{
                 "function_declarations": [{
                     "name": "execute_action",
@@ -63,6 +65,14 @@ class AegisVoiceAgent:
                 }]
             }]
         )
+
+    def _update_status(self, status: str):
+        """Thread-safe status update forwarded to the menu bar (or ignored in CLI)."""
+        if self.status_callback:
+            try:
+                self.status_callback(status)
+            except Exception:
+                pass
 
     async def _send_audio_loop(self, session, mic_info):
         """Captures mic and sends to Gemini"""
@@ -108,11 +118,22 @@ class AegisVoiceAgent:
                         logger.info("⚡ Interrupted")
                         continue
 
+                    # Skip non-audio server content (text/thought parts from thinking models)
+                    if response.server_content and response.server_content.model_turn:
+                        for part in response.server_content.model_turn.parts:
+                            if hasattr(part, 'thought') and part.thought:
+                                logger.debug("💭 Skipping thought part")
+                                continue
+                            if hasattr(part, 'text') and part.text and not part.inline_data:
+                                logger.debug(f"📝 Skipping text part: {part.text[:80]}")
+                                continue
+
                     if response.data:
                         await asyncio.to_thread(output_stream.write, response.data)
 
                     if response.tool_call:
                         self.context.is_executing_tool = True
+                        self._update_status("executing")
                         logger.info("⏳ Pausing audio input during tool execution...")
                         try:
                             for fn in response.tool_call.function_calls:
@@ -121,7 +142,12 @@ class AegisVoiceAgent:
                                     confirmed = fn.args.get("confirmed", False)
                                     logger.info(f"📥 Received action: '{action}' (confirmed: {confirmed})")
 
-                                    result = await gate_action(action, self.context, pre_confirmed=confirmed)
+                                    # Signal auth status for RED tier (gate_action triggers Touch ID)
+                                    result = await gate_action(
+                                        action, self.context,
+                                        pre_confirmed=confirmed,
+                                        on_auth_request=lambda: self._update_status("auth")
+                                    )
 
                                     if result.get("needs_confirmation"):
                                         tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm this action: " + result['speak'] + ". If they say yes, call execute_action again with confirmed=true."}
@@ -129,7 +155,7 @@ class AegisVoiceAgent:
                                         # Truncate to prevent hitting frame limits on websocket
                                         if "output" in result and result.get("output"):
                                             out_str = str(result["output"])
-                                            result["output"] = out_str[:2000] + ("..." if len(out_str) > 2000 else "")
+                                            result["output"] = out_str[:1000] + ("..." if len(out_str) > 1000 else "")
                                         tool_response = {"result": json.dumps(result)}
 
                                     logger.info(f"📤 Sending tool response back to Aegis: {tool_response}")
@@ -145,6 +171,7 @@ class AegisVoiceAgent:
                         finally:
                             logger.info("▶️ Resuming audio input.")
                             self.context.is_executing_tool = False
+                            self._update_status("listening")
         except Exception as e:
             logger.error(f"Error in receive_and_play_loop: {e}")
         finally:
@@ -155,6 +182,7 @@ class AegisVoiceAgent:
             mic_info = self.pya.get_default_input_device_info()
         except Exception as e:
             logger.error(f"Failed to access default input device: {e}")
+            self._update_status("error")
             return
 
         logger.info("🌐 Connecting to Gemini Live API...")
@@ -163,6 +191,7 @@ class AegisVoiceAgent:
                 self.context.session = session
                 logger.info("✅ Connected to Gemini Live API")
                 logger.info("🎙️ Aegis is listening...")
+                self._update_status("listening")
 
                 await asyncio.gather(
                     self._send_audio_loop(session, mic_info),
@@ -170,5 +199,16 @@ class AegisVoiceAgent:
                 )
         except Exception as e:
             logger.exception(f"Unexpected error in run_aegis: {e}")
+            self._update_status("error")
+            raise
         finally:
+            self._update_status("idle")
             self.pya.terminate()
+
+
+async def run_aegis(status_callback=None):
+    """Top-level entry point for menu bar and other callers."""
+    from .config import USER_ID
+    context = AegisContext(user_id=USER_ID)
+    agent = AegisVoiceAgent(context, status_callback=status_callback)
+    await agent.run()
