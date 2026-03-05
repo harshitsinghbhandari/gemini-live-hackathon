@@ -30,55 +30,6 @@ class AegisMenuBar(rumps.App):
         self._running = False
         self._timeout_timer = None
 
-        # Register global hotkey Cmd+Shift+A
-        self._register_hotkey()
-
-    def _register_hotkey(self):
-        """Register Cmd+Shift+A as global hotkey using CGEventTap"""
-        try:
-            from Quartz import (
-                CGEventTapCreate, kCGSessionEventTap,
-                kCGHeadInsertEventTap, kCGEventKeyDown,
-                CGEventGetFlags, CGEventGetIntegerValueField,
-                kCGKeyboardEventKeycode, CGEventTapEnable
-            )
-            import CoreFoundation
-
-            def hotkey_callback(proxy, type_, event, refcon):
-                try:
-                    keycode = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode)
-                    flags = CGEventGetFlags(event)
-                    # Cmd = 0x100000, Shift = 0x20000
-                    cmd_shift = 0x100000 | 0x20000
-                    # keycode 0 = 'a'
-                    if keycode == 0 and (flags & cmd_shift) == cmd_shift:
-                        self.start_session()
-                except Exception:
-                    pass
-                return event
-
-            tap = CGEventTapCreate(
-                kCGSessionEventTap,
-                kCGHeadInsertEventTap,
-                0,
-                1 << kCGEventKeyDown,
-                hotkey_callback,
-                None
-            )
-            if tap:
-                source = CoreFoundation.CFMachPortCreateRunLoopSource(None, tap, 0)
-                CoreFoundation.CFRunLoopAddSource(
-                    CoreFoundation.CFRunLoopGetMain(),
-                    source,
-                    CoreFoundation.kCFRunLoopCommonModes
-                )
-                CGEventTapEnable(tap, True)
-                logger.info("⌨️ Global hotkey Cmd+Shift+A registered")
-            else:
-                logger.warning("CGEventTap failed (needs Accessibility permissions)")
-        except Exception as e:
-            logger.warning(f"Hotkey registration failed: {e}")
-
     def set_status(self, icon: str, menu_label: str = None):
         """Thread-safe icon + menu update"""
         rumps.App.title.fset(self, icon)
