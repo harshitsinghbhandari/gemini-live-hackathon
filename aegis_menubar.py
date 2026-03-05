@@ -119,7 +119,7 @@ class AegisMenuBar(rumps.App):
 
         if status == "blocked":
             rumps.notification("Aegis", "Action Blocked", "Action blocked — Touch ID failed")
-            icon = self.ICON_ERROR
+            icon = self.ICON_AUTH
         else:
             icon = icons.get(status, self.ICON_IDLE)
 

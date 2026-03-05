@@ -27,7 +27,7 @@ const AgentStatus = ({ lastEntry }) => {
       </div>
       <div className="flex flex-col">
         <p className="text-sm text-slate-400 font-medium tracking-tight">
-          Harshit's MacBook
+          {lastEntry?.device || "Mac Agent"}
         </p>
       </div>
     </div>

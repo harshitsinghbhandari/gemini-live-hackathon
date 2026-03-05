@@ -91,8 +91,8 @@ final class AegisMacViewModel: ObservableObject {
             process.environment = [
                 "GOOGLE_API_KEY":    try KeychainHelper.read(key: "google_api_key"),
                 "COMPOSIO_API_KEY":  try KeychainHelper.read(key: "composio_api_key"),
-                "BACKEND_URL":       "https://apiaegis.projectalpha.in",
-                "DEVICE_ID":         "harshit-macbook"
+                "BACKEND_URL":       Config.backendURL,
+                "DEVICE_ID":         Config.deviceID
             ]
 
             try process.run()
@@ -134,7 +134,7 @@ final class AegisMacViewModel: ObservableObject {
             }
 
             Task {
-                let url = URL(string: "https://apiaegis.projectalpha.in/auth/status/\(id)")!
+                let url = URL(string: "\(Config.backendURL)/auth/status/\(id)")!
                 do {
                     let (data, _) = try await URLSession.shared.data(from: url)
                     let statusObj = try JSONDecoder().decode(AuthStatusResponse.self, from: data)

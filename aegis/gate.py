@@ -126,10 +126,15 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
                     pass
             
             # Broadcast RED auth started
+            red_auth_id = str(uuid.uuid4())
             ws_server.broadcast("red_auth_started", data={
-                "request_id": str(uuid.uuid4()),
+                "id": red_auth_id,
+                "request_id": red_auth_id,
+                "speak": speak,
                 "action": proposed_action,
-                "speak": speak
+                "reason": classification.get("reason", ""),
+                "tool": tool or "unknown",
+                "toolkit": tool.split("_")[0].lower() if tool else "unknown"
             })
             # Try remote auth first, falls back to local Touch ID automatically
             authed = await request_remote_auth(proposed_action, classification)
@@ -153,9 +158,11 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
                 # Broadcast YELLOW confirm request
                 ws_server.broadcast("yellow_confirm", data={
                     "id": str(uuid.uuid4()),
-                    "action": proposed_action,
                     "speak": speak,
-                    "tier": "YELLOW"
+                    "question": speak,
+                    "action": proposed_action,
+                    "tool": tool or "unknown",
+                    "toolkit": tool.split("_")[0].lower() if tool else "unknown"
                 })
                 return result
             else:
@@ -209,8 +216,8 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
         "timestamp": audit_entry["timestamp"],
         "action": proposed_action,
         "tier": tier,
-        "tool": tool,
-        "toolkit": tool.split("_")[0].lower() if tool else None,
+        "tool": tool or "unknown",
+        "toolkit": tool.split("_")[0].lower() if tool else "unknown",
         "reason": classification["reason"],
         "upgraded": classification["upgraded"],
         "speak": speak,
