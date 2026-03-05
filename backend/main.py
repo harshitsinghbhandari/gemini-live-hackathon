@@ -47,6 +47,40 @@ async def post_auth_request(request: AuthRequest):
     await send_auth_push(request_id, request.action, request.device)
     return {"request_id": request_id}
 
+@app.get("/auth/pending")
+async def get_pending_auth(device: str = None):
+    try:
+        # Fetch all pending — filter in Python to avoid composite index
+        docs = db.collection("auth_requests")\
+            .where("status", "==", "pending")\
+            .stream()
+        
+        # Sort by created_at in Python
+        pending = []
+        for doc in docs:
+            data = doc.to_dict()
+            data["_id"] = doc.id
+            pending.append(data)
+        
+        if not pending:
+            return {"request_id": None}
+        
+        # Get oldest
+        oldest = sorted(pending, key=lambda x: x.get("created_at", 0))[0]
+        
+        return {
+            "request_id": oldest["_id"],
+            "action": oldest.get("action"),
+            "reason": oldest.get("reason"),
+            "speak": oldest.get("speak"),
+            "tool": oldest.get("tool"),
+            "created_at": oldest.get("created_at").isoformat() if oldest.get("created_at") else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching pending auth: {e}")
+        return {"request_id": None}
+
 @app.get("/auth/status/{request_id}", response_model=AuthStatus)
 async def get_auth_status(request_id: str):
     data = await get_auth_request(request_id)
