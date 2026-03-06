@@ -18,21 +18,31 @@ except Exception as e:
         "If running locally, ensure GOOGLE_APPLICATION_CREDENTIALS is set."
     )
 
-async def send_auth_push(request_id: str, action: str, device: str):
+async def send_auth_push(request_id: str, action: str, device_id: str):
     if not _firebase_initialized:
         logger.warning("Skipping FCM push — Firebase not initialized.")
         return None
 
+    # Look up token for specific device
+    from firestore import db
+    doc = await db.collection("devices").document(device_id).get()
+    if not doc.exists:
+        logger.warning(f"No FCM token found for device {device_id}. Falling back to topic.")
+        target_token = None
+    else:
+        target_token = doc.to_dict().get("fcm_token")
+
     message = messaging.Message(
         notification=messaging.Notification(
             title="Aegis Auth Request",
-            body=f"Approve action on {device}: {action}",
+            body=f"Approve action on {device_id}: {action}",
         ),
         data={
             "request_id": request_id,
             "type": "auth_request"
         },
-        topic="admin_approvals"
+        token=target_token,
+        topic="admin_approvals" if not target_token else None
     )
     try:
         # Wrap the blocking send in to_thread

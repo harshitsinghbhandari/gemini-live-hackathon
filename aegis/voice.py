@@ -166,10 +166,7 @@ class AegisVoiceAgent:
                                         if result.get("blocked") and result.get("tier") == "RED":
                                             self._update_status("blocked")
 
-                                        # Truncate to prevent hitting frame limits on websocket
-                                        if "output" in result and result.get("output"):
-                                            out_str = str(result["output"])
-                                            result["output"] = out_str[:1000] + ("..." if len(out_str) > 1000 else "")
+                                        # Use full result for tool response to Aegis
                                         tool_response = {"result": json.dumps(result)}
 
                                     logger.info(f"📤 Sending tool response back to Aegis: {tool_response}")
@@ -207,7 +204,8 @@ class AegisVoiceAgent:
                                     # This will likely break the loops and trigger finally block
                                     await self.context.session.close()
                                 return
-                    await asyncio.sleep(5)
+                    # Increased polling interval to 10s to reduce backend load
+                    await asyncio.sleep(10)
         except Exception as e:
             logger.warning(f"Remote stop check failed: {e}")
 
@@ -258,7 +256,17 @@ class AegisVoiceAgent:
 
 async def run_aegis(status_callback=None):
     """Top-level entry point for menu bar and other callers."""
-    from .config import USER_ID
-    context = AegisContext(user_id=USER_ID)
+    from .config import USER_ID, COMPOSIO_API_KEY
+    from composio import Composio
+
+    # Pre-initialize Composio to avoid delay on first tool execution
+    composio_client = None
+    try:
+        composio_client = Composio(api_key=COMPOSIO_API_KEY)
+        logger.info("✅ Composio initialized")
+    except Exception as e:
+        logger.error(f"Failed to pre-initialize Composio: {e}")
+
+    context = AegisContext(user_id=USER_ID, composio=composio_client)
     agent = AegisVoiceAgent(context, status_callback=status_callback)
     await agent.run()

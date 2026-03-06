@@ -65,7 +65,18 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
                 res_json = await resp.json()
                 request_id = res_json.get("request_id")
 
-            # 2. Poll for Status
+            # 2. Broadcast to UI now that we have the real backend ID
+            ws_server.broadcast("red_auth_started", data={
+                "id": request_id,
+                "request_id": request_id,
+                "speak": classification.get("speak", "Aegis requires authentication"),
+                "action": proposed_action,
+                "reason": classification.get("reason", ""),
+                "tool": classification.get("tool") or "unknown",
+                "toolkit": classification.get("tool").split("_")[0].lower() if classification.get("tool") else "unknown"
+            })
+
+            # 3. Poll for Status
             start_poll = datetime.datetime.now()
             while (datetime.datetime.now() - start_poll).total_seconds() < 30:
                 async with session.get(f"{config.BACKEND_URL}/auth/status/{request_id}", timeout=5) as resp:
@@ -125,18 +136,8 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
                 except Exception:
                     pass
             
-            # Broadcast RED auth started
-            red_auth_id = str(uuid.uuid4())
-            ws_server.broadcast("red_auth_started", data={
-                "id": red_auth_id,
-                "request_id": red_auth_id,
-                "speak": speak,
-                "action": proposed_action,
-                "reason": classification.get("reason", ""),
-                "tool": tool or "unknown",
-                "toolkit": tool.split("_")[0].lower() if tool else "unknown"
-            })
             # Try remote auth first, falls back to local Touch ID automatically
+            # Broadcast is now handled inside request_remote_auth after it gets the ID
             authed = await request_remote_auth(proposed_action, classification)
 
             if not authed:
@@ -201,6 +202,7 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
         "confirmed_verbally": result["confirmed_verbally"],
         "blocked": result["blocked"],
         "success": result["success"],
+        "output": result.get("output"),
         "error": result["error"],
         "duration_ms": duration_ms,
         "device": config.DEVICE_ID
@@ -210,8 +212,8 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
     # Post to Backend
     await post_to_backend("/action", audit_entry)
 
-    # Broadcast Action Card to WebSocket
-    ws_server.broadcast("action", data={
+    # Broadcast Action Card to WebSocket (truncate output for performance)
+    ws_data = {
         "id": str(uuid.uuid4()),
         "timestamp": audit_entry["timestamp"],
         "action": proposed_action,
@@ -225,6 +227,15 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
         "blocked": result["blocked"],
         "success": result["success"],
         "duration_ms": duration_ms
-    })
+    }
+
+    if result.get("output"):
+        out_str = str(result["output"])
+        ws_data["output"] = out_str[:1000] + ("..." if len(out_str) > 1000 else "")
+
+    if result.get("error"):
+        ws_data["error"] = result["error"]
+
+    ws_server.broadcast("action", data=ws_data)
 
     return result

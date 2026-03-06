@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { getBackendUrl } from '../utils/config';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const BACKEND_URL = getBackendUrl();
 
 export const useAuditLog = () => {
   const [initialLogs, setInitialLogs] = useState([]);
