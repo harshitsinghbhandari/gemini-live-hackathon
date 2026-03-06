@@ -29,15 +29,17 @@ export function usePendingAuth(isActive) {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    // Assume returns { request: {...} } or null
-                    if (data.request) {
-                        setPendingReq(data.request);
+                    console.log('Polling response:', data);
+                    console.log('Has pending:', !!data.request_id);
+
+                    if (data.request_id) {
+                        setPendingReq(data);
                     } else {
                         setPendingReq(null);
                     }
                 }
             } catch (err) {
-                // silent on network errors
+                console.error('Polling error:', err);
             }
         }
 

@@ -18,6 +18,19 @@ from firestore import (
     register_device, update_session_status
 )
 from fcm import send_auth_push
+from webauthn import (
+    generate_registration_options,
+    verify_registration_response,
+    generate_authentication_options,
+    verify_authentication_response,
+    options_to_json
+)
+from webauthn.helpers.structs import (
+    AuthenticatorSelectionCriteria,
+    UserVerificationRequirement,
+    ResidentKeyRequirement
+)
+from firestore import db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,7 +39,14 @@ app = FastAPI(title="Aegis Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://aegismobile.projectalpha.in",
+        "https://aegismac.projectalpha.in",
+        "https://aegis.projectalpha.in",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -162,3 +182,146 @@ async def post_session_status(update: SessionUpdate):
 async def post_session_stop():
     await update_session_status(False)
     return {"status": "stopped"}
+
+
+# WebAuthn Globals
+RP_ID = "aegismobile.projectalpha.in"
+RP_NAME = "Aegis"
+ORIGIN = "https://aegismobile.projectalpha.in"
+
+# In-memory challenge store (production should use Redis/Firestore with TTL)
+webauthn_challenges = {} 
+
+@app.post("/webauthn/register/options")
+async def webauthn_register_options(request: Request):
+    """Step 1 of registration — generate options for iPhone"""
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "harshit-iphone")
+
+        options = generate_registration_options(
+            rp_id=RP_ID,
+            rp_name=RP_NAME,
+            user_id=user_id.encode('utf-8'),
+            user_name=user_id,
+            authenticator_selection=AuthenticatorSelectionCriteria(
+                user_verification=UserVerificationRequirement.REQUIRED,
+                resident_key=ResidentKeyRequirement.PREFERRED
+            )
+        )
+
+        webauthn_challenges[user_id] = options.challenge
+
+        return json.loads(options_to_json(options))
+    except Exception as e:
+        logger.error(f"WebAuthn register options error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/webauthn/register/verify")
+async def webauthn_register_verify(request: Request):
+    """Step 2 of registration — verify credential from iPhone"""
+    body = await request.json()
+    user_id = body.get("user_id", "harshit-iphone")
+    credential = body.get("credential")
+
+    expected_challenge = webauthn_challenges.get(user_id)
+
+    try:
+        verification = verify_registration_response(
+            credential=credential,
+            expected_challenge=expected_challenge,
+            expected_origin=ORIGIN,
+            expected_rp_id=RP_ID,
+            require_user_verification=True
+        )
+
+        # Persist to Firestore
+        await db.collection("webauthn_credentials").document(user_id).set({
+            "credential_id": verification.credential_id.hex(),
+            "public_key": verification.credential_public_key.hex(),
+            "sign_count": verification.sign_count
+        })
+
+        return {"verified": True}
+    except Exception as e:
+        logger.error(f"WebAuthn registration error: {e}")
+        return {"verified": False, "error": str(e)}
+
+@app.post("/webauthn/auth/options")
+async def webauthn_auth_options(request: Request):
+    """Generate auth challenge for Face ID"""
+    body = await request.json()
+    user_id = body.get("user_id", "harshit-iphone")
+
+    doc = await db.collection("webauthn_credentials").document(user_id).get()
+    if not doc.exists:
+        return {"error": "not_registered", "message": "Face ID not registered"}
+    
+    data = doc.to_dict()
+    credential_id = bytes.fromhex(data["credential_id"])
+
+    options = generate_authentication_options(
+        rp_id=RP_ID,
+        allow_credentials=[{
+            "id": credential_id,
+            "type": "public-key"
+        }],
+        user_verification=UserVerificationRequirement.REQUIRED
+    )
+
+    webauthn_challenges[user_id] = options.challenge
+
+    return json.loads(options_to_json(options))
+
+@app.post("/webauthn/auth/verify")
+async def webauthn_auth_verify(request: Request):
+    """Verify Face ID response and approve auth request"""
+    body = await request.json()
+    user_id = body.get("user_id", "harshit-iphone")
+    credential = body.get("credential")
+    request_id = body.get("request_id")
+
+    doc = await db.collection("webauthn_credentials").document(user_id).get()
+    if not doc.exists:
+        return {"verified": False, "error": "Not registered"}
+    
+    data = doc.to_dict()
+    public_key = bytes.fromhex(data["public_key"])
+    sign_count = data["sign_count"]
+    expected_challenge = webauthn_challenges.get(user_id)
+
+    try:
+        verification = verify_authentication_response(
+            credential=credential,
+            expected_challenge=expected_challenge,
+            expected_origin=ORIGIN,
+            expected_rp_id=RP_ID,
+            credential_public_key=public_key,
+            credential_current_sign_count=sign_count,
+            require_user_verification=True
+        )
+
+        # Update sign count
+        await db.collection("webauthn_credentials").document(user_id).update({
+            "sign_count": verification.new_sign_count
+        })
+
+        # Approve the auth request in Firestore
+        if request_id:
+            from firestore import firestore as fs_lib
+            await db.collection("auth_requests").document(request_id).update({
+                "status": "approved",
+                "resolved_at": fs_lib.SERVER_TIMESTAMP
+            })
+
+        return {"verified": True}
+
+    except Exception as e:
+        logger.error(f"WebAuthn auth error: {e}")
+        return {"verified": False, "error": str(e)}
+
+@app.get("/webauthn/registered/{user_id}")
+async def check_registered(user_id: str):
+    """Check if user has registered Face ID"""
+    doc = await db.collection("webauthn_credentials").document(user_id).get()
+    return {"registered": doc.exists}

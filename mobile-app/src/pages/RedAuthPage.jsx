@@ -1,43 +1,40 @@
 // pages/RedAuthPage.jsx
 import React, { useEffect } from 'react';
 import { CountdownBar } from '../components/CountdownBar.jsx';
-import { FaceIDButton } from '../components/FaceIDButton.jsx';
+import FaceIDButton from '../components/FaceIDButton.jsx';
 import { CONFIG } from '../config.js';
 
 export function RedAuthPage({ request, onResolve }) {
-    const { action, reason, created_at, id } = request;
+    const { action, reason, created_at, request_id } = request;
 
-    // Cleanup effect: auto-deny if component unmounts without resolving?
-    // Let's rely on CountdownBar calling expire or explicit buttons.
-
-    const handleApprove = async () => {
-        await sendApproval(true);
+    const handleApprove = () => {
         onResolve('approved');
     };
 
     const handleDeny = async () => {
-        await sendApproval(false);
+        try {
+            await fetch(`${CONFIG.BACKEND_URL}/auth/approve/${request_id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ approved: false })
+            });
+        } catch (e) {
+            console.error('Failed to send denial', e);
+        }
         onResolve('denied');
     };
 
     const handleExpire = async () => {
-        // If the countdown bar reaches zero, the backend naturally times out after 30s.
-        // We can also actively deny to be sure, or just resolve locally.
-        await sendApproval(false);
-        onResolve('denied');
-    };
-
-    const sendApproval = async (approved) => {
         try {
-            if (!id) return;
-            await fetch(`${CONFIG.BACKEND_URL}/auth/approve/${id}`, {
+            await fetch(`${CONFIG.BACKEND_URL}/auth/approve/${request_id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ approved })
+                body: JSON.stringify({ approved: false })
             });
         } catch (e) {
-            console.error('Failed to send approval', e);
+            console.error('Failed to auto-deny', e);
         }
+        onResolve('denied');
     };
 
     return (
@@ -54,11 +51,15 @@ export function RedAuthPage({ request, onResolve }) {
 
             <CountdownBar
                 createdAt={created_at}
-                timeoutSeconds={CONFIG.AUTH_TIMEOUT}
+                timeoutSeconds={CONFIG.AUTH_TIMEOUT / 1000}
                 onExpire={handleExpire}
             />
 
-            <FaceIDButton onApprove={handleApprove} />
+            <FaceIDButton
+                requestId={request_id}
+                onApprove={handleApprove}
+                onDeny={() => onResolve('denied')}
+            />
 
             <button className="btn btn-deny btn-full" onClick={handleDeny} style={{ marginTop: 8 }}>
                 ✕ Deny
