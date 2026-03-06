@@ -27,14 +27,8 @@ class AegisWSServer:
         
         try:
             async for message in websocket:
-                try:
-                    data = json.loads(message)
-                    event = data.get("event")
-                    if event == "yellow_response":
-                        logger.info(f"📥 Received yellow_response from app: {data.get('data')}")
-                        # In the future, this could be hooked into the gate logic
-                except json.JSONDecodeError:
-                    pass
+                # Listener for future client-to-agent events
+                pass
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:

@@ -17,12 +17,6 @@ export function usePendingAuth(isActive) {
 
         async function poll() {
             try {
-                // Querying auth requests that are pending. We can fetch audit log and filter or ask a specific endpoint.
-                // The backend doesn't have an explicit `/auth/pending` in main.py, but it has `/audit/log`.
-                // Alternatively, the prompt implies there is an endpoint or we can determine it from the audit stream.
-                // Wait, the prompt says: "Polls GET {BACKEND_URL}/auth/pending every 3 seconds".
-                // Although I didn't see `/auth/pending` in main.py, I will implement it as requested. It might be implied or assume it exists/will exist.
-                // Let's implement the polling exactly as specified:
                 const t = new URLSearchParams({ device: CONFIG.DEVICE_ID });
                 const res = await fetch(`${CONFIG.BACKEND_URL}/auth/pending?${t.toString()}`, {
                     signal: AbortSignal.timeout(2500)

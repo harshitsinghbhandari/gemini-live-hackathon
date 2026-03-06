@@ -28,7 +28,6 @@ class AegisMenuBar(rumps.App):
         self._session_thread = None
         self._session_loop = None
         self._running = False
-        self._timeout_timer = None
 
     def set_status(self, icon: str, menu_label: str = None):
         """Thread-safe icon + menu update"""
@@ -47,11 +46,6 @@ class AegisMenuBar(rumps.App):
         self.menu["Start Session"].title = "Stop Session"
 
         rumps.notification("Aegis", "", "Aegis is listening 🎙️")
-
-        # Start 60 second timeout timer
-        self._timeout_timer = threading.Timer(60.0, self.auto_stop)
-        self._timeout_timer.daemon = True
-        self._timeout_timer.start()
 
         # Run voice session in background thread
         self._session_thread = threading.Thread(
@@ -76,13 +70,9 @@ class AegisMenuBar(rumps.App):
             self._running = False
             self.set_status(self.ICON_IDLE)
             self.menu["Start Session"].title = "Start Session"
-            if self._timeout_timer:
-                self._timeout_timer.cancel()
 
     def stop_session(self, _=None, reason="manual"):
         """Manually stop session"""
-        if self._timeout_timer:
-            self._timeout_timer.cancel()
         if self._session_loop:
             self._session_loop.call_soon_threadsafe(
                 self._session_loop.stop
@@ -93,16 +83,6 @@ class AegisMenuBar(rumps.App):
 
         if reason == "manual":
             rumps.notification("Aegis", "Session Ended", "Session ended")
-
-    def auto_stop(self):
-        """Auto stop after 60 seconds of session"""
-        if self._running:
-            rumps.notification(
-                "Aegis",
-                "Session Ended",
-                "60 second session limit reached."
-            )
-            self.stop_session(reason="timeout")
 
     def on_status_change(self, status: str):
         """Called by voice layer to update icon"""

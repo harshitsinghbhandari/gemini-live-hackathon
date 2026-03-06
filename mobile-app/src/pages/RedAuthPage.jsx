@@ -5,7 +5,7 @@ import FaceIDButton from '../components/FaceIDButton.jsx';
 import { CONFIG } from '../config.js';
 
 export function RedAuthPage({ request, onResolve }) {
-    const { action, reason, created_at, request_id } = request;
+    const { action, reason, speak, created_at, request_id } = request;
 
     const handleApprove = () => {
         onResolve('approved');
@@ -48,6 +48,18 @@ export function RedAuthPage({ request, onResolve }) {
 
             <div className="auth-reason-label">Because:</div>
             <div className="auth-reason-text">{reason}</div>
+
+            {speak && (
+                <div className="auth-speak-text" style={{
+                    marginTop: 12,
+                    fontSize: 14,
+                    color: 'var(--amber)',
+                    textAlign: 'center',
+                    fontStyle: 'italic'
+                }}>
+                    " {speak} "
+                </div>
+            )}
 
             <CountdownBar
                 createdAt={created_at}

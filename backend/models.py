@@ -13,6 +13,7 @@ class ActionLog(BaseModel):
     confirmed_verbally: bool
     blocked: bool
     success: bool
+    output: Optional[Any] = None
     error: Optional[str] = None
     duration_ms: int
     device: str
