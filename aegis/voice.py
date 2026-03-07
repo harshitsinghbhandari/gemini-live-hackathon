@@ -3,49 +3,22 @@ import base64
 import json
 import logging
 import pyaudio
-import signal
-from datetime import datetime
-from google import genai
-from google.genai import types
-from . import config
-from .context import AegisContext
 from .gate import gate_action
 from . import ws_server
-from .memory import load_memory, memory_to_prompt, update_memory_from_session
 
 logger = logging.getLogger("aegis.voice")
 
-class AegisVoiceAgent:
-    def __init__(self, context: AegisContext, status_callback=None):
-        self.context = context
-        self.status_callback = status_callback
-        self.pya = pyaudio.PyAudio()
-        self.client = genai.Client(api_key=config.GOOGLE_API_KEY)
-        
-        self.memory = load_memory()
-        memory_context = memory_to_prompt(self.memory)
-        self.session_transcript = []
-        self._current_user_transcript = ""
-        
-        self._stop_requested = False
-        try:
-            signal.signal(signal.SIGUSR1, lambda sig, frame: self.request_stop())
-            signal.signal(signal.SIGTERM, lambda sig, frame: self.request_stop())
-        except ValueError:
-            logger.warning("Could not register signals. This is expected if running in a background thread.")
-        
-        system_prompt = f"""
-You are Aegis, a voice-controlled AI agent for Mac.
-You classify actions into risk tiers and execute them via tools.
-Be concise. Speak naturally. Never read out JSON or code.
+SYSTEM_PROMPT = """
+You are Aegis, a trusted AI agent that controls the user's Mac computer.
 
 You can hear the user's voice.
+
 When the user asks you to do something:
 1. Understand their intent
 2. Decide what action to take
 3. Call the execute_action function with a plain english description
 
-You always tell the user:
+You speak naturally and concisely. You always tell the user:
 - What you're about to do
 - Whether it needs their fingerprint (RED actions)
 - What happened after execution
@@ -55,18 +28,18 @@ If the execute_action returns needs_confirmation=True, ask the user to confirm.
 If the user confirms, call execute_action AGAIN with the SAME action and confirmed=True.
 
 You are calm, trustworthy, and never do anything without being clear about it.
-
-{memory_context}
-
-Today's date: {datetime.now().strftime('%A, %B %d %Y')}
-Current time: {datetime.now().strftime('%I:%M %p')}
+Keep responses short and conversational — this is voice, not text.
 """
 
-        logger.info(f"System prompt: {system_prompt}")
-
+class AegisVoiceAgent:
+    def __init__(self, context: AegisContext, status_callback=None):
+        self.context = context
+        self.status_callback = status_callback
+        self.pya = pyaudio.PyAudio()
+        self.client = genai.Client(api_key=config.GOOGLE_API_KEY)
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
-            system_instruction=system_prompt,
+            system_instruction=SYSTEM_PROMPT,
             thinking_config=types.ThinkingConfig(thinking_budget=0),
             tools=[{
                 "function_declarations": [{
@@ -90,10 +63,6 @@ Current time: {datetime.now().strftime('%I:%M %p')}
             }]
         )
 
-    def request_stop(self):
-        """Gracefully request session to stop."""
-        self._stop_requested = True
-        logger.info("🛑 Graceful stop requested via SIGUSR1")
 
     def _update_status(self, status: str):
         """Thread-safe status update forwarded to the menu bar and WebSocket UI."""
@@ -119,7 +88,7 @@ Current time: {datetime.now().strftime('%I:%M %p')}
         )
 
         try:
-            while not self._stop_requested:
+            while True:
                 if self.context.is_executing_tool:
                     await asyncio.sleep(0.1)
                     continue
@@ -151,58 +120,26 @@ Current time: {datetime.now().strftime('%I:%M %p')}
         )
 
         try:
-            while not self._stop_requested:
+            while True:
                 async for response in session.receive():
                     if response.server_content and response.server_content.interrupted:
                         logger.info("⚡ Interrupted")
                         continue
 
-                    # Capture user input transcription stream
-                    if response.server_content and getattr(response.server_content, "input_transcription", None):
-                        trans = response.server_content.input_transcription
-                        if hasattr(trans, 'text') and trans.text:
-                            self._current_user_transcript = trans.text
-                            
-                            if getattr(trans, 'finished', False):
-                                logger.info(f"🗣️ User Said: {self._current_user_transcript}")
-                                entry = f"User: {self._current_user_transcript}"
-                                self.session_transcript.append(entry)
-                                logger.info(f"Transcript entry added: {entry}")
-                                self._current_user_transcript = ""
-                                
                     # Skip non-audio server content (text/thought parts from thinking models)
                     if response.server_content and response.server_content.model_turn:
-                        # Commit pending user transcript if model starts talking
-                        if self._current_user_transcript:
-                            logger.info(f"🗣️ User Said (inferred): {self._current_user_transcript}")
-                            entry = f"User: {self._current_user_transcript}"
-                            self.session_transcript.append(entry)
-                            logger.info(f"Transcript entry added: {entry}")
-                            self._current_user_transcript = ""
-                            
                         for part in response.server_content.model_turn.parts:
                             if hasattr(part, 'thought') and part.thought:
                                 logger.debug("💭 Skipping thought part")
                                 continue
                             if hasattr(part, 'text') and part.text and not part.inline_data:
                                 logger.debug(f"📝 Skipping text part: {part.text[:80]}")
-                                entry = f"Aegis: {part.text}"
-                                self.session_transcript.append(entry)
-                                logger.info(f"Transcript entry added: {entry}")
                                 continue
 
                     if response.data:
                         await asyncio.to_thread(output_stream.write, response.data)
 
                     if response.tool_call:
-                        # Commit pending user transcript if tool is called
-                        if self._current_user_transcript:
-                            logger.info(f"🗣️ User Said (tool triggered): {self._current_user_transcript}")
-                            entry = f"User: {self._current_user_transcript}"
-                            self.session_transcript.append(entry)
-                            logger.info(f"Transcript entry added: {entry}")
-                            self._current_user_transcript = ""
-                            
                         self.context.is_executing_tool = True
                         self._update_status("executing")
                         logger.info("⏳ Pausing audio input during tool execution...")
@@ -211,9 +148,6 @@ Current time: {datetime.now().strftime('%I:%M %p')}
                                 if fn.name == "execute_action":
                                     action = fn.args.get("action", "")
                                     confirmed = fn.args.get("confirmed", False)
-                                    entry = f"User (via action): {action}"
-                                    self.session_transcript.append(entry)
-                                    logger.info(f"Transcript entry added: {entry}")
                                     logger.info(f"📥 Received action: '{action}' (confirmed: {confirmed})")
 
                                     # Signal auth status for RED tier (gate_action triggers Touch ID)
@@ -262,7 +196,10 @@ Current time: {datetime.now().strftime('%I:%M %p')}
                             data = await resp.json()
                             if data.get("is_active") is False:
                                 logger.info("🛑 Remote stop signal received.")
-                                self.request_stop()
+                                # Trigger stop by setting an event or closing session
+                                if self.context.session:
+                                    # This will likely break the loops and trigger finally block
+                                    await self.context.session.close()
                                 return
                     # Increased polling interval to 10s to reduce backend load
                     await asyncio.sleep(10)
@@ -297,51 +234,20 @@ Current time: {datetime.now().strftime('%I:%M %p')}
                 self._update_status("listening")
                 ws_server.broadcast("session_started")
 
-                send_task = asyncio.create_task(self._send_audio_loop(session, mic_info))
-                recv_task = asyncio.create_task(self._receive_and_play_loop(session))
-
-                while not self._stop_requested:
-                    if send_task.done() or recv_task.done():
-                        break
-                    await asyncio.sleep(0.2)
-                
-                logger.info("Closing Gemini session to unblock receive loop...")
-                try:
-                    await asyncio.wait_for(session.close(), timeout=2.0)
-                except Exception as e:
-                    logger.warning(f"Session close timeout/error: {e}")
-                
-                logger.info("Waiting for audio loops to finish naturally...")
-                try:
-                    await asyncio.wait_for(asyncio.gather(send_task, recv_task, return_exceptions=True), timeout=3.0)
-                except asyncio.TimeoutError:
-                    logger.warning("Audio loops did not finish in time, forcing cancel_task...")
-                    send_task.cancel()
-                    recv_task.cancel()
-                    await asyncio.gather(send_task, recv_task, return_exceptions=True)
-                    
-        except asyncio.CancelledError:
-            logger.info("Session cancelled.")
+                await asyncio.gather(
+                    self._send_audio_loop(session, mic_info),
+                    self._receive_and_play_loop(session)
+                )
         except Exception as e:
             logger.exception(f"Unexpected error in run_aegis: {e}")
             self._update_status("error")
             raise
         finally:
-            print("🔴 FINALLY BLOCK REACHED", flush=True)
             self._update_status("idle")
             ws_server.broadcast("session_ended")
             # Notify backend that session has ended
             from .gate import post_to_backend
             await post_to_backend("/session/status", {"is_active": False})
-            # Right before calling update_memory_from_session
-            logger.info(f"Session transcript has {len(self.session_transcript)} entries")
-            logger.info(f"Transcript: {self.session_transcript}")
-            await update_memory_from_session(
-                session_transcript=self.session_transcript,
-                current_memory=self.memory,
-                gemini_client=self.client
-            )
-            logger.info("Session ended, memory saved")
             self.pya.terminate()
 
 

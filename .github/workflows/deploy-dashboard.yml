@@ -1,0 +1,61 @@
+# Required GitHub Secret: GCP_WORKLOAD_IDENTITY_PROVIDER
+# Setup instructions are in GCP_SETUP.md using Workload Identity Federation
+
+name: Deploy Dashboard
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'dashboard/**'
+  create:
+    tags:
+      - 'v*'
+  workflow_dispatch:  # manual trigger from GitHub UI
+
+jobs:
+  deploy:
+    name: Build & Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: 'aegis-github-actions@guardian-agent-160706.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build & Push Docker Image
+        run: |
+          gcloud builds submit \
+            --tag us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-dashboard \
+            ./dashboard
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy guardian-dashboard \
+            --image us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-dashboard \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Show URL
+        run: |
+          gcloud run services describe guardian-dashboard \
+            --region us-central1 \
+            --format 'value(status.url)'
