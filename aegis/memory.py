@@ -141,16 +141,26 @@ Return updated memory JSON:
 """
 
     try:
+        from . import config
+        model_name = getattr(config, "GEMINI_MODEL", "gemini-2.0-flash")
+
         response = await gemini_client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model_name,
             contents=prompt
         )
         raw = response.text.strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
+        logger.info(f"Raw memory update response: {raw}")
+
+        # Robust JSON extraction
+        if "```json" in raw:
+            raw = raw.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw:
+            raw = raw.split("```")[1].split("```")[0].strip()
+
         updated = json.loads(raw)
         save_memory(updated)
-        logger.info("Memory updated from session")
+        logger.info("✅ Memory updated from session and saved to disk")
         return updated
     except Exception as e:
-        logger.warning(f"Memory update failed: {e}")
+        logger.error(f"❌ Memory update failed: {e}", exc_info=True)
         return current_memory
