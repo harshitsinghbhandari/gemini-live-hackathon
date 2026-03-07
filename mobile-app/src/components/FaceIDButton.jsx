@@ -87,7 +87,12 @@ export function FaceIDButton({ requestId, onApprove, onDeny }) {
             if (err.message === 'NEEDS_REGISTRATION') {
                 setNeedsSetup(true);
             }
-            console.error('Face ID error:', err);
+            console.error('Face ID Error Context:', {
+                message: err.message,
+                stack: err.stack,
+                requestId,
+                backendUrl: CONFIG.BACKEND_URL
+            });
             setLoading(false);
         }
     };

@@ -57,9 +57,11 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
                 "arguments": classification.get("arguments", {}),
                 "device": config.DEVICE_ID
             }
+            logger.info('posting: %s', auth_data)
             async with session.post(f"{config.BACKEND_URL}/auth/request", json=auth_data, timeout=5) as resp:
                 if resp.status != 200:
-                    logger.warning("Backend auth request failed, falling back to local")
+                    logger.warning("status: %s", resp.status)
+                    logger.warning("body: %s", await resp.text())
                     return await request_touch_id(f"Aegis: {classification['speak']}")
 
                 res_json = await resp.json()

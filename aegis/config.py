@@ -25,8 +25,8 @@ TOUCH_ID_TIMEOUT = 30
 YELLOW_CONFIRM_TIMEOUT = 15
 
 # Backend Config
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8080")
-DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://localhost:8080")
+BACKEND_URL = os.environ.get("BACKEND_URL", "https://apiaegis.projectalpha.in")
+DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "https://aegis.projectalpha.in")
 DEVICE_ID = "harshit-macbook"
 
 def setup_logging():

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -28,7 +29,9 @@ from webauthn import (
 from webauthn.helpers.structs import (
     AuthenticatorSelectionCriteria,
     UserVerificationRequirement,
-    ResidentKeyRequirement
+    ResidentKeyRequirement,
+    PublicKeyCredentialDescriptor,
+    PublicKeyCredentialType
 )
 from firestore import db
 
@@ -37,16 +40,23 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Aegis Backend")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# CORS Configuration
+allowed_origins_env = os.environ.get("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+else:
+    allowed_origins = [
         "https://aegismobile.projectalpha.in",
         "https://aegismac.projectalpha.in",
         "https://aegis.projectalpha.in",
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:8080"
-    ],
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,7 +87,7 @@ async def get_pending_auth(device: str = None):
         
         # Sort by created_at in Python
         pending = []
-        for doc in docs:
+        async for doc in docs:
             data = doc.to_dict()
             data["_id"] = doc.id
             pending.append(data)
@@ -185,12 +195,13 @@ async def post_session_stop():
 
 
 # WebAuthn Globals
-RP_ID = "aegismobile.projectalpha.in"
-RP_NAME = "Aegis"
-ORIGIN = "https://aegismobile.projectalpha.in"
+RP_ID = os.environ.get("WEBAUTHN_RP_ID", "aegismobile.projectalpha.in")
+RP_NAME = os.environ.get("WEBAUTHN_RP_NAME", "Aegis")
+ORIGIN = os.environ.get("WEBAUTHN_ORIGIN", "https://aegismobile.projectalpha.in")
 
 # In-memory challenge store (production should use Redis/Firestore with TTL)
 webauthn_challenges = {} 
+webauthn_users = {}
 
 @app.post("/webauthn/register/options")
 async def webauthn_register_options(request: Request):
@@ -249,29 +260,47 @@ async def webauthn_register_verify(request: Request):
 
 @app.post("/webauthn/auth/options")
 async def webauthn_auth_options(request: Request):
-    """Generate auth challenge for Face ID"""
-    body = await request.json()
-    user_id = body.get("user_id", "harshit-iphone")
+    try:
+        body = await request.json()
+        user_id = body.get("user_id", "harshit-iphone")
 
-    doc = await db.collection("webauthn_credentials").document(user_id).get()
-    if not doc.exists:
-        return {"error": "not_registered", "message": "Face ID not registered"}
-    
-    data = doc.to_dict()
-    credential_id = bytes.fromhex(data["credential_id"])
+        # Load from Firestore
+        doc = await db.collection("webauthn_credentials").document(user_id).get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="not_registered")
 
-    options = generate_authentication_options(
-        rp_id=RP_ID,
-        allow_credentials=[{
-            "id": credential_id,
-            "type": "public-key"
-        }],
-        user_verification=UserVerificationRequirement.REQUIRED
-    )
+        data = doc.to_dict()
 
-    webauthn_challenges[user_id] = options.challenge
+        # Convert hex string back to bytes
+        credential_id_bytes = bytes.fromhex(data["credential_id"])
 
-    return json.loads(options_to_json(options))
+        # Cache in memory
+        webauthn_users[user_id] = {
+            "credential_id": credential_id_bytes,
+            "public_key": bytes.fromhex(data["public_key"]),
+            "sign_count": data.get("sign_count", 0)
+        }
+
+        options = generate_authentication_options(
+            rp_id=RP_ID,
+            allow_credentials=[
+                PublicKeyCredentialDescriptor(
+                    id=credential_id_bytes,
+                    type=PublicKeyCredentialType.PUBLIC_KEY
+                )
+            ],
+            user_verification=UserVerificationRequirement.REQUIRED
+        )
+
+        webauthn_challenges[user_id] = options.challenge
+
+        return json.loads(options_to_json(options))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"WebAuthn auth options error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/webauthn/auth/verify")
 async def webauthn_auth_verify(request: Request):

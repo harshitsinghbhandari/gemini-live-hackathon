@@ -5,3 +5,8 @@ export const CONFIG = {
     AUTH_TIMEOUT: 30000,
     DEVICE_ID: import.meta.env.VITE_DEVICE_ID || "harshit-iphone" // Default device ID per specification
 };
+
+console.log("Mobile App Config:", {
+    BACKEND_URL: CONFIG.BACKEND_URL,
+    DEVICE_ID: CONFIG.DEVICE_ID
+});
