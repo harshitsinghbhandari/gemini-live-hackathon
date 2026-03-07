@@ -67,7 +67,7 @@ Brutally honest audit against `hackathon-rules.md`.
 | **HIGH** | **Record High-Fidelity Demo** | Video is 30% of the score. Must look slick and "Live". | 6h | Harshit |
 | **MED** | **Create Architecture Diagram** | Proves technical depth and system design (30% weight). | 2h | Jules |
 | **MED** | **Write "Winning" README** | Judges look here for technical grounding. Highlight the Security Tiering logic. | 2h | Jules |
-| **LOW** | **Publish Blog Post** | Free +0.6 points to edge out competitors. | 3h | Harshit |
+| **HIGH** | **Sweep Bonus Points** | +1.0 total points (out of 6.0) is a massive ~17% boost. Most teams skip this. | 6h | Both |
 
 ---
 
@@ -114,6 +114,34 @@ Brutally honest audit against `hackathon-rules.md`.
 *   [ ] Google Cloud Proof Video (can be separate 30s link or in main video).
 *   [ ] Testing Instructions (including any .env keys needed for judges).
 *   [ ] **Bonus:** Blog post link + `#GeminiLiveAgentChallenge` on Socials.
+
+---
+
+## 10. Bonus Points — How to Sweep (Total +1.0)
+In a high-stakes hackathon, the winner is often decided by fractions of a point. Section 8 of the rules allows for up to **1.0 bonus points** (on a 6.0 scale). This is a **17% advantage** over teams that only do the technical work.
+
+### A. Content Creation Bonus (+0.6) — "The Multi-Channel Strategy"
+The rules allow multiple pieces of content. To guarantee the full 0.6, we will do two:
+1.  **Technical Deep Dive (Blog):** Publish on **Dev.to** or **Medium**.
+    *   *Title:* "The Architecture of Trust: Native macOS Biometrics in AI Agents".
+    *   *Focus:* Explain the 3-tier security model and how Gemini classifies intent.
+2.  **"How it was Built" (Video/Reel):** A 60-second "Speedrun" of the architecture.
+    *   *Platform:* LinkedIn or X.
+    *   *Mandatory:* Must include the hashtag `#GeminiLiveAgentChallenge`.
+3.  **PRO TIP:** Every piece of content **MUST** include this exact disclaimer:
+    > *"I created this piece of content for the purposes of entering the Gemini Live Agent Challenge."*
+    *Missing this sentence means 0 points.*
+
+### B. Deployment Automation Bonus (+0.2) — "Infrastructure as Code"
+We have the scripts, but we need to *prove* them to the judges.
+*   **Action:** Jules will create a `/docs/DEPLOYMENT.md` file that explains the `deploy.sh` flow.
+*   **Requirement:** Ensure the code repository is public and includes the `Dockerfile` for every service (Mac app, Mobile app, Dashboard, Backend).
+*   **Evidence:** In the Devpost "How it works" section, explicitly link to the `deploy.sh` file as proof of automation.
+
+### C. GDG Membership Bonus (+0.2) — "The Community Factor"
+*   **Action:** Harshit must join a local GDG chapter at [gdg.community.dev](https://gdg.community.dev).
+*   **The Link:** You must provide your **Public Profile Link** (e.g., `https://gdg.community.dev/u/harshitbhandari`).
+*   **Verification:** Ensure the profile is set to "Public" in settings so judges can verify membership.
 
 ---
 
