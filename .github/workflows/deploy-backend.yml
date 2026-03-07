@@ -6,7 +6,7 @@ name: Deploy Backend
 on:
   push:
     branches:
-      - polish
+      - main
     paths:
       - 'backend/**'
   create:
