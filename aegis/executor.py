@@ -1,7 +1,11 @@
 import asyncio
 import logging
+import json
+import re
+from datetime import datetime
 from typing import Dict, Any
 from composio import Composio
+from google import genai
 from . import config
 from .context import AegisContext
 
@@ -16,6 +20,107 @@ SUPPORTED_TOOLKITS = [
     "googletasks",
     "github"
 ]
+
+async def fill_arguments(
+    tool_slug: str,
+    partial_args: dict,
+    user_command: str,
+    context: AegisContext
+) -> dict:
+    """
+    Fetch tool schema from Composio, send to Gemini,
+    get back complete arguments.
+    """
+    if not context.composio:
+        return partial_args
+
+    # Step 1: Fetch schema for this specific tool
+    # Step 1: Fetch schema for this specific tool
+    try:
+        tools = await asyncio.to_thread(
+            context.composio.tools.get,
+            user_id=context.user_id,
+            toolkits=SUPPORTED_TOOLKITS
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch tools for schema: {e}")
+    # Step 1: Fetch schema for this specific tool by querying its endpoint
+    import httpx
+    tool_schema = None
+    try:
+        url = f"https://backend.composio.dev/api/v3/tools/{tool_slug}?toolkit_versions=latest"
+        headers = {"x-api-key": config.COMPOSIO_API_KEY}
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                # Composio V3 tool schema structure
+                tool_schema = data.get("input_parameters") or data.get("expected_schema")
+    except Exception as e:
+        logger.warning(f"Failed to fetch schema for {tool_slug} via API: {e}")
+            
+    if not tool_schema:
+        print(f"DEBUG {tool_slug}: No schema found. Returning partial args.")
+        # Schema not found, return partial args as-is
+        return partial_args
+    
+    # Step 2: Ask Gemini to fill complete arguments
+    # Convert tool_schema to dict if it's a model
+    if hasattr(tool_schema, "model_dump"):
+        schema_dict = tool_schema.model_dump()
+    elif hasattr(tool_schema, "__dict__"):
+        schema_dict = tool_schema.__dict__
+    else:
+        schema_dict = tool_schema
+
+    schema_str = json.dumps(schema_dict, indent=2)
+
+    prompt = f"""
+You are filling in arguments for a tool call.
+
+User said: "{user_command}"
+
+Tool: {tool_slug}
+Schema: {schema_str}
+
+Partial arguments already extracted: {json.dumps(partial_args, indent=2)}
+
+Today's date: {datetime.now().isoformat()}
+
+Rules:
+- Fill ALL required fields
+- Use partial_args as-is if already correct
+- For missing required fields, infer from user command
+- For IDs you don't know (like tasklist_id), use "@default"
+- For GitHub requests, use the user's primary repo if known or guess "harshitbhandari0318" for owner and "gemini-live-hackathon" for repo
+- For dates, use RFC3339 format
+- Return ONLY valid JSON with complete arguments, nothing else
+- Do not include read-only fields
+
+Return complete arguments JSON:
+"""
+    print(f"Gemini schema prompt:\n{prompt}")
+    logger.debug(f"Gemini schema prompt:\n{prompt}")
+    try:
+        gemini_client = genai.Client(api_key=config.GOOGLE_API_KEY)
+        response = await gemini_client.aio.models.generate_content(
+            model=config.GEMINI_MODEL,
+            contents=prompt
+        )
+        
+        raw = response.text.strip()
+        # Strip markdown if present
+        raw = re.sub(r'^```json\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+        
+        complete_args = json.loads(raw)
+        return complete_args
+    except json.JSONDecodeError:
+        logger.warning(f"Could not parse Gemini args response, using partial: {raw}")
+        return partial_args
+    except Exception as e:
+        logger.error(f"Error in Gemini argument filling: {e}")
+        return partial_args
 
 async def search_and_execute(action: str, tool_args: Dict[str, Any], context: AegisContext) -> Dict[str, Any]:
     """
@@ -71,12 +176,20 @@ async def search_and_execute(action: str, tool_args: Dict[str, Any], context: Ae
         if len(recommended_steps) > 1:
             logger.info(f"📋 Plan: {recommended_steps[1]}")
 
-        # Step 2: Execute directly — bypass router's execution layer
-        logger.debug(f"Executing tool {primary_tool} with args {tool_args}")
+        # Step 2: Fill arguments
+        complete_args = await fill_arguments(
+            tool_slug=primary_tool,
+            partial_args=tool_args,
+            user_command=action,
+            context=context
+        )
+
+        # Step 3: Execute directly — bypass router's execution layer
+        logger.info(f"Executing {primary_tool} with complete args: {json.dumps(complete_args, indent=2)}")
         execute_result = await asyncio.to_thread(
             context.composio.tools.execute,
             slug=primary_tool,
-            arguments=tool_args,
+            arguments=complete_args,
             user_id=context.user_id,
             dangerously_skip_version_check=True
         )
