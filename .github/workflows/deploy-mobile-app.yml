@@ -41,9 +41,9 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          gcloud builds submit \
-            --tag us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-mobile-app \
-            ./mobile-app
+          IMAGE="us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-mobile-app"
+          docker build -t $IMAGE ./mobile-app
+          docker push $IMAGE
 
       - name: Deploy to Cloud Run
         run: |
