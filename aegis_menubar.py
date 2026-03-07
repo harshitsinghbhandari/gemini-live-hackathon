@@ -27,6 +27,7 @@ class AegisMenuBar(rumps.App):
         ]
         self._session_thread = None
         self._session_loop = None
+        self._agent = None
         self._running = False
 
     def set_status(self, icon: str, menu_label: str = None):
@@ -54,13 +55,19 @@ class AegisMenuBar(rumps.App):
         )
         self._session_thread.start()
 
+    def _on_agent_ready(self, agent):
+        self._agent = agent
+
     def _run_session(self):
         """Runs async voice session in background thread"""
         self._session_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._session_loop)
         try:
             self._session_loop.run_until_complete(
-                run_aegis(status_callback=self.on_status_change)
+                run_aegis(
+                    status_callback=self.on_status_change,
+                    on_agent_ready=self._on_agent_ready
+                )
             )
         except Exception as e:
             logger.error(f"Session error: {e}")
@@ -73,10 +80,15 @@ class AegisMenuBar(rumps.App):
 
     def stop_session(self, _=None, reason="manual"):
         """Manually stop session"""
-        if self._session_loop:
+        if self._agent:
+            logger.info("Requesting graceful stop of agent...")
+            self._agent.request_stop()
+        elif self._session_loop:
+            logger.warning("Agent not ready, forcing loop stop.")
             self._session_loop.call_soon_threadsafe(
                 self._session_loop.stop
             )
+
         self._running = False
         self.set_status(self.ICON_IDLE)
         self.menu["Start Session"].title = "Start Session"

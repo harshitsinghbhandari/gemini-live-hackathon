@@ -28,7 +28,11 @@ class AegisVoiceAgent:
         self._current_user_transcript = ""
         
         self._stop_requested = False
-        signal.signal(signal.SIGUSR1, lambda sig, frame: self.request_stop())
+        try:
+            signal.signal(signal.SIGUSR1, lambda sig, frame: self.request_stop())
+            signal.signal(signal.SIGTERM, lambda sig, frame: self.request_stop())
+        except ValueError:
+            logger.warning("Could not register signals. This is expected if running in a background thread.")
         
         system_prompt = f"""
 You are Aegis, a voice-controlled AI agent for Mac.
@@ -57,6 +61,8 @@ You are calm, trustworthy, and never do anything without being clear about it.
 Today's date: {datetime.now().strftime('%A, %B %d %Y')}
 Current time: {datetime.now().strftime('%I:%M %p')}
 """
+
+        logger.info(f"System prompt: {system_prompt}")
 
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
@@ -159,7 +165,9 @@ Current time: {datetime.now().strftime('%I:%M %p')}
                             
                             if getattr(trans, 'finished', False):
                                 logger.info(f"🗣️ User Said: {self._current_user_transcript}")
-                                self.session_transcript.append(f"User: {self._current_user_transcript}")
+                                entry = f"User: {self._current_user_transcript}"
+                                self.session_transcript.append(entry)
+                                logger.info(f"Transcript entry added: {entry}")
                                 self._current_user_transcript = ""
                                 
                     # Skip non-audio server content (text/thought parts from thinking models)
@@ -167,7 +175,9 @@ Current time: {datetime.now().strftime('%I:%M %p')}
                         # Commit pending user transcript if model starts talking
                         if self._current_user_transcript:
                             logger.info(f"🗣️ User Said (inferred): {self._current_user_transcript}")
-                            self.session_transcript.append(f"User: {self._current_user_transcript}")
+                            entry = f"User: {self._current_user_transcript}"
+                            self.session_transcript.append(entry)
+                            logger.info(f"Transcript entry added: {entry}")
                             self._current_user_transcript = ""
                             
                         for part in response.server_content.model_turn.parts:
@@ -176,7 +186,9 @@ Current time: {datetime.now().strftime('%I:%M %p')}
                                 continue
                             if hasattr(part, 'text') and part.text and not part.inline_data:
                                 logger.debug(f"📝 Skipping text part: {part.text[:80]}")
-                                self.session_transcript.append(f"Aegis: {part.text}")
+                                entry = f"Aegis: {part.text}"
+                                self.session_transcript.append(entry)
+                                logger.info(f"Transcript entry added: {entry}")
                                 continue
 
                     if response.data:
@@ -186,7 +198,9 @@ Current time: {datetime.now().strftime('%I:%M %p')}
                         # Commit pending user transcript if tool is called
                         if self._current_user_transcript:
                             logger.info(f"🗣️ User Said (tool triggered): {self._current_user_transcript}")
-                            self.session_transcript.append(f"User: {self._current_user_transcript}")
+                            entry = f"User: {self._current_user_transcript}"
+                            self.session_transcript.append(entry)
+                            logger.info(f"Transcript entry added: {entry}")
                             self._current_user_transcript = ""
                             
                         self.context.is_executing_tool = True
@@ -197,7 +211,9 @@ Current time: {datetime.now().strftime('%I:%M %p')}
                                 if fn.name == "execute_action":
                                     action = fn.args.get("action", "")
                                     confirmed = fn.args.get("confirmed", False)
-                                    self.session_transcript.append(f"User (via action): {action}")
+                                    entry = f"User (via action): {action}"
+                                    self.session_transcript.append(entry)
+                                    logger.info(f"Transcript entry added: {entry}")
                                     logger.info(f"📥 Received action: '{action}' (confirmed: {confirmed})")
 
                                     # Signal auth status for RED tier (gate_action triggers Touch ID)
@@ -329,7 +345,7 @@ Current time: {datetime.now().strftime('%I:%M %p')}
             self.pya.terminate()
 
 
-async def run_aegis(status_callback=None):
+async def run_aegis(status_callback=None, on_agent_ready=None):
     """Top-level entry point for menu bar and other callers."""
     from .config import USER_ID, COMPOSIO_API_KEY
     from composio import Composio
@@ -344,4 +360,8 @@ async def run_aegis(status_callback=None):
 
     context = AegisContext(user_id=USER_ID, composio=composio_client)
     agent = AegisVoiceAgent(context, status_callback=status_callback)
+
+    if on_agent_ready:
+        on_agent_ready(agent)
+
     await agent.run()
