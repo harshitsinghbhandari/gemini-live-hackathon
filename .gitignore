@@ -144,3 +144,4 @@ composio-utils/
 # =========================
 *.json
 *.jsonl
+memory.json

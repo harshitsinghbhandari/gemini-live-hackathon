@@ -52,13 +52,15 @@ async def start_agent():
 @app.post("/stop")
 async def stop_agent():
     global agent_process, start_time
+    import signal as os_signal
     if agent_process and agent_process.poll() is None:
-        agent_process.terminate()
+        agent_process.send_signal(os_signal.SIGUSR1)
         try:
-            agent_process.wait(timeout=5)
+            agent_process.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            agent_process.kill()
-            agent_process.wait()
+            agent_process.terminate()
+            agent_process.wait(timeout=3)
+        
         agent_process = None
         start_time = None
         return {"stopped": True}
