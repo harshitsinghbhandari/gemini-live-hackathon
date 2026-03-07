@@ -33,22 +33,59 @@ Tier rules:
 - GREEN: read-only actions ONLY — fetching, searching, viewing, checking,
   listing anything. No writing, no creating, no sending.
 
-CRITICAL EXAMPLES:
-- "fetch my emails" → GREEN (read-only)
-- "check my calendar" → GREEN (read-only)
-- "create a draft email" → YELLOW (creates something, involves external address)
-- "reply to an email" → YELLOW (existing contact, reversible as draft first)
-- "send an email" → RED (irreversible, external contact)
-- "delete a file" → RED (irreversible)
-- "create a calendar event" → YELLOW (reversible, additive)
-- "pay an invoice" → RED (financial, irreversible)
+TIER RULES FOR NEW TOOLKITS:
+- GREEN (read-only): listing tasks, reading docs, viewing sheets, getting presentations, listing GitHub issues/PRs
+- YELLOW (creates/modifies): creating docs, adding rows to sheets, creating presentations, adding tasks, creating GitHub issues
+- RED (irreversible): deleting docs, clearing sheets, deleting tasks, merging PRs, deleting repositories
 
-Tool mapping with required arguments:
-- GMAIL_FETCH_EMAILS: {"max_results": 5, "label_ids": ["INBOX"], "verbose": false}
-- GMAIL_CREATE_EMAIL_DRAFT: {"to": "<extract from action>", "subject": "<extract>", "body": "<extract>"}
-- GMAIL_REPLY_TO_THREAD: {"thread_id": "<extract>", "body": "<extract>"}
-- GOOGLECALENDAR_GET_EVENTS: {"calendar_id": "primary", "max_results": 5}
-- GOOGLECALENDAR_CREATE_EVENT: {"summary": "<extract>", "start_date_time": "<extract>", "end_date_time": "<extract>", "calendar_id": "primary"}
+TOOLKIT REFERENCE — use these exact tool names:
+
+=== GMAIL (already exists) ===
+GREEN: GMAIL_FETCH_EMAILS, GMAIL_LIST_THREADS, GMAIL_GET_ATTACHMENT
+YELLOW: GMAIL_CREATE_EMAIL_DRAFT, GMAIL_REPLY_TO_THREAD
+RED: GMAIL_SEND_EMAIL, GMAIL_DELETE_MESSAGE, GMAIL_TRASH_EMAIL
+
+=== GOOGLE CALENDAR (already exists) ===
+GREEN: GOOGLECALENDAR_LIST_EVENTS, GOOGLECALENDAR_GET_EVENT
+YELLOW: GOOGLECALENDAR_CREATE_EVENT, GOOGLECALENDAR_UPDATE_EVENT
+RED: GOOGLECALENDAR_DELETE_EVENT
+
+=== GOOGLE DOCS ===
+GREEN: GOOGLEDOCS_GET_DOCUMENT_BY_ID
+YELLOW: GOOGLEDOCS_CREATE_DOCUMENT, GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN
+RED: GOOGLEDOCS_DELETE_CONTENT_RANGE, GOOGLEDOCS_DELETE_TABLE, GOOGLEDOCS_EXPORT_DOCUMENT_AS_PDF
+
+=== GOOGLE SHEETS ===
+GREEN: GOOGLESHEETS_GET_BATCH_VALUES, GOOGLESHEETS_FIND_WORKSHEET_BY_TITLE, GOOGLESHEETS_AGGREGATE_COLUMN_DATA
+YELLOW: GOOGLESHEETS_CREATE_GOOGLE_SHEET1, GOOGLESHEETS_CREATE_SPREADSHEET_ROW, GOOGLESHEETS_CREATE_SPREADSHEET_COLUMN, GOOGLESHEETS_BATCH_UPDATE, GOOGLESHEETS_FORMAT_CELL
+RED: GOOGLESHEETS_DELETE_SHEET, GOOGLESHEETS_DELETE_DIMENSION, GOOGLESHEETS_CLEAR_VALUES
+
+=== GOOGLE SLIDES ===
+GREEN: GOOGLESLIDES_PRESENTATIONS_GET, GOOGLESLIDES_PRESENTATIONS_PAGES_GET
+YELLOW: GOOGLESLIDES_CREATE_PRESENTATION, GOOGLESLIDES_CREATE_SLIDES_MARKDOWN, GOOGLESLIDES_PRESENTATIONS_COPY_FROM_TEMPLATE
+RED: GOOGLESLIDES_PRESENTATIONS_BATCH_UPDATE
+
+=== GOOGLE TASKS ===
+GREEN: GOOGLETASKS_LIST_ALL_TASKS, GOOGLETASKS_LIST_TASKS, GOOGLETASKS_GET_TASK, GOOGLETASKS_LIST_TASK_LISTS
+YELLOW: GOOGLETASKS_INSERT_TASK, GOOGLETASKS_BULK_INSERT_TASKS, GOOGLETASKS_CREATE_TASK_LIST, GOOGLETASKS_UPDATE_TASK
+RED: GOOGLETASKS_DELETE_TASK, GOOGLETASKS_DELETE_TASK_LIST, GOOGLETASKS_CLEAR_TASKS
+
+=== GITHUB ===
+GREEN: GITHUB_LIST_REPOSITORY_ISSUES, GITHUB_GET_AN_ISSUE, GITHUB_LIST_PULL_REQUESTS, GITHUB_GET_A_PULL_REQUEST, GITHUB_LIST_COMMITS
+YELLOW: GITHUB_CREATE_AN_ISSUE, GITHUB_ADD_ASSIGNEES_TO_AN_ISSUE, GITHUB_ADD_LABELS_TO_AN_ISSUE, GITHUB_CREATE_A_PULL_REQUEST_REVIEW
+RED: GITHUB_DELETE_A_REPOSITORY, GITHUB_MERGE_A_PULL_REQUEST
+
+EXAMPLES:
+"create a doc about meeting notes" → GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN, YELLOW
+"read my spreadsheet" → GOOGLESHEETS_GET_BATCH_VALUES, GREEN
+"add a row to my budget sheet" → GOOGLESHEETS_CREATE_SPREADSHEET_ROW, YELLOW
+"make a presentation about Q4 results" → GOOGLESLIDES_CREATE_SLIDES_MARKDOWN, YELLOW
+"add buy groceries to my tasks" → GOOGLETASKS_INSERT_TASK, YELLOW
+"what are my tasks today" → GOOGLETASKS_LIST_ALL_TASKS, GREEN
+"create a github issue for this bug" → GITHUB_CREATE_AN_ISSUE, YELLOW
+"show me open PRs" → GITHUB_LIST_PULL_REQUESTS, GREEN
+"merge this PR" → GITHUB_MERGE_A_PULL_REQUEST, RED
+"delete this task list" → GOOGLETASKS_DELETE_TASK_LIST, RED
 
 IMPORTANT:
 - Always extract concrete values from the action description into arguments

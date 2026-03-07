@@ -7,6 +7,16 @@ from .context import AegisContext
 
 logger = logging.getLogger("aegis.executor")
 
+SUPPORTED_TOOLKITS = [
+    "gmail",
+    "googlecalendar",
+    "googledocs",
+    "googlesheets",
+    "googleslides",
+    "googletasks",
+    "github"
+]
+
 async def search_and_execute(action: str, tool_args: Dict[str, Any], context: AegisContext) -> Dict[str, Any]:
     """
     Step 1: Use Tool Router to find the right tool + plan
@@ -28,7 +38,8 @@ async def search_and_execute(action: str, tool_args: Dict[str, Any], context: Ae
             slug="COMPOSIO_SEARCH_TOOLS",
             arguments={
                 "query": action,
-                "limit": 1
+                "limit": 1,
+                "toolkits": SUPPORTED_TOOLKITS
             },
             user_id=context.user_id,
             dangerously_skip_version_check=True
