@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Aegis Audit Console</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#0D1117",
+                        "sage": "#4ade80",
+                        "amber": "#fbbf24",
+                        "crimson": "#f87171",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased min-h-screen">
+<div class="max-w-[1440px] mx-auto flex flex-col min-h-screen">
+<!-- Header -->
+<header class="flex items-center justify-between px-8 py-4 border-b border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">shield</span>
+</div>
+<h1 class="text-xl font-bold tracking-tight uppercase">Aegis</h1>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sage opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-sage"></span>
+</span>
+<span class="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Agent Active</span>
+</div>
+<div class="h-8 w-px bg-slate-200 dark:border-slate-800"></div>
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden">
+<div class="w-full h-full bg-cover bg-center" data-alt="User profile avatar placeholder" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAZp1N77orYLMvWDciMHgALozQh9Cs1d0jKFicYVsTJ7a3zVzBaHmzV3a8rOmA93C-QLuPhEj8ac04K9Ps4KBU_1kFC3Ld9rH3Fcln27jETHCJZVuUqH9DsqIuzVDc8B1rDLgHgN2krVBZEs21YVL1EBsRxs-fCfUbpDNVbvHPVHGlSA5fJQzYQ-CDCVPKL_h-WXHRUhWLKyFc5ympNtCOTmN8fYLQCxwerlfT6TajbqDG2art2KsHOR11-ze-cddj89tzDxFOg1Tn5')"></div>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-1 p-8 space-y-8">
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-white dark:bg-slate-900/40 p-5 border-t-2 border-primary rounded shadow-sm">
+<p class="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] mb-2">Total Actions</p>
+<p class="text-3xl font-display font-bold dark:text-slate-100">1,284</p>
+</div>
+<div class="bg-white dark:bg-slate-900/40 p-5 border-t-2 border-sage rounded shadow-sm">
+<p class="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] mb-2">Authorized</p>
+<p class="text-3xl font-display font-bold text-sage">1,150</p>
+</div>
+<div class="bg-white dark:bg-slate-900/40 p-5 border-t-2 border-amber rounded shadow-sm">
+<p class="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] mb-2">Flagged</p>
+<p class="text-3xl font-display font-bold text-amber">94</p>
+</div>
+<div class="bg-white dark:bg-slate-900/40 p-5 border-t-2 border-crimson rounded shadow-sm">
+<p class="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] mb-2">Blocked</p>
+<p class="text-3xl font-display font-bold text-crimson">40</p>
+</div>
+</div>
+<!-- Main Layout -->
+<div class="flex flex-col lg:flex-row gap-6 items-start">
+<!-- Left Column: Audit Log -->
+<div class="w-full lg:w-[65%] bg-white dark:bg-slate-900/40 rounded border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Audit Log</h3>
+<div class="flex gap-2">
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+</button>
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+<span class="material-symbols-outlined text-sm">download</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase font-mono tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-800">
+<th class="px-6 py-3 font-medium">Action Description</th>
+<th class="px-6 py-3 font-medium">Timestamp</th>
+<th class="px-6 py-3 font-medium text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800/50">
+<!-- Row 1: Executed (Green) -->
+<tr class="h-12 border-l-[6px] border-sage hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group">
+<td class="px-6 text-sm font-medium">User Authentication: id_admin_92</td>
+<td class="px-6 text-xs font-mono text-slate-500">2023-10-27T14:22:01.034Z</td>
+<td class="px-6 text-right">
+<span class="text-[10px] font-mono font-bold uppercase py-1 px-2 rounded bg-sage/10 text-sage border border-sage/20">Executed</span>
+</td>
+</tr>
+<!-- Row 2: Blocked (Red) -->
+<tr class="h-12 border-l-[6px] border-crimson bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group">
+<td class="px-6 text-sm font-medium">Unauthorized Root Access Attempt</td>
+<td class="px-6 text-xs font-mono text-slate-500">2023-10-27T14:21:55.912Z</td>
+<td class="px-6 text-right">
+<span class="text-[10px] font-mono font-bold uppercase py-1 px-2 rounded bg-crimson/10 text-crimson border border-crimson/20">Blocked</span>
+</td>
+</tr>
+<!-- Row 3: Flagged (Amber) -->
+<tr class="h-12 border-l-[6px] border-amber hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group">
+<td class="px-6 text-sm font-medium">Bulk Database Query (Schema_prod)</td>
+<td class="px-6 text-xs font-mono text-slate-500">2023-10-27T14:20:12.441Z</td>
+<td class="px-6 text-right">
+<span class="text-[10px] font-mono font-bold uppercase py-1 px-2 rounded bg-amber/10 text-amber border border-amber/20">Flagged</span>
+</td>
+</tr>
+<!-- Row 4: Confirmed (Green) -->
+<tr class="h-12 border-l-[6px] border-sage bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group">
+<td class="px-6 text-sm font-medium">API Key Rotation: global_svc</td>
+<td class="px-6 text-xs font-mono text-slate-500">2023-10-27T14:18:00.000Z</td>
+<td class="px-6 text-right">
+<span class="text-[10px] font-mono font-bold uppercase py-1 px-2 rounded bg-sage/10 text-sage border border-sage/20">Confirmed</span>
+</td>
+</tr>
+<!-- Row 5: Executed (Green) -->
+<tr class="h-12 border-l-[6px] border-sage hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group">
+<td class="px-6 text-sm font-medium">Security Policy Update: v2.4.0</td>
+<td class="px-6 text-xs font-mono text-slate-500">2023-10-27T14:15:33.221Z</td>
+<td class="px-6 text-right">
+<span class="text-[10px] font-mono font-bold uppercase py-1 px-2 rounded bg-sage/10 text-sage border border-sage/20">Executed</span>
+</td>
+</tr>
+<!-- Row 6: Executed (Green) -->
+<tr class="h-12 border-l-[6px] border-sage bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group">
+<td class="px-6 text-sm font-medium">Cluster Scale-Up: us-east-1</td>
+<td class="px-6 text-xs font-mono text-slate-500">2023-10-27T14:12:09.115Z</td>
+<td class="px-6 text-right">
+<span class="text-[10px] font-mono font-bold uppercase py-1 px-2 rounded bg-sage/10 text-sage border border-sage/20">Executed</span>
+</td>
+</tr>
+<!-- Row 7: Blocked (Red) -->
+<tr class="h-12 border-l-[6px] border-crimson hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group">
+<td class="px-6 text-sm font-medium">IP Blacklist Match: 192.168.1.104</td>
+<td class="px-6 text-xs font-mono text-slate-500">2023-10-27T14:10:44.887Z</td>
+<td class="px-6 text-right">
+<span class="text-[10px] font-mono font-bold uppercase py-1 px-2 rounded bg-crimson/10 text-crimson border border-crimson/20">Blocked</span>
+</td>
+</tr>
+<!-- Row 8: Flagged (Amber) -->
+<tr class="h-12 border-l-[6px] border-amber bg-slate-50 dark:bg-slate-800/20 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group">
+<td class="px-6 text-sm font-medium">Sensitive Config Access (Vault_Secrets)</td>
+<td class="px-6 text-xs font-mono text-slate-500">2023-10-27T14:05:22.012Z</td>
+<td class="px-6 text-right">
+<span class="text-[10px] font-mono font-bold uppercase py-1 px-2 rounded bg-amber/10 text-amber border border-amber/20">Flagged</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<span class="text-xs text-slate-500 font-mono">Page 1 of 64</span>
+<div class="flex gap-1">
+<button class="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium hover:bg-white dark:hover:bg-slate-800">Prev</button>
+<button class="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs font-medium hover:bg-white dark:hover:bg-slate-800">Next</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Detail Panel -->
+<div class="w-full lg:w-[35%] sticky top-24">
+<div class="bg-white dark:bg-slate-900/40 rounded border border-slate-200 dark:border-slate-800 h-[600px] flex flex-col">
+<div class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/20">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Action Metadata</h3>
+<span class="material-symbols-outlined text-slate-400 text-lg">info</span>
+</div>
+<!-- Empty State -->
+<div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+<div class="mb-6 h-16 w-16 rounded-full border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-300 dark:text-slate-700 text-3xl">data_exploration</span>
+</div>
+<h4 class="text-slate-900 dark:text-slate-100 font-semibold mb-2">Inspect Audit Event</h4>
+<p class="text-slate-500 text-sm max-w-[240px]">Select an action from the audit log to inspect detailed metadata and trace logs.</p>
+<div class="mt-8 w-full space-y-3 opacity-20 pointer-events-none">
+<div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4 mx-auto"></div>
+<div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/2 mx-auto"></div>
+<div class="grid grid-cols-2 gap-2 pt-4">
+<div class="h-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
+<div class="h-20 bg-slate-200 dark:bg-slate-800 rounded"></div>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-slate-200 dark:border-slate-800">
+<button class="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 text-xs font-bold uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">terminal</span>
+                                View Raw JSON
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="px-8 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<p class="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">Aegis Core v1.12.0-stable</p>
+<span class="text-slate-700 dark:text-slate-800 text-xs">|</span>
+<p class="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">Latency: 14ms</p>
+</div>
+<div class="flex gap-6">
+<a class="text-[10px] font-mono text-slate-500 hover:text-primary uppercase tracking-tighter" href="#">Documentation</a>
+<a class="text-[10px] font-mono text-slate-500 hover:text-primary uppercase tracking-tighter" href="#">Support</a>
+<a class="text-[10px] font-mono text-slate-500 hover:text-primary uppercase tracking-tighter" href="#">Status</a>
+</div>
+</footer>
+</div>
+</body></html>

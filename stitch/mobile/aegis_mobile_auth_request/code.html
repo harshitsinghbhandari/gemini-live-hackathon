@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#0D1117",
+                        "card-dark": "#161B22",
+                        "danger": "#f85149"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0D1117;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark text-slate-100 flex items-center justify-center min-h-screen">
+<!-- Mobile Container (iPhone 14 Proportions) -->
+<div class="relative w-[390px] h-[844px] bg-background-dark overflow-hidden flex flex-col shadow-2xl border border-slate-800/50">
+<!-- Top Status Bar Mockup -->
+<div class="flex justify-between items-center px-8 pt-4 pb-2 w-full text-xs font-semibold">
+<span>9:41</span>
+<div class="flex gap-1.5 items-center">
+<span class="material-symbols-outlined text-[14px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[14px]">wifi</span>
+<span class="material-symbols-outlined text-[14px]">battery_full</span>
+</div>
+</div>
+<!-- Stop Session Header -->
+<div class="flex justify-end px-6 py-4">
+<button class="text-slate-500 hover:text-slate-300 text-xs font-medium uppercase tracking-wider">
+                Stop Session
+            </button>
+</div>
+<!-- Main Content Area (Dimmed Background Overlay Effect) -->
+<div class="flex-1 flex flex-col items-center justify-center px-6 relative">
+<!-- Authorization Card -->
+<div class="w-full bg-card-dark border border-danger/20 rounded-xl p-6 shadow-2xl flex flex-col gap-6">
+<!-- Card Header -->
+<div class="space-y-1">
+<p class="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-bold">Authorization Required</p>
+<h1 class="text-xl font-bold leading-tight text-slate-100">
+                        Permanently delete database backup. This cannot be undone.
+                    </h1>
+</div>
+<!-- Visual Element / Image Placeholder -->
+<div class="w-full aspect-video rounded-lg overflow-hidden relative group">
+<div class="absolute inset-0 bg-gradient-to-br from-danger/10 to-transparent mix-blend-overlay"></div>
+<img class="w-full h-full object-cover opacity-60" data-alt="Server rack with glowing red status lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4GmpBd3LHtpS-TJL2SZIH4pVUtA030fgVYpxnQ5U9qEitZo3iPKceU8jcwRQtOqG9-vmamcGDISWxXn9i9rVEFDD9uX3N2knRl1wQp0qpcwb0QqNzFPpSATxpKpXrQqWNJ3FXdjjbThehRJgkhC8r4pv2qYrv5I8HVjCDx_Mk9DyOsvgtzTVbRW0qdQk7ySuzRm2Mlcvo_-FlD2adiUuzuCwW7h9lQygHMDZ3yNGfFlVFnDlQPtxlbzfJTvg2n4gm-s431DLGmyZ-"/>
+</div>
+<!-- Timer Section -->
+<div class="flex flex-col items-center gap-2 py-2">
+<div class="flex gap-3 font-mono">
+<div class="flex flex-col items-center">
+<div class="bg-slate-800/50 w-14 h-16 rounded-lg flex items-center justify-center text-2xl font-bold text-danger border border-danger/10">
+                                00
+                            </div>
+<span class="text-[10px] text-slate-500 mt-2 uppercase tracking-widest">Min</span>
+</div>
+<div class="text-2xl font-bold text-slate-700 self-center -mt-6">:</div>
+<div class="flex flex-col items-center">
+<div class="bg-slate-800/50 w-14 h-16 rounded-lg flex items-center justify-center text-2xl font-bold text-danger border border-danger/10">
+                                45
+                            </div>
+<span class="text-[10px] text-slate-500 mt-2 uppercase tracking-widest">Sec</span>
+</div>
+</div>
+</div>
+<!-- File Detail -->
+<div class="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+<p class="font-mono text-[11px] text-slate-400 break-all leading-relaxed">
+                        /var/db/backup_2024.sql <br/>
+<span class="text-slate-500 text-[10px]">(4.2 GB)</span>
+</p>
+</div>
+<!-- Action Buttons -->
+<div class="flex gap-3 pt-2">
+<button class="flex-1 bg-slate-100 hover:bg-white text-slate-900 font-bold h-14 rounded-lg transition-colors text-sm uppercase tracking-wide">
+                        Deny
+                    </button>
+<button class="flex-[0.8] border-2 border-danger/40 hover:border-danger text-danger font-bold h-14 rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all text-sm uppercase tracking-wide">
+<span class="material-symbols-outlined text-lg leading-none">face</span>
+<span class="text-[9px] font-bold">Approve</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Mockup -->
+<div class="bg-card-dark border-t border-slate-800 px-8 pt-3 pb-8 flex justify-between items-center mt-auto">
+<a class="text-primary flex flex-col items-center gap-1" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">shield</span>
+</a>
+<a class="text-slate-500 flex flex-col items-center gap-1" href="#">
+<span class="material-symbols-outlined">history</span>
+</a>
+<a class="text-slate-500 flex flex-col items-center gap-1" href="#">
+<span class="material-symbols-outlined">settings</span>
+</a>
+</div>
+<!-- iPhone Home Indicator -->
+<div class="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-700 rounded-full"></div>
+</div>
+</body></html>

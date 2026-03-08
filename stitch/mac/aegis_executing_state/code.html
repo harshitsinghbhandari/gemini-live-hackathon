@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Aegis - Execution Environment</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#0D1117",
+                        "sage": "#87a38f",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-left: 3px solid #87a38f;
+        }
+        .visualizer-bar {
+            width: 4px;
+            background: linear-gradient(to top, #136dec, #87a38f);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased overflow-hidden">
+<div class="relative flex h-screen w-full flex-col overflow-hidden">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-background-light/50 dark:bg-background-dark/50 backdrop-blur-md px-6 py-3 shrink-0">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xl">shield</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold tracking-tight">Aegis</h2>
+</div>
+<nav class="flex items-center gap-6">
+<a class="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-primary text-sm font-medium border-b-2 border-primary py-1" href="#">Logs</a>
+<a class="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="bg-slate-100 dark:bg-slate-800 border-none rounded-lg pl-9 pr-4 py-1.5 text-sm w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search logs..." type="text"/>
+</div>
+<button class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+<div class="size-8 rounded-full bg-slate-200 dark:bg-slate-700" data-alt="User profile avatar placeholder"></div>
+</div>
+</header>
+<main class="flex flex-1 overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 border-r border-slate-200 dark:border-slate-800 flex flex-col p-4 bg-slate-50 dark:bg-background-dark shrink-0">
+<div class="flex items-center gap-3 mb-8 px-2">
+<div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Aegis OS</p>
+<p class="text-xs text-slate-500">v2.4.0-stable</p>
+</div>
+</div>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">grid_view</span>
+<span class="text-sm font-medium">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">security</span>
+<span class="text-sm font-medium">Shield</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
+<span class="material-symbols-outlined text-[20px]">play_arrow</span>
+<span class="text-sm font-medium">Execute</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">monitoring</span>
+<span class="text-sm font-medium">Analysis</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<span class="text-sm font-medium">History</span>
+</a>
+</div>
+<div class="mt-auto p-4 rounded-xl bg-primary/5 border border-primary/10">
+<p class="text-xs font-bold text-primary uppercase tracking-wider mb-2">System Status</p>
+<div class="flex items-center gap-2 mb-1">
+<div class="size-2 rounded-full bg-emerald-500 animate-pulse"></div>
+<p class="text-xs font-medium">Encryption Active</p>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-700 h-1 rounded-full mt-3 overflow-hidden">
+<div class="bg-primary h-full w-[65%]"></div>
+</div>
+</div>
+</aside>
+<!-- Main Execution Area -->
+<section class="flex-1 flex overflow-hidden">
+<!-- Left: Visualizer & Control -->
+<div class="w-1/2 flex flex-col border-r border-slate-200 dark:border-slate-800">
+<div class="p-8">
+<h1 class="text-3xl font-bold tracking-tight mb-2">Executing Environment</h1>
+<p class="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary">sync</span>
+                            Running security protocols...
+                        </p>
+</div>
+<div class="flex-1 flex items-center justify-center p-12">
+<!-- Visualizer Component -->
+<div class="relative w-full aspect-square max-w-md flex items-center justify-center gap-1">
+<div class="visualizer-bar h-[20%]"></div>
+<div class="visualizer-bar h-[40%]"></div>
+<div class="visualizer-bar h-[30%]"></div>
+<div class="visualizer-bar h-[60%]"></div>
+<div class="visualizer-bar h-[80%]"></div>
+<div class="visualizer-bar h-[50%]"></div>
+<div class="visualizer-bar h-[90%]"></div>
+<div class="visualizer-bar h-[70%]"></div>
+<div class="visualizer-bar h-[100%]"></div>
+<div class="visualizer-bar h-[85%]"></div>
+<div class="visualizer-bar h-[65%]"></div>
+<div class="visualizer-bar h-[45%]"></div>
+<div class="visualizer-bar h-[25%]"></div>
+<div class="visualizer-bar h-[15%]"></div>
+</div>
+</div>
+<div class="p-8 mt-auto border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+<div class="flex gap-4">
+<div class="text-center">
+<p class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Duration</p>
+<p class="font-mono text-lg">00:12:45</p>
+</div>
+<div class="w-px h-10 bg-slate-200 dark:bg-slate-800"></div>
+<div class="text-center">
+<p class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Threats</p>
+<p class="font-mono text-lg text-emerald-500">None</p>
+</div>
+</div>
+<button class="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white px-6 py-2 rounded-lg font-semibold text-sm transition-all border border-red-500/20">
+                            ABORT PROCESS
+                        </button>
+</div>
+</div>
+<!-- Right: Compact Action Cards Feed -->
+<div class="w-1/2 bg-slate-50 dark:bg-background-dark/30 flex flex-col">
+<div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-background-light dark:bg-background-dark">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Live Action Feed</h3>
+<span class="text-[10px] font-mono bg-primary/20 text-primary px-2 py-0.5 rounded uppercase">Real-time</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+<!-- Action Card 1 -->
+<div class="glass-card h-[60px] flex items-center px-4 gap-4 rounded-r-lg">
+<span class="font-mono text-xs text-slate-500 shrink-0">14:22:01.034</span>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Initializing Sandbox Environment</p>
+<p class="text-[10px] text-slate-500 font-mono">PID: 9942 // ROOT_AUTH: TRUE</p>
+</div>
+<span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+</div>
+<!-- Action Card 2 -->
+<div class="glass-card h-[60px] flex items-center px-4 gap-4 rounded-r-lg">
+<span class="font-mono text-xs text-slate-500 shrink-0">14:22:05.122</span>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Network Tunneling established</p>
+<p class="text-[10px] text-slate-500 font-mono">AES-256-GCM // PORT: 443</p>
+</div>
+<span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+</div>
+<!-- Action Card 3 -->
+<div class="glass-card h-[60px] flex items-center px-4 gap-4 rounded-r-lg">
+<span class="font-mono text-xs text-slate-500 shrink-0">14:22:12.871</span>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Registry Scan In-Progress</p>
+<p class="text-[10px] text-slate-500 font-mono">Scanning: HKEY_LOCAL_MACHINE\SOFTWARE</p>
+</div>
+<div class="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+</div>
+<!-- Action Card 4 -->
+<div class="glass-card h-[60px] flex items-center px-4 gap-4 rounded-r-lg">
+<span class="font-mono text-xs text-slate-500 shrink-0">14:22:15.002</span>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Intercepted System Hook</p>
+<p class="text-[10px] text-slate-500 font-mono">Thread ID: 4410 // Low-level Keyboard</p>
+</div>
+<span class="material-symbols-outlined text-amber-500 text-lg">warning</span>
+</div>
+<!-- Action Card 5 -->
+<div class="glass-card h-[60px] flex items-center px-4 gap-4 rounded-r-lg">
+<span class="font-mono text-xs text-slate-500 shrink-0">14:22:18.991</span>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Memory Leak Prevention Active</p>
+<p class="text-[10px] text-slate-500 font-mono">Allocation threshold: 512MB</p>
+</div>
+<span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+</div>
+<!-- Action Card 6 -->
+<div class="glass-card h-[60px] flex items-center px-4 gap-4 rounded-r-lg">
+<span class="font-mono text-xs text-slate-500 shrink-0">14:22:21.442</span>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Verifying Integrity of System Files</p>
+<p class="text-[10px] text-slate-500 font-mono">Checksum verification in background</p>
+</div>
+<span class="material-symbols-outlined text-slate-600 text-lg">hourglass_empty</span>
+</div>
+<!-- Action Card 7 -->
+<div class="glass-card h-[60px] flex items-center px-4 gap-4 rounded-r-lg">
+<span class="font-mono text-xs text-slate-500 shrink-0">14:22:24.009</span>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Heuristic Engine Analysis</p>
+<p class="text-[10px] text-slate-500 font-mono">Mode: Aggressive // AI-Driven</p>
+</div>
+<span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+</div>
+<!-- Action Card 8 -->
+<div class="glass-card h-[60px] flex items-center px-4 gap-4 rounded-r-lg">
+<span class="font-mono text-xs text-slate-500 shrink-0">14:22:26.550</span>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Kernel-level Protection Applied</p>
+<p class="text-[10px] text-slate-500 font-mono">VBS Enabled // HVCI Active</p>
+</div>
+<span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+</div>
+</div>
+<div class="p-4 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center justify-between text-[10px] text-slate-500 font-mono mb-2">
+<span>RESOURCES</span>
+<span>CPU: 4.2% // RAM: 284MB</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden flex">
+<div class="bg-primary h-full w-1/4"></div>
+<div class="bg-sage h-full w-1/6"></div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>
