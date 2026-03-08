@@ -6,15 +6,18 @@ import { usePendingAuth } from './hooks/usePendingAuth.js';
 import { MirrorPage } from './pages/MirrorPage.jsx';
 import { RedAuthPage } from './pages/RedAuthPage.jsx';
 import { PostAuthPage } from './pages/PostAuthPage.jsx';
+import { OnboardingPage } from './pages/OnboardingPage.jsx';
+import { getUserId } from './config.js';
 
 const STATES = {
+    ONBOARDING: 'ONBOARDING',
     MIRROR: 'MIRROR',
     RED_AUTH: 'RED_AUTH',
     POST_AUTH: 'POST_AUTH'
 };
 
 export default function App() {
-    const [appState, setAppState] = useState(STATES.MIRROR);
+    const [appState, setAppState] = useState(getUserId() ? STATES.MIRROR : STATES.ONBOARDING);
     const [authResult, setAuthResult] = useState(null); // 'approved' or 'denied'
 
     // Only poll if we are in MIRROR mode
@@ -45,6 +48,10 @@ export default function App() {
 
     return (
         <div className="app-shell">
+            {appState === STATES.ONBOARDING && (
+                <OnboardingPage onComplete={() => setAppState(STATES.MIRROR)} />
+            )}
+
             {appState === STATES.MIRROR && (
                 <MirrorPage />
             )}

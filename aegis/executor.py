@@ -39,7 +39,7 @@ async def fill_arguments(
     try:
         tools = await asyncio.to_thread(
             context.composio.tools.get,
-            user_id=context.user_id,
+            user_id=config.COMPOSIO_USER_ID,
             toolkits=SUPPORTED_TOOLKITS
         )
     except Exception as e:
@@ -146,7 +146,7 @@ async def search_and_execute(action: str, tool_args: Dict[str, Any], context: Ae
                 "limit": 1,
                 "toolkits": SUPPORTED_TOOLKITS
             },
-            user_id=context.user_id,
+            user_id=config.COMPOSIO_USER_ID,
             dangerously_skip_version_check=True
         )
 
@@ -190,7 +190,7 @@ async def search_and_execute(action: str, tool_args: Dict[str, Any], context: Ae
             context.composio.tools.execute,
             slug=primary_tool,
             arguments=complete_args,
-            user_id=context.user_id,
+            user_id=config.COMPOSIO_USER_ID,
             dangerously_skip_version_check=True
         )
 

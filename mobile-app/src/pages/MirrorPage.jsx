@@ -11,7 +11,7 @@ export function MirrorPage({ onStopSession }) {
 
     useEffect(() => {
         // Check if Face ID is registered
-        fetch(`${CONFIG.BACKEND_URL}/webauthn/registered/${CONFIG.DEVICE_ID}`)
+        fetch(`${CONFIG.BACKEND_URL}/webauthn/registered/${CONFIG.USER_ID}`, { headers: { 'X-User-ID': CONFIG.USER_ID } })
             .then(r => r.json())
             .then(data => setFaceIDRegistered(data.registered))
             .catch(() => { });
@@ -31,7 +31,7 @@ export function MirrorPage({ onStopSession }) {
     const handleStop = async () => {
         if (!confirm('Stop Mac session?')) return;
         try {
-            await fetch(`${CONFIG.BACKEND_URL}/session/stop`, { method: 'POST' });
+            await fetch(`${CONFIG.BACKEND_URL}/session/stop`, { method: 'POST', headers: { 'X-User-ID': CONFIG.USER_ID } });
             if (onStopSession) onStopSession();
         } catch (e) {
             console.error('Failed to stop session', e);

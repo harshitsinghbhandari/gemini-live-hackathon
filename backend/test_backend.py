@@ -78,4 +78,4 @@ def test_post_auth_approve(mock_update):
     response = client.post("/auth/approve/req_123", json={"approved": True})
     assert response.status_code == 200
     assert response.json() == {"status": "updated"}
-    mock_update.assert_called_once_with("req_123", True)
+    mock_update.assert_called_once_with("harshitbhandari0318", "req_123", True)

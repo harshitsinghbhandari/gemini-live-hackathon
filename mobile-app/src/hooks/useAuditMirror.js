@@ -11,7 +11,9 @@ export function useAuditMirror() {
         // 1. Initial fetch
         async function fetchInitial() {
             try {
-                const res = await fetch(`${CONFIG.BACKEND_URL}/audit/log?limit=20`);
+                const res = await fetch(`${CONFIG.BACKEND_URL}/audit/log?limit=20`, {
+                    headers: { 'X-User-ID': CONFIG.USER_ID }
+                });
                 if (res.ok && mounted) {
                     const data = await res.json();
                     setLogs(data);
@@ -23,7 +25,7 @@ export function useAuditMirror() {
         fetchInitial();
 
         // 2. SSE Stream
-        const evtSource = new EventSource(`${CONFIG.BACKEND_URL}/audit/stream`);
+        const evtSource = new EventSource(`${CONFIG.BACKEND_URL}/audit/stream?user_id=${CONFIG.USER_ID}`);
 
         evtSource.onmessage = (event) => {
             if (!mounted) return;

@@ -45,7 +45,10 @@ export function RedAuthPage({ pending, onApproved, onDenied }) {
             try {
                 const r = await fetch(
                     `${CONFIG.BACKEND_URL}/auth/status/${pending.request_id}`,
-                    { signal: AbortSignal.timeout(3000) }
+                    {
+                        headers: { "X-User-ID": CONFIG.USER_ID },
+                        signal: AbortSignal.timeout(3000)
+                    }
                 );
                 if (!alive) return;
                 if (r.ok) {

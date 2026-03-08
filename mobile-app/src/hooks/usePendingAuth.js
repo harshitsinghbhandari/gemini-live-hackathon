@@ -19,6 +19,7 @@ export function usePendingAuth(isActive) {
             try {
                 const t = new URLSearchParams({ device: CONFIG.DEVICE_ID });
                 const res = await fetch(`${CONFIG.BACKEND_URL}/auth/pending?${t.toString()}`, {
+                    headers: { 'X-User-ID': CONFIG.USER_ID },
                     signal: AbortSignal.timeout(2500)
                 });
                 if (res.ok) {

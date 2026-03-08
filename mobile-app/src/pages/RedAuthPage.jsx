@@ -33,7 +33,7 @@ export function RedAuthPage({ request, onResolve }) {
         try {
             await fetch(`${CONFIG.BACKEND_URL}/auth/approve/${request.request_id}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-User-ID': CONFIG.USER_ID },
                 body: JSON.stringify({ approved: false }),
             });
             onResolve('denied');
@@ -106,7 +106,7 @@ export function RedAuthPage({ request, onResolve }) {
                     {/* Reasoning Detail */}
                     <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
                         <p className="font-mono text-[11px] text-slate-400 break-all leading-relaxed uppercase">
-                            REASON: {request.reason} <br/>
+                            REASON: {request.reason} <br />
                             <span className="text-slate-500 text-[10px] uppercase font-bold tracking-widest">({request.tool || 'SYSTEM_ACTION'})</span>
                         </p>
                     </div>

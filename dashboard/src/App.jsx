@@ -3,6 +3,7 @@ import Header from './components/Header';
 import StatsBar from './components/StatsBar';
 import AuditLog from './components/AuditLog';
 import ActionDetail from './components/ActionDetail';
+import SetupPage from './pages/SetupPage';
 import { useAuditLog } from './hooks/useAuditLog';
 import { useAuditStream } from './hooks/useAuditStream';
 
@@ -40,6 +41,10 @@ const App = () => {
       return acc;
     }, { total: 0, green: 0, yellow: 0, red: 0, blocked: 0 });
   }, [entries]);
+
+  if (window.location.pathname === '/setup') {
+    return <SetupPage />;
+  }
 
   if (loading && entries.length === 0) {
     return (

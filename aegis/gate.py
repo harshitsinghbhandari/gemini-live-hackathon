@@ -25,7 +25,8 @@ async def post_to_backend(endpoint: str, data: dict, await_response: bool = Fals
     """
     async def _post():
         try:
-            async with aiohttp.ClientSession() as session:
+            headers = {"X-User-ID": config.USER_ID}
+            async with aiohttp.ClientSession(headers=headers) as session:
                 async with session.post(f"{config.BACKEND_URL}{endpoint}", json=data, timeout=5) as resp:
                     if resp.status != 200:
                         logger.warning(f"Backend returned {resp.status} for {endpoint}")
@@ -46,7 +47,8 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
     Fallbacks to local Touch ID on timeout or error.
     """
     try:
-        async with aiohttp.ClientSession() as session:
+        headers = {"X-User-ID": config.USER_ID}
+        async with aiohttp.ClientSession(headers=headers) as session:
             # 1. Request Auth
             auth_data = {
                 "action": proposed_action,

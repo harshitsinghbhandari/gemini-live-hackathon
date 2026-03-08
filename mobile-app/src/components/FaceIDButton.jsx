@@ -3,13 +3,13 @@ import React from 'react';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { CONFIG } from '../config.js';
 
-const USER_ID = CONFIG.DEVICE_ID; // "harshit-iphone"
+const USER_ID = CONFIG.USER_ID; // "harshitbhandari0318"
 
 export async function registerFaceID() {
     /** Call once to register Face ID on this device */
     const options = await fetch(`${CONFIG.BACKEND_URL}/webauthn/register/options`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': USER_ID },
         body: JSON.stringify({ user_id: USER_ID })
     }).then(r => r.json());
 
@@ -18,7 +18,7 @@ export async function registerFaceID() {
 
     const verification = await fetch(`${CONFIG.BACKEND_URL}/webauthn/register/verify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': USER_ID },
         body: JSON.stringify({ user_id: USER_ID, credential })
     }).then(r => r.json());
 
@@ -30,7 +30,7 @@ export async function authenticateWithFaceID(requestId) {
     // Get auth challenge
     const options = await fetch(`${CONFIG.BACKEND_URL}/webauthn/auth/options`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': USER_ID },
         body: JSON.stringify({ user_id: USER_ID })
     }).then(r => r.json());
 
@@ -44,7 +44,7 @@ export async function authenticateWithFaceID(requestId) {
     // Verify and approve
     const result = await fetch(`${CONFIG.BACKEND_URL}/webauthn/auth/verify`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-User-ID': USER_ID },
         body: JSON.stringify({
             user_id: USER_ID,
             credential,
@@ -61,7 +61,7 @@ export function FaceIDButton({ requestId, onApprove, onDeny }) {
 
     React.useEffect(() => {
         // Check if Face ID is registered
-        fetch(`${CONFIG.BACKEND_URL}/webauthn/registered/${USER_ID}`)
+        fetch(`${CONFIG.BACKEND_URL}/webauthn/registered/${USER_ID}`, { headers: { 'X-User-ID': USER_ID } })
             .then(r => r.json())
             .then(data => setNeedsSetup(!data.registered))
             .catch(() => { });

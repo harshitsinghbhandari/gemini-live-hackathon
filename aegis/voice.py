@@ -189,7 +189,8 @@ class AegisVoiceAgent:
         """Polls backend to see if session should stop (e.g. from iOS kill switch)"""
         import aiohttp
         try:
-            async with aiohttp.ClientSession() as session:
+            headers = {"X-User-ID": config.USER_ID}
+            async with aiohttp.ClientSession(headers=headers) as session:
                 while True:
                     async with session.get(f"{config.BACKEND_URL}/session/status", timeout=5) as resp:
                         if resp.status == 200:

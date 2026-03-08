@@ -1,9 +1,12 @@
 // src/config.js
+export const getUserId = () => localStorage.getItem("aegis_user_id");
+
 export const CONFIG = {
+    get USER_ID() { return getUserId(); },
+    get DEVICE_ID() { return getUserId() ? `${getUserId()}-iphone` : "unknown-iphone"; },
     BACKEND_URL: import.meta.env.VITE_BACKEND_URL || "https://apiaegis.projectalpha.in",
     POLL_INTERVAL: 3000,
     AUTH_TIMEOUT: 30000,
-    DEVICE_ID: import.meta.env.VITE_DEVICE_ID || "harshit-iphone" // Default device ID per specification
 };
 
 console.log("Mobile App Config:", {
