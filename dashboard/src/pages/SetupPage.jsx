@@ -140,7 +140,7 @@ USER_ID=${formData.username}
                                 <h4 className="text-xs font-bold uppercase tracking-widest mb-4">Installation</h4>
                                 <p className="text-xs text-slate-500 mb-4">Open Terminal on your Mac and run this command from your Downloads directory:</p>
                                 <div className="bg-black/50 p-4 rounded-lg border border-slate-700 font-mono text-xs text-emerald-400 overflow-x-auto">
-                                    curl -s https://aegis.projectalpha.in/install.sh | bash
+                                    curl -s https://aegisdashboard.projectalpha.in/install.sh | bash
                                 </div>
                                 <p className="text-[10px] text-slate-500 mt-4 italic">Note: Make sure your downloaded .env is in the same folder where you run this command.</p>
                             </div>

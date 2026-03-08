@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#7c3bed",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#0a0a0f",
+                        "card-dark": "#0f0f17",
+                        "border-dark": "#1f1f2e",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark text-slate-100 font-display min-h-screen flex items-center justify-center p-4">
+<!-- Main Container -->
+<div class="w-full max-w-md bg-card-dark border border-border-dark rounded-xl shadow-2xl overflow-hidden">
+<!-- Header & Progress -->
+<div class="pt-8 px-6 text-center">
+<h1 class="text-2xl font-bold tracking-tight mb-6">Aegis</h1>
+<!-- Progress Indicator (Step 1 Active) -->
+<div class="flex items-center justify-center gap-3 mb-8">
+<div class="h-2 w-8 rounded-full bg-primary"></div>
+<div class="h-2 w-8 rounded-full bg-border-dark"></div>
+<div class="h-2 w-8 rounded-full bg-border-dark"></div>
+<div class="h-2 w-8 rounded-full bg-border-dark"></div>
+</div>
+</div>
+<!-- Step Content Wrapper -->
+<div class="px-6 pb-8">
+<!-- Step 1: Your Details -->
+<div class="space-y-6" id="step-1">
+<div class="space-y-1">
+<h2 class="text-xl font-semibold">Your Details</h2>
+<p class="text-primary text-sm">Configure your core credentials to get started.</p>
+</div>
+<div class="space-y-4">
+<div class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-slate-400">Username</label>
+<input class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="e.g. alex_aegis" type="text"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-slate-400">Google API Key</label>
+<input class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="AIzaSy..." type="password"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-slate-400">Composio API Key</label>
+<input class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="comp_..." type="password"/>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-4 rounded-lg transition-colors shadow-lg shadow-primary/20">
+                    Next Step
+                </button>
+</div>
+<!-- Additional Steps (Visual Representation for Design Purposes) -->
+<!-- Step 2 Divider -->
+<div class="mt-12 pt-12 border-t border-border-dark opacity-40">
+<div class="flex items-center justify-center gap-3 mb-8">
+<div class="h-2 w-8 rounded-full bg-primary/40"></div>
+<div class="h-2 w-8 rounded-full bg-primary"></div>
+<div class="h-2 w-8 rounded-full bg-border-dark"></div>
+<div class="h-2 w-8 rounded-full bg-border-dark"></div>
+</div>
+<h2 class="text-xl font-semibold mb-4 text-center">Connect Your Tools</h2>
+<div class="grid grid-cols-2 gap-3 mb-6">
+<label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
+<input checked="" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
+<span class="text-sm">Gmail</span>
+</label>
+<label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
+<input checked="" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
+<span class="text-sm">Calendar</span>
+</label>
+<label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
+<input class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
+<span class="text-sm">GitHub</span>
+</label>
+<label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
+<input class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
+<span class="text-sm">Tasks</span>
+</label>
+</div>
+<a class="block text-center text-primary text-sm font-medium mb-6" href="#">Open Composio Dashboard →</a>
+<button class="w-full bg-primary/20 text-primary border border-primary/30 font-semibold py-4 rounded-lg">Next Step</button>
+</div>
+<!-- Step 3 Divider -->
+<div class="mt-12 pt-12 border-t border-border-dark opacity-40">
+<div class="flex items-center justify-center gap-3 mb-8">
+<div class="h-2 w-8 rounded-full bg-primary/40"></div>
+<div class="h-2 w-8 rounded-full bg-primary/40"></div>
+<div class="h-2 w-8 rounded-full bg-primary"></div>
+<div class="h-2 w-8 rounded-full bg-border-dark"></div>
+</div>
+<h2 class="text-xl font-semibold mb-4 text-center">Download &amp; Install</h2>
+<button class="w-full border border-primary text-primary font-medium py-3 rounded-lg mb-6 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">download</span>
+                    .env Download
+                </button>
+<div class="bg-black/40 p-4 rounded-lg mb-6 overflow-x-auto border border-border-dark">
+<code class="text-xs font-mono text-primary leading-relaxed">curl -sSL https://aegis.projectalpha.in/install.sh | bash</code>
+</div>
+<div class="flex flex-col items-center gap-3 p-6 bg-background-dark border border-border-dark rounded-xl mb-6">
+<div class="w-32 h-32 bg-white p-2 rounded-lg">
+<img alt="App Download QR Code" data-alt="QR Code leading to iPhone app store" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuHi7Bnn_ttXrbmHd3wsObsf_iIBVqYk1XbT2T7M5_OczSjjkTe0PDMJ_4eohj5hk_qOgFWaDB2GCfJmV2odX-22ANOlGDrfnvoOaSMTQdzdi9wo5GrdgZfzB2Zc7P7k9gJIvavlOScs58xF6T_Ovzjvj1sqH4oAlt-cLZaWpbJP-2UAsSy0dgLadr6RebkQpJSTioKF06KhraPQ1BETj-79cMWq7iXBRiluyP3b3Zidk7NwJiJS3ZxozsEgVbY4ftdu1vhUPeXKSC"/>
+</div>
+<p class="text-xs text-slate-400">Scan to open on iPhone</p>
+</div>
+<button class="w-full bg-primary/20 text-primary border border-primary/30 font-semibold py-4 rounded-lg">Next Step</button>
+</div>
+<!-- Step 4 Divider -->
+<div class="mt-12 pt-12 border-t border-border-dark">
+<div class="flex items-center justify-center gap-3 mb-8">
+<div class="h-2 w-8 rounded-full bg-primary/40"></div>
+<div class="h-2 w-8 rounded-full bg-primary/40"></div>
+<div class="h-2 w-8 rounded-full bg-primary/40"></div>
+<div class="h-2 w-8 rounded-full bg-primary"></div>
+</div>
+<div class="text-center space-y-2 mb-8">
+<div class="flex justify-center mb-4">
+<div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary">
+<span class="material-symbols-outlined text-primary text-5xl font-light">verified_user</span>
+</div>
+</div>
+<h2 class="text-2xl font-bold">You're Ready</h2>
+<p class="text-slate-400">Your secure assistant is now active.</p>
+</div>
+<div class="space-y-3">
+<a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="#">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">desktop_mac</span>
+<span class="font-medium">Open Mac App</span>
+</div>
+<span class="material-symbols-outlined text-slate-600">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="#">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">smartphone</span>
+<span class="font-medium">Open on iPhone</span>
+</div>
+<span class="material-symbols-outlined text-slate-600">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="#">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">dashboard</span>
+<span class="font-medium">View Dashboard</span>
+</div>
+<span class="material-symbols-outlined text-slate-600">chevron_right</span>
+</a>
+</div>
+<div class="mt-10 text-center">
+<button class="text-slate-500 text-sm hover:text-slate-300 transition-colors">Setup another account</button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

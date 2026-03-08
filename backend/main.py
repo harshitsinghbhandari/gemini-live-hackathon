@@ -46,9 +46,10 @@ if allowed_origins_env:
     allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
 else:
     allowed_origins = [
-        "https://aegismobile.projectalpha.in",
-        "https://aegismac.projectalpha.in",
         "https://aegis.projectalpha.in",
+        "https://aegisdashboard.projectalpha.in",
+        "https://aegismac.projectalpha.in",
+        "https://aegismobile.projectalpha.in",
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:8080"
