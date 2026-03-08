@@ -1,4 +1,3 @@
-// pages/MirrorPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuditMirror } from '../hooks/useAuditMirror.js';
 import { ActionCard } from '../components/ActionCard.jsx';
@@ -7,7 +6,8 @@ import { registerFaceID } from '../components/FaceIDButton.jsx';
 
 export function MirrorPage({ onStopSession }) {
     const logs = useAuditMirror();
-    const [faceIDRegistered, setFaceIDRegistered] = useState(true); // Default to true to avoid flicker
+    const isActive = logs.length > 0; // Simplified active check based on logs
+    const [faceIDRegistered, setFaceIDRegistered] = useState(true);
 
     useEffect(() => {
         // Check if Face ID is registered
@@ -22,16 +22,14 @@ export function MirrorPage({ onStopSession }) {
             const success = await registerFaceID();
             if (success) {
                 setFaceIDRegistered(true);
-                alert("Face ID registered successfully!");
             }
         } catch (e) {
             console.error("Setup failed", e);
-            alert(e)
-            alert("Face ID setup failed. Make sure you are using HTTPS and standalone PWA mode.");
         }
     };
 
     const handleStop = async () => {
+        if (!confirm('Stop Mac session?')) return;
         try {
             await fetch(`${CONFIG.BACKEND_URL}/session/stop`, { method: 'POST' });
             if (onStopSession) onStopSession();
@@ -41,61 +39,71 @@ export function MirrorPage({ onStopSession }) {
     };
 
     return (
-        <div className="page mirror-page">
-            <div className="top-bar">
-                <div className="top-bar-logo">
-                    <span className="logo-icon">◈</span> Aegis
+        <div className="bg-background-dark font-display antialiased flex flex-col min-h-screen relative overflow-hidden">
+            {/* Status Bar */}
+            <div className="h-12 w-full flex items-center justify-between px-8 pt-4 shrink-0">
+                <span className="text-slate-100 text-sm font-semibold">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[18px] text-slate-100">signal_cellular_4_bar</span>
+                    <span className="material-symbols-outlined text-[18px] text-slate-100">wifi</span>
+                    <span className="material-symbols-outlined text-[18px] text-slate-100">battery_full</span>
                 </div>
-                <div className="top-bar-subtitle">Mac session</div>
             </div>
 
-            <div className="feed-container">
-                {/* Show this if Face ID not yet registered */}
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col items-center justify-center px-8">
+                {/* Aegis Shield Icon */}
+                <div className="mb-8 p-6 bg-primary/10 rounded-3xl">
+                    <div className="text-primary flex items-center justify-center">
+                        <span className="material-symbols-outlined !text-6xl" style={{ fontVariationSettings: "'FILL' 1, 'wght' 300" }}>shield_with_heart</span>
+                    </div>
+                </div>
+
+                {/* Title */}
+                <h1 className="text-slate-100 text-2xl font-medium tracking-tight mb-12">Aegis Mobile</h1>
+
+                {/* Connection Status */}
+                <div className="flex flex-col items-center gap-4 w-full">
+                    <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-800/40 rounded-full border border-slate-700/50">
+                        <span className="relative flex h-2.5 w-2.5">
+                            {isActive && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isActive ? 'bg-emerald-500' : 'bg-slate-500'}`}></span>
+                        </span>
+                        <span className="text-slate-100 text-sm font-medium">{isActive ? 'Session Active' : 'Waiting for Session'}</span>
+                    </div>
+                    <p className="font-mono text-slate-500 text-xs tracking-widest uppercase">{CONFIG.DEVICE_ID}</p>
+                </div>
+
+                {/* Face ID Setup Prompt */}
                 {!faceIDRegistered && (
-                    <div style={{
-                        padding: "16px",
-                        background: "#1e1e38",
-                        borderRadius: "12px",
-                        marginBottom: "16px",
-                        border: "1px solid #7c3aed",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "12px"
-                    }}>
-                        <p style={{ color: "#a78bfa", margin: 0, fontSize: "14px", lineHeight: "1.4" }}>
-                            ⚡ Setup Face ID to approve RED tier actions directly from your iPhone.
+                    <div className="mt-8 w-full p-4 rounded-xl bg-primary/10 border border-primary/20 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <p className="text-xs font-bold text-primary uppercase tracking-widest leading-relaxed">
+                            Biometric authentication not configured for this device.
                         </p>
                         <button
                             onClick={handleSetupFaceID}
-                            style={{
-                                background: "#7c3aed",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "8px",
-                                padding: "10px",
-                                fontWeight: "600",
-                                cursor: "pointer"
-                            }}
+                            className="bg-primary text-white text-xs font-black py-2 rounded-lg uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
                         >
-                            Setup Now
+                            Setup Face ID
                         </button>
                     </div>
                 )}
-
-                {logs.length === 0 ? (
-                    <div className="empty-state">No active session — open Aegis on your Mac</div>
-                ) : (
-                    logs.map((log) => (
-                        <ActionCard key={log.id || log.timestamp} action={log} />
-                    ))
-                )}
             </div>
 
-            <div className="bottom-bar">
-                <button className="btn btn-stop btn-full" onClick={handleStop}>
-                    ■ STOP SESSION
+            {/* Bottom Actions */}
+            <div className="p-8 pb-12 flex flex-col items-center gap-6 shrink-0">
+                <button
+                    onClick={handleStop}
+                    className="w-full py-4 rounded-xl border border-red-500/40 text-red-500 font-bold text-base hover:bg-red-500/5 transition-colors uppercase tracking-widest"
+                >
+                    Stop Session
                 </button>
+                {/* Home Indicator */}
+                <div className="w-32 h-1.5 bg-slate-700 rounded-full mt-2"></div>
             </div>
+
+            {/* Background Subtle Gradient Decor */}
+            <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[40%] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
         </div>
     );
 }

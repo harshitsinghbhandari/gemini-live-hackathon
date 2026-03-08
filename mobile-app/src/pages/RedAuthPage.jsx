@@ -1,81 +1,142 @@
-// pages/RedAuthPage.jsx
-import React, { useEffect } from 'react';
-import { CountdownBar } from '../components/CountdownBar.jsx';
-import FaceIDButton from '../components/FaceIDButton.jsx';
+import { useState, useEffect } from 'react';
 import { CONFIG } from '../config.js';
+import FaceIDButton from '../components/FaceIDButton.jsx';
 
 export function RedAuthPage({ request, onResolve }) {
-    const { action, reason, speak, created_at, request_id } = request;
+    const [seconds, setSeconds] = useState(30);
 
-    const handleApprove = () => {
+    useEffect(() => {
+        // Sync to request creation time if available
+        if (request.created_at) {
+            const created = new Date(request.created_at).getTime();
+            const now = Date.now();
+            const diff = Math.floor((now - created) / 1000);
+            setSeconds(Math.max(0, 30 - diff));
+        }
+    }, [request.created_at]);
+
+    useEffect(() => {
+        const id = setInterval(() => {
+            setSeconds(s => {
+                if (s <= 1) {
+                    clearInterval(id);
+                    handleDeny();
+                    return 0;
+                }
+                return s - 1;
+            });
+        }, 1000);
+        return () => clearInterval(id);
+    }, []);
+
+    async function handleDeny() {
+        try {
+            await fetch(`${CONFIG.BACKEND_URL}/auth/approve/${request.request_id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ approved: false }),
+            });
+            onResolve('denied');
+        } catch (err) {
+            console.error('Deny failed:', err);
+            onResolve('denied');
+        }
+    }
+
+    const handleApproveSuccess = () => {
         onResolve('approved');
     };
 
-    const handleDeny = async () => {
-        try {
-            await fetch(`${CONFIG.BACKEND_URL}/auth/approve/${request_id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ approved: false })
-            });
-        } catch (e) {
-            console.error('Failed to send denial', e);
-        }
-        onResolve('denied');
-    };
-
-    const handleExpire = async () => {
-        try {
-            await fetch(`${CONFIG.BACKEND_URL}/auth/approve/${request_id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ approved: false })
-            });
-        } catch (e) {
-            console.error('Failed to auto-deny', e);
-        }
-        onResolve('denied');
-    };
-
     return (
-        <div className="page auth-page">
-            <div className="auth-shield">🛡️</div>
-            <div className="auth-label">Aegis wants to:</div>
-
-            <div className="auth-card">
-                <div className="auth-action-text">{action}</div>
+        <div className="relative w-full h-full bg-background-dark overflow-hidden flex flex-col font-display">
+            {/* Top Status Bar Mockup */}
+            <div className="flex justify-between items-center px-8 pt-4 pb-2 w-full text-xs font-semibold shrink-0">
+                <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                <div className="flex gap-1.5 items-center">
+                    <span className="material-symbols-outlined text-[14px]">signal_cellular_4_bar</span>
+                    <span className="material-symbols-outlined text-[14px]">wifi</span>
+                    <span className="material-symbols-outlined text-[14px]">battery_full</span>
+                </div>
             </div>
 
-            <div className="auth-reason-label">Because:</div>
-            <div className="auth-reason-text">{reason}</div>
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col items-center justify-center px-6 relative">
+                {/* Authorization Card */}
+                <div className="w-full bg-card-dark border border-danger/20 rounded-xl p-6 shadow-2xl flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-300">
+                    {/* Card Header */}
+                    <div className="space-y-1">
+                        <p className="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-bold">Authorization Required</p>
+                        <h1 className="text-xl font-bold leading-tight text-slate-100 uppercase tracking-tight">
+                            {request.action}. This cannot be undone.
+                        </h1>
+                    </div>
 
-            {speak && (
-                <div className="auth-speak-text" style={{
-                    marginTop: 12,
-                    fontSize: 14,
-                    color: 'var(--amber)',
-                    textAlign: 'center',
-                    fontStyle: 'italic'
-                }}>
-                    " {speak} "
+                    {/* Visual Element */}
+                    <div className="w-full aspect-video rounded-lg overflow-hidden relative group bg-slate-800/50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-br from-danger/10 to-transparent mix-blend-overlay"></div>
+                        <img
+                            className="w-full h-full object-cover opacity-60"
+                            alt="Security Context"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4GmpBd3LHtpS-TJL2SZIH4pVUtA030fgVYpxnQ5U9qEitZo3iPKceU8jcwRQtOqG9-vmamcGDISWxXn9i9rVEFDD9uX3N2knRl1wQp0qpcwb0QqNzFPpSATxpKpXrQqWNJ3FXdjjbThehRJgkhC8r4pv2qYrv5I8HVjCDx_Mk9DyOsvgtzTVbRW0qdQk7ySuzRm2Mlcvo_-FlD2adiUuzuCwW7h9lQygHMDZ3yNGfFlVFnDlQPtxlbzfJTvg2n4gm-s431DLGmyZ-"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-4xl text-danger/50 animate-pulse">lock</span>
+                        </div>
+                    </div>
+
+                    {/* Timer Section */}
+                    <div className="flex flex-col items-center gap-2 py-2">
+                        <div className="flex gap-3 font-mono">
+                            <div className="flex flex-col items-center">
+                                <div className="bg-slate-800/50 w-14 h-16 rounded-lg flex items-center justify-center text-2xl font-bold text-danger border border-danger/10 shadow-inner">
+                                    00
+                                </div>
+                                <span className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-bold">Min</span>
+                            </div>
+                            <div className="text-2xl font-bold text-slate-700 self-center -mt-6">:</div>
+                            <div className="flex flex-col items-center">
+                                <div className="bg-slate-800/50 w-14 h-16 rounded-lg flex items-center justify-center text-2xl font-bold text-danger border border-danger/10 shadow-inner">
+                                    {seconds.toString().padStart(2, '0')}
+                                </div>
+                                <span className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-bold">Sec</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Reasoning Detail */}
+                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+                        <p className="font-mono text-[11px] text-slate-400 break-all leading-relaxed uppercase">
+                            REASON: {request.reason} <br/>
+                            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-widest">({request.tool || 'SYSTEM_ACTION'})</span>
+                        </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-3 pt-2">
+                        <FaceIDButton
+                            requestId={request.request_id}
+                            onApprove={handleApproveSuccess}
+                            onDeny={handleDeny}
+                        />
+                        <button
+                            onClick={handleDeny}
+                            className="bg-transparent hover:bg-white/5 text-slate-400 font-bold py-2 rounded-lg transition-colors text-xs uppercase tracking-widest"
+                        >
+                            Deny Request
+                        </button>
+                    </div>
                 </div>
-            )}
+            </div>
 
-            <CountdownBar
-                createdAt={created_at}
-                timeoutSeconds={CONFIG.AUTH_TIMEOUT / 1000}
-                onExpire={handleExpire}
-            />
+            {/* Bottom Navigation Mockup */}
+            <div className="bg-card-dark border-t border-slate-800 px-8 pt-3 pb-8 flex justify-between items-center mt-auto shrink-0 opacity-50">
+                <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
+                <span className="material-symbols-outlined text-slate-500">history</span>
+                <span className="material-symbols-outlined text-slate-500">settings</span>
+            </div>
 
-            <FaceIDButton
-                requestId={request_id}
-                onApprove={handleApprove}
-                onDeny={() => onResolve('denied')}
-            />
-
-            <button className="btn btn-deny btn-full" onClick={handleDeny} style={{ marginTop: 8 }}>
-                ✕ Deny
-            </button>
+            {/* iPhone Home Indicator */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-700 rounded-full"></div>
         </div>
     );
 }
