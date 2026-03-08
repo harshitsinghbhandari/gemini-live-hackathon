@@ -20,6 +20,7 @@ fi
 
 # Define services list (Space separated: SERVICE_NAME:DIR)
 SERVICES=(
+  "guardian-landing:./landing"
   "guardian-backend:./backend"
   "guardian-dashboard:./dashboard"
   "guardian-mac-app:./mac-app"
