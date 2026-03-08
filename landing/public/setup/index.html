@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Aegis - Setup Wizard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#7c3bed",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#0a0a0f",
+                        "card-dark": "#0f0f17",
+                        "border-dark": "#1f1f2e",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            min-height: max(884px, 100dvh);
+            background-color: #0a0a0f;
+        }
+        .step-hidden { display: none; }
+    </style>
+</head>
+<body class="bg-background-dark text-slate-100 font-display min-h-screen flex items-center justify-center p-4">
+    <!-- Main Container -->
+    <div class="w-full max-w-md bg-card-dark border border-border-dark rounded-xl shadow-2xl overflow-hidden">
+        <!-- Header & Progress -->
+        <div class="pt-8 px-6 text-center">
+            <h1 class="text-2xl font-bold tracking-tight mb-6">Aegis</h1>
+            <!-- Progress Indicator -->
+            <div class="flex items-center justify-center gap-3 mb-8" id="progress-indicator">
+                <div class="h-2 w-8 rounded-full bg-primary" data-step="1"></div>
+                <div class="h-2 w-8 rounded-full bg-border-dark" data-step="2"></div>
+                <div class="h-2 w-8 rounded-full bg-border-dark" data-step="3"></div>
+                <div class="h-2 w-8 rounded-full bg-border-dark" data-step="4"></div>
+            </div>
+        </div>
+
+        <!-- Step Content Wrapper -->
+        <div class="px-6 pb-8">
+
+            <!-- Step 1: Your Details -->
+            <div class="space-y-6" id="step-1">
+                <div class="space-y-1">
+                    <h2 class="text-xl font-semibold">Your Details</h2>
+                    <p class="text-primary text-sm">Configure your core credentials to get started.</p>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-sm font-medium text-slate-400">Username</label>
+                        <input id="username" class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="e.g. alex_aegis" type="text" required/>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-sm font-medium text-slate-400">Google API Key</label>
+                        <input id="google_api_key" class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="AIzaSy..." type="password" required/>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-sm font-medium text-slate-400">Composio API Key</label>
+                        <input id="composio_api_key" class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="comp_..." type="password" required/>
+                    </div>
+                </div>
+                <button onclick="goToStep(2)" class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-4 rounded-lg transition-colors shadow-lg shadow-primary/20">
+                    Next Step
+                </button>
+            </div>
+
+            <!-- Step 2: Connect Your Tools -->
+            <div class="space-y-6 step-hidden" id="step-2">
+                <div class="space-y-1">
+                    <h2 class="text-xl font-semibold">Connect Your Tools</h2>
+                    <p class="text-primary text-sm">Aegis needs access to these tools to assist you.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
+                        <input id="tool-gmail" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
+                        <span class="text-sm">Gmail</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
+                        <input id="tool-calendar" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
+                        <span class="text-sm">Calendar</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
+                        <input id="tool-github" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
+                        <span class="text-sm">GitHub</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
+                        <input id="tool-tasks" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
+                        <span class="text-sm">Tasks</span>
+                    </label>
+                </div>
+                <a class="block text-center text-primary text-sm font-medium mb-6" href="https://app.composio.dev" target="_blank">Open Composio Dashboard →</a>
+                <button onclick="goToStep(3)" class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-4 rounded-lg transition-colors">Next Step</button>
+            </div>
+
+            <!-- Step 3: Download & Install -->
+            <div class="space-y-6 step-hidden" id="step-3">
+                <div class="space-y-1">
+                    <h2 class="text-xl font-semibold">Download & Install</h2>
+                    <p class="text-primary text-sm">Final steps to get Aegis running on your Mac.</p>
+                </div>
+                <button onclick="downloadEnv()" class="w-full border border-primary text-primary font-medium py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/5">
+                    <span class="material-symbols-outlined">download</span>
+                    Download .env
+                </button>
+                <div class="bg-black/40 p-4 rounded-lg overflow-x-auto border border-border-dark cursor-pointer group relative" onclick="copyInstallCommand()">
+                    <code id="install-cmd" class="text-xs font-mono text-primary leading-relaxed">curl -sSL https://aegis.projectalpha.in/install.sh | bash</code>
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                        <span class="text-xs font-medium text-white">Click to copy</span>
+                    </div>
+                </div>
+                <div class="flex flex-col items-center gap-3 p-6 bg-background-dark border border-border-dark rounded-xl">
+                    <div class="w-32 h-32 bg-white p-2 rounded-lg">
+                        <img id="qr-code" alt="App Download QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://aegismobile.projectalpha.in"/>
+                    </div>
+                    <p class="text-xs text-slate-400">Scan for Mobile App</p>
+                </div>
+                <button onclick="goToStep(4)" class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-4 rounded-lg transition-colors">Finish Setup</button>
+            </div>
+
+            <!-- Step 4: You're Ready -->
+            <div class="space-y-6 step-hidden" id="step-4">
+                <div class="text-center space-y-2">
+                    <div class="flex justify-center mb-4">
+                        <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary">
+                            <span class="material-symbols-outlined text-primary text-5xl font-light">verified_user</span>
+                        </div>
+                    </div>
+                    <h2 class="text-2xl font-bold" id="welcome-message">You're Ready</h2>
+                    <p class="text-slate-400">Your secure assistant is now active.</p>
+                </div>
+                <div class="space-y-3">
+                    <a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="https://aegismac.projectalpha.in">
+                        <div class="flex items-center gap-4">
+                            <span class="material-symbols-outlined text-slate-400 group-hover:text-primary">desktop_mac</span>
+                            <span class="font-medium">Open Mac App</span>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-600">chevron_right</span>
+                    </a>
+                    <a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="https://aegismobile.projectalpha.in">
+                        <div class="flex items-center gap-4">
+                            <span class="material-symbols-outlined text-slate-400 group-hover:text-primary">smartphone</span>
+                            <span class="font-medium">Open on iPhone</span>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-600">chevron_right</span>
+                    </a>
+                    <a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="https://aegisdashboard.projectalpha.in">
+                        <div class="flex items-center gap-4">
+                            <span class="material-symbols-outlined text-slate-400 group-hover:text-primary">dashboard</span>
+                            <span class="font-medium">View Dashboard</span>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-600">chevron_right</span>
+                    </a>
+                </div>
+                <div class="mt-10 text-center">
+                    <button onclick="goToStep(1)" class="text-slate-500 text-sm hover:text-slate-300 transition-colors">Setup another account</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        const formData = {
+            username: '',
+            google_api_key: '',
+            composio_api_key: ''
+        };
+
+        function goToStep(step) {
+            if (step > currentStep) {
+                if (currentStep === 1) {
+                    const username = document.getElementById('username').value;
+                    const googleKey = document.getElementById('google_api_key').value;
+                    const composioKey = document.getElementById('composio_api_key').value;
+
+                    if (!username || !googleKey || !composioKey) {
+                        alert('Please fill in all details.');
+                        return;
+                    }
+                    formData.username = username;
+                    formData.google_api_key = googleKey;
+                    formData.composio_api_key = composioKey;
+                } else if (currentStep === 2) {
+                    const gmailChecked = document.getElementById('tool-gmail').checked;
+                    const calendarChecked = document.getElementById('tool-calendar').checked;
+
+                    if (!gmailChecked || !calendarChecked) {
+                        alert('Please connect at least Gmail and Google Calendar.');
+                        return;
+                    }
+                }
+            }
+
+            // Hide all steps
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`step-${i}`).classList.add('step-hidden');
+                const indicator = document.querySelector(`[data-step="${i}"]`);
+                if (i <= step) {
+                    indicator.classList.remove('bg-border-dark');
+                    indicator.classList.add('bg-primary');
+                    if (i < step) indicator.classList.add('opacity-40');
+                    else indicator.classList.remove('opacity-40');
+                } else {
+                    indicator.classList.remove('bg-primary', 'opacity-40');
+                    indicator.classList.add('bg-border-dark');
+                }
+            }
+
+            // Show current step
+            document.getElementById(`step-${step}`).classList.remove('step-hidden');
+            currentStep = step;
+
+            if (step === 4) {
+                document.getElementById('welcome-message').innerText = `Welcome, ${formData.username}`;
+            }
+        }
+
+        function downloadEnv() {
+            const envContent = `GOOGLE_API_KEY=${formData.google_api_key}
+COMPOSIO_API_KEY=${formData.composio_api_key}
+USER_ID=${formData.username}
+COMPOSIO_USER_ID=${formData.username}
+DEVICE_ID=${formData.username}-macbook
+BACKEND_URL=https://apiaegis.projectalpha.in
+DASHBOARD_URL=https://aegisdashboard.projectalpha.in`;
+
+            const blob = new Blob([envContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '.env';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        function copyInstallCommand() {
+            const cmd = document.getElementById('install-cmd').innerText;
+            navigator.clipboard.writeText(cmd).then(() => {
+                alert('Install command copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>
