@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Architecture Diagram</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: #0a0a0f;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #7c3aed;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #7c3aed;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #6d28d9;
+        }
+
+        #diagram-container {
+            background-color: #111116;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 0 40px rgba(124, 58, 237, 0.1);
+            overflow: hidden;
+        }
+
+        /* SVG Styles */
+        .group-box {
+            fill: transparent;
+            stroke: #333;
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            rx: 10;
+            ry: 10;
+        }
+
+        .group-label {
+            fill: #aaa;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .node-rect {
+            fill: #1a1a24;
+            stroke: #444;
+            stroke-width: 2;
+            rx: 6;
+            ry: 6;
+            transition: all 0.3s ease;
+        }
+
+        .node-rect:hover {
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
+            stroke-width: 3;
+        }
+
+        .node-green {
+            stroke: #16a34a;
+            fill: rgba(22, 163, 74, 0.1);
+        }
+
+        .node-yellow {
+            stroke: #d97706;
+            fill: rgba(217, 119, 6, 0.1);
+        }
+
+        .node-red {
+            stroke: #dc2626;
+            fill: rgba(220, 38, 38, 0.1);
+        }
+
+        .node-purple {
+            stroke: #7c3aed;
+            fill: rgba(124, 58, 237, 0.1);
+        }
+
+        .node-blue {
+            stroke: #3b82f6;
+            fill: rgba(59, 130, 246, 0.1);
+        }
+
+        .node-title {
+            fill: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            text-anchor: middle;
+        }
+
+        .node-sub {
+            fill: #aaa;
+            font-size: 11px;
+            text-anchor: middle;
+        }
+
+        .edge-path {
+            fill: none;
+            stroke: #555;
+            stroke-width: 2;
+        }
+
+        .edge-path-anim {
+            fill: none;
+            stroke: #7c3aed;
+            stroke-width: 2;
+            stroke-dasharray: 6, 4;
+            animation: dash 1s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -10;
+            }
+        }
+
+        .edge-label-bg {
+            fill: #111116;
+        }
+
+        .edge-label {
+            fill: #ccc;
+            font-size: 10px;
+            text-anchor: middle;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Aegis Architecture</h1>
+    <div class="controls">
+        <button id="exportBtn">Export as PNG</button>
+    </div>
+
+    <div id="diagram-container"></div>
+
+    <script>
+        const width = 1000;
+        const height = 800;
+
+        const svg = d3.select("#diagram-container")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("id", "architecture-svg")
+            .style("background-color", "#0a0a0f");
+
+        // Define arrowhead marker
+        svg.append("defs").append("marker")
+            .attr("id", "arrow")
+            .attr("viewBox", "0 0 10 10")
+            .attr("refX", 9)
+            .attr("refY", 5)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto-start-reverse")
+            .append("path")
+            .attr("d", "M 0 0 L 10 5 L 0 10 z")
+            .attr("fill", "#888");
+
+        svg.append("defs").append("marker")
+            .attr("id", "arrow-purple")
+            .attr("viewBox", "0 0 10 10")
+            .attr("refX", 9)
+            .attr("refY", 5)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M 0 0 L 10 5 L 0 10 z")
+            .attr("fill", "#7c3aed");
+
+        // Groups
+        const groups = [
+            { id: "g-device", x: 20, y: 20, w: 220, h: 220, label: "User Interface" },
+            { id: "g-agent", x: 260, y: 20, w: 460, h: 580, label: "Local Mac Agent" },
+            { id: "g-gcp", x: 740, y: 20, w: 240, h: 200, label: "GCP Backend (Cloud Run)" },
+            { id: "g-clients", x: 740, y: 240, w: 240, h: 240, label: "Remote Dashboards" }
+        ];
+
+        // Nodes
+        const nodes = [
+            // User UI
+            { id: "user", x: 130, y: 70, w: 160, h: 50, title: "👤 USER", subclass: "node-purple" },
+            { id: "mac_pwa", x: 130, y: 150, w: 180, h: 60, title: "💻 Mac PWA", sub: "Local Hub", subclass: "" },
+            { id: "helper", x: 130, y: 250, w: 180, h: 60, title: "⚙️ Helper Server", sub: "localhost:8766", subclass: "" },
+
+            // Local Mac Agent
+            { id: "voice", x: 490, y: 80, w: 180, h: 60, title: "🎙️ voice.py", sub: "Audio I/O & Gemini", subclass: "node-purple" },
+            { id: "classifier", x: 490, y: 170, w: 180, h: 60, title: "🧠 classifier.py", sub: "Risk Analysis", subclass: "node-blue" },
+            { id: "gate", x: 490, y: 260, w: 180, h: 60, title: "🛡️ gate.py", sub: "Auth Router", subclass: "node-blue" },
+
+            // Tiers
+            { id: "tier_green", x: 330, y: 360, w: 130, h: 60, title: "🟢 GREEN", sub: "Silent", subclass: "node-green" },
+            { id: "tier_yellow", x: 490, y: 360, w: 130, h: 60, title: "🟡 YELLOW", sub: "Voice Confirm", subclass: "node-yellow" },
+            { id: "tier_red", x: 650, y: 360, w: 130, h: 60, title: "🔴 RED", sub: "Biometric Auth", subclass: "node-red" },
+
+            { id: "executor", x: 490, y: 460, w: 240, h: 60, title: "⚡ executor.py", sub: "Composio Tool Runner", subclass: "node-blue" },
+            { id: "tools", x: 490, y: 560, w: 300, h: 60, title: "🛠️ External Tools", sub: "Gmail, Calendar, GitHub, Docs", subclass: "" },
+            { id: "wsserver", x: 300, y: 80, w: 140, h: 60, title: "📡 ws_server.py", sub: "ws://localhost:8765", subclass: "" },
+
+            // GCP Backend
+            { id: "fastapi", x: 860, y: 80, w: 200, h: 60, title: "☁️ FastAPI Endpoint", sub: "API Gateway", subclass: "node-blue" },
+            { id: "firestore", x: 860, y: 170, w: 200, h: 60, title: "🗄️ Firestore", sub: "users/{user_id}/*", subclass: "node-red" },
+
+            // Remote Clients
+            { id: "dashboard", x: 860, y: 300, w: 200, h: 60, title: "📊 Dashboard", sub: "Web Hub", subclass: "" },
+            { id: "mobile", x: 860, y: 400, w: 200, h: 60, title: "📱 Mobile PWA", sub: "Companion App", subclass: "" }
+        ];
+
+        // Edges
+        const edges = [
+            { source: "user", target: "mac_pwa", label: "Speaks/Interacts" },
+            { source: "mac_pwa", target: "helper", label: "Start/Stop Agent" },
+            { source: "mac_pwa", target: "wsserver", label: "Live State", anim: true },
+            { source: "wsserver", target: "voice", label: "", anim: true },
+            { source: "voice", target: "classifier", label: "Text Intent" },
+            { source: "classifier", target: "gate", label: "Classification" },
+            { source: "gate", target: "tier_green", label: "Risk: Low" },
+            { source: "gate", target: "tier_yellow", label: "Risk: Medium" },
+            { source: "gate", target: "tier_red", label: "Risk: High" },
+            { source: "tier_green", target: "executor", label: "Direct" },
+            { source: "tier_yellow", target: "executor", label: "Voice Checked" },
+            { source: "tier_red", target: "executor", label: "Biometrics Checked" },
+            { source: "executor", target: "tools", label: "Execute Call" },
+
+            { source: "gate", target: "fastapi", label: "POST /action\nPOST /auth/request", pathType: "curve" },
+            { source: "fastapi", target: "firestore", label: "Store" },
+
+            { source: "fastapi", target: "dashboard", label: "GET /audit/stream (SSE)", anim: true },
+            { source: "fastapi", target: "mobile", label: "GET /auth/pending" },
+            { source: "mobile", target: "fastapi", label: "POST /auth/verify", pathType: "curve_back" }
+        ];
+
+        // Draw Groups
+        svg.selectAll(".group-box")
+            .data(groups)
+            .enter()
+            .append("rect")
+            .attr("class", "group-box")
+            .attr("x", d => d.x)
+            .attr("y", d => d.y)
+            .attr("width", d => d.w)
+            .attr("height", d => d.h);
+
+        svg.selectAll(".group-label")
+            .data(groups)
+            .enter()
+            .append("text")
+            .attr("class", "group-label")
+            .attr("x", d => d.x + 10)
+            .attr("y", d => d.y + 20)
+            .text(d => d.label);
+
+        // Helper to find node
+        const nodeMap = {};
+        nodes.forEach(n => nodeMap[n.id] = n);
+
+        // Draw Edges
+        edges.forEach(edge => {
+            const src = nodeMap[edge.source];
+            const dst = nodeMap[edge.target];
+
+            let pathD = "";
+            let midX = 0;
+            let midY = 0;
+
+            if (edge.pathType === "curve") {
+                // Custom curve for gate -> fastapi
+                pathD = `M ${src.x + src.w / 2} ${src.y} C ${src.x + src.w / 2 + 100} ${src.y - 120}, ${dst.x - dst.w / 2 - 100} ${dst.y}, ${dst.x - dst.w / 2} ${dst.y}`;
+                midX = (src.x + src.w / 2 + dst.x - dst.w / 2) / 2;
+                midY = (src.y + dst.y) / 2 - 40;
+            } else if (edge.pathType === "curve_back") {
+                pathD = `M ${src.x - src.w / 2 + 20} ${src.y} C ${src.x - 200} ${src.y}, ${dst.x - 200} ${dst.y}, ${dst.x - dst.w / 2} ${dst.y + 20}`;
+                midX = src.x - src.w / 2 - 40;
+                midY = (src.y + dst.y) / 2;
+            } else {
+                // Direct line
+                const dx = dst.x - src.x;
+                const dy = dst.y - src.y;
+
+                let s_x = src.x; let s_y = src.y;
+                let d_x = dst.x; let d_y = dst.y;
+
+                // Simple collision point math for centers
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    s_x = src.x + (dx > 0 ? src.w / 2 : -src.w / 2);
+                    d_x = dst.x + (dx > 0 ? -dst.w / 2 : dst.w / 2);
+                    // Adjust y slightly if they aren't perfectly aligned
+                    s_y += dy * 0.1;
+                    d_y -= dy * 0.1;
+
+                } else {
+                    s_y = src.y + (dy > 0 ? src.h / 2 : -src.h / 2);
+                    d_y = dst.y + (dy > 0 ? -dst.h / 2 : dst.h / 2);
+                    // Adjust x slightly
+                    s_x += dx * 0.1;
+                    d_x -= dx * 0.1;
+                }
+
+                pathD = `M ${s_x} ${s_y} L ${d_x} ${d_y}`;
+                midX = (s_x + d_x) / 2;
+                midY = (s_y + d_y) / 2;
+            }
+
+            svg.append("path")
+                .attr("d", pathD)
+                .attr("class", edge.anim ? "edge-path-anim" : "edge-path")
+                .attr("marker-end", edge.anim ? "url(#arrow-purple)" : "url(#arrow)");
+
+            if (edge.label) {
+                const lines = edge.label.split('\n');
+
+                // Background rect for text
+                svg.append("rect")
+                    .attr("x", midX - 50)
+                    .attr("y", midY - 10 * lines.length)
+                    .attr("width", 100)
+                    .attr("height", 14 * lines.length + 4)
+                    .attr("class", "edge-label-bg")
+                    .attr("rx", 4);
+
+                lines.forEach((l, i) => {
+                    svg.append("text")
+                        .attr("x", midX)
+                        .attr("y", midY - 10 * lines.length + 12 + (i * 12))
+                        .attr("class", "edge-label")
+                        .text(l);
+                });
+            }
+        });
+
+        // Draw Nodes
+        const nodeGroups = svg.selectAll(".node-group")
+            .data(nodes)
+            .enter()
+            .append("g")
+            .attr("class", "node-group")
+            .attr("transform", d => `translate(${d.x - d.w / 2}, ${d.y - d.h / 2})`);
+
+        nodeGroups.append("rect")
+            .attr("width", d => d.w)
+            .attr("height", d => d.h)
+            .attr("class", d => `node-rect ${d.subclass}`);
+
+        nodeGroups.append("text")
+            .attr("x", d => d.w / 2)
+            .attr("y", d => d.sub ? d.h / 2 - 4 : d.h / 2 + 5)
+            .attr("class", "node-title")
+            .text(d => d.title);
+
+        nodeGroups.append("text")
+            .attr("x", d => d.w / 2)
+            .attr("y", d => d.h / 2 + 14)
+            .attr("class", "node-sub")
+            .text(d => d.sub || "");
+
+        // PNG Export Function
+        function exportPNG() {
+            const svgElement = document.getElementById("architecture-svg");
+            const serializer = new XMLSerializer();
+            let source = serializer.serializeToString(svgElement);
+
+            // Add namespaces if missing
+            if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+                source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+            }
+
+            const image = new Image();
+            const svgBlob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(svgBlob);
+
+            image.onload = function () {
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+
+                // Draw background manually to ensure #0a0a0f is captured
+                ctx.fillStyle = "#0a0a0f";
+                ctx.fillRect(0, 0, width, height);
+
+                ctx.drawImage(image, 0, 0);
+                URL.revokeObjectURL(url);
+
+                const imgURI = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+                const a = document.createElement("a");
+                a.download = "aegis_architecture.png";
+                a.href = imgURI;
+                a.click();
+            };
+            image.src = url;
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,62 @@
+graph TD
+    %% Styling
+    classDef default fill:#111,stroke:#333,stroke-width:1px,color:#fff;
+    classDef userbox fill:#1e1e2e,stroke:#7c3aed,stroke-width:2px,color:#fff;
+    classDef local fill:#0f172a,stroke:#3b82f6,stroke-width:1px,color:#fff;
+    classDef cloud fill:#2d1b69,stroke:#8b5cf6,stroke-width:1px,color:#fff;
+    classDef green fill:#064e3b,stroke:#16a34a,stroke-width:2px,color:#fff;
+    classDef yellow fill:#78350f,stroke:#d97706,stroke-width:2px,color:#fff;
+    classDef red fill:#7f1d1d,stroke:#dc2626,stroke-width:2px,color:#fff;
+    classDef gemini fill:#4c1d95,stroke:#7c3aed,stroke-width:2px,color:#fff;
+
+    User["👤 USER"]:::userbox
+    MacPWA["💻 Mac PWA<br/>(Local UI)"]:::local
+    Helper["⚙️ Helper Server<br/>(localhost:8766)"]:::local
+
+    User -- "Speaks / Interacts" --> MacPWA
+    MacPWA -- "Start/Stop" --> Helper
+
+    subgraph "Local Mac Agent"
+        WsServer["📡 WebSocket Server<br/>(ws://localhost:8765)"]:::local
+        Voice["🎙️ voice.py<br/>(Audio I/O)"]:::gemini
+        Gemini{"✨ Gemini Live API"}:::gemini
+        Classifier["🧠 classifier.py<br/>(Risk Analysis)"]:::local
+        Gate["🛡️ gate.py<br/>(Auth Router)"]:::local
+        
+        TierG["🟢 GREEN<br/>(Silent)"]:::green
+        TierY["🟡 YELLOW<br/>(Voice Confirm)"]:::yellow
+        TierR["🔴 RED<br/>(Biometric Auth)"]:::red
+        
+        Executor["⚡ executor.py<br/>(Tool Runner)"]:::local
+        Tools[/"🛠️ Composio Tools<br/>Gmail, Calendar, Docs, GitHub"/]:::local
+
+        MacPWA -. "Live State / Waveforms" .-> WsServer
+        WsServer -.-> Voice
+        Voice <--> Gemini
+        Voice --> Classifier
+        Classifier --> Gate
+        Gate --> TierG
+        Gate --> TierY
+        Gate --> TierR
+        TierG --> Executor
+        TierY -- "Confirmed by Voice" --> Executor
+        TierR -- "Approved by Mobile" --> Executor
+        Executor --> Tools
+    end
+
+    subgraph "GCP Backend (Cloud Run)"
+        Backend["☁️ FastAPI Server"]:::cloud
+        DB[("🗄️ Firestore<br/>users/{user_id}/*")]:::cloud
+        
+        Gate -- "POST /action<br/>POST /auth/request" --> Backend
+        Backend --> DB
+    end
+    
+    subgraph "User Devices"
+        Dashboard["📊 Dashboard<br/>(Web Hub)"]:::userbox
+        Mobile["📱 Mobile PWA<br/>(Companion App)"]:::userbox
+        
+        Backend -- "GET /audit/stream<br/>(SSE)" --> Dashboard
+        Backend -- "GET /auth/pending" --> Mobile
+        Mobile -- "POST /webauthn/auth/verify" --> Backend
+    end
