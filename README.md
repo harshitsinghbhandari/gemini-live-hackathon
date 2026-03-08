@@ -117,12 +117,14 @@ graph TD
 For developers who want to run locally:
 
 ```bash
-git clone https://github.com/harshitsinghbhandari/gemini-live-hackathon
+git clone https://github.com/projectalpha-dev/gemini-live-hackathon.git
 cd gemini-live-hackathon
 cp .env.example .env
 # Fill in your keys
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-python aegis/helper_server.py
+python3 -m aegis.helper_server
 # Open aegismac.projectalpha.in
 ```
 
@@ -136,6 +138,7 @@ python aegis/helper_server.py
 | `COMPOSIO_USER_ID` | Composio user ID | Same as USER_ID |
 | `DEVICE_ID` | Your Mac identifier | e.g. your-name-macbook |
 | `BACKEND_URL` | Backend API URL | `https://apiaegis.projectalpha.in` |
+| `DASHBOARD_URL` | Dashboard URL | `https://aegisdashboard.projectalpha.in` |
 
 ## Supported Tools
 

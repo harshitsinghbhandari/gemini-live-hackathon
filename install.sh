@@ -18,6 +18,12 @@ fi
 echo "📦 Installing required macOS packages (portaudio)..."
 brew install portaudio
 
+# Export PortAudio paths for M1/M2/M3 Macs to ensure pyaudio installs correctly
+if [[ "$(uname -m)" == "arm64" ]]; then
+    export CPATH=$(brew --prefix portaudio)/include
+    export LIBRARY_PATH=$(brew --prefix portaudio)/lib
+fi
+
 # Directory handling for the repo
 if [ ! -d "gemini-live-hackathon" ]; then
     if [ "${PWD##*/}" == "gemini-live-hackathon" ]; then
@@ -43,18 +49,32 @@ if [ -f "../.env" ]; then
 fi
 
 echo "🐍 Setting up Python virtual environment..."
+# Check if python3 is available and version is 3.11+
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Error: python3 is not installed. Please install Python 3.11+."
+    exit 1
+fi
+
+PYTHON_MAJOR=$(python3 -c 'import sys; print(sys.version_info.major)')
+PYTHON_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]); then
+    echo "❌ Error: Aegis requires Python 3.11+, but you have $PYTHON_MAJOR.$PYTHON_MINOR."
+    exit 1
+fi
+
 python3 -m venv venv
 source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
 
 echo "🚀 Starting Aegis Agent..."
 # Start the agent and helper server
 # Kill existing agent/helper if running
-pkill -f "python -m aegis.main" || true
-pkill -f "python -m aegis.helper_server" || true
+pkill -f "python3 main.py" || true
+pkill -f "python3 -m aegis.helper_server" || true
 
-nohup python -m aegis.helper_server > helper.log 2>&1 &
-nohup python -m aegis.main > aegis.log 2>&1 &
+nohup python3 -m aegis.helper_server > helper.log 2>&1 &
+nohup python3 main.py > aegis.log 2>&1 &
 echo "✅ Agent and Helper Server are running in the background."
 
 echo "🌐 Opening Aegis Dashboard..."
