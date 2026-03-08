@@ -12,8 +12,9 @@ Brutally honest audit against `hackathon-rules.md`.
 | Requirement | Status | Evidence / Action to Fix |
 |:---|:---:|:---|
 | **NEW Project Only** | ✅ COMPLIANT | Created after Feb 16. Git history confirms development started in March. |
+| **Eligibility Restrictions** | ⚠️ ACTION REQUIRED | Confirm members are not in embargoed countries/Quebec/Italy, not gov employees, and no financial support from Sponsor. |
 | **English Support** | ✅ COMPLIANT | All UI, voice prompts, and code documentation are in English. |
-| **Multimodal I/O** | ⚠️ PARTIAL | **Missing Vision.** Voice is strong. We must add the screen capture loop to satisfy "move beyond text-in/text-out". |
+| **Multimodal I/O** | ⚠️ PARTIAL | **Missing Vision.** Voice handles barge-in, but adding screen capture guarantees "move beyond text-in/text-out". |
 | **Gemini Model** | ✅ COMPLIANT | Uses `gemini-2.5-flash-native-audio-latest` and `gemini-2.5-flash`. |
 | **GenAI SDK / ADK** | ✅ COMPLIANT | Uses `google-genai` Python SDK. |
 | **Google Cloud Service** | ✅ COMPLIANT | Backend is designed for Cloud Run; uses Firestore and FCM. |
@@ -23,11 +24,11 @@ Brutally honest audit against `hackathon-rules.md`.
 | Requirement | Status | Evidence / Action to Fix |
 |:---|:---:|:---|
 | **Public Repository** | ❌ MISSING | **Action:** Move repo to public GitHub before submission. |
-| **Spin-up Instructions** | ⚠️ PARTIAL | README has basics but lacks env var details and system dependencies (pyobjc, portaudio). |
-| **GCP Deployment Proof** | ❌ MISSING | **Action:** Record 30s clip of Google Cloud Console showing backend on Cloud Run. |
-| **Architecture Diagram** | ❌ MISSING | **Action:** Create Mermaid or Excalidraw diagram showing the Agent ↔ Backend ↔ Mobile loop. |
-| **Demo Video (≤4m)** | ❌ MISSING | **Action:** Record and pitch. This is the single highest-impact missing item. |
-| **Testing Access** | ❌ MISSING | **Action:** Provide the URL to the deployed Dashboard and credentials for a test Gmail/Composio account. |
+| **Spin-up Instructions** | ⚠️ PARTIAL | README has basics but must have a step-by-step guide explaining setup/cloud deploy. |
+| **GCP Deployment Proof** | ❌ MISSING | **Action:** Record 30s clip of Google Cloud Console showing backend on Cloud Run, OR link to a code file showing GCP use. |
+| **Architecture Diagram** | ❌ MISSING | **Action:** Create clear visual representation showing Gemini ↔ Backend ↔ Mobile loop. |
+| **Demo Video (≤4m)** | ❌ MISSING | **Action:** Record actual software working. Pitch problem/value. Upload to YouTube or Vimeo. English language/subtitles. |
+| **Testing Access** | ❌ MISSING | **Action:** Provide the URL to the deployed Dashboard and credentials for testing. |
 
 ---
 
@@ -48,13 +49,13 @@ Brutally honest audit against `hackathon-rules.md`.
 ### Criterion 3: Demo & Presentation (30%)
 *   **Current Score: 0/10**
 *   **Why:** No video or diagram exists.
-*   **Ideal Submission:** A high-energy 4-minute video that shows the agent handling an interruption, classifying a RED action, and getting a Face ID approval on an iPhone.
-*   **Action:** Follow the script in Section 6.
+*   **Ideal Submission:** A high-energy 4-minute video that shows the actual software working, clearly defines the problem/solution, and proves the architecture.
+*   **Action:** Follow the script in Section 6. Upload to YouTube/Vimeo.
 
 ### Bonus Contributions (Up to +1.0)
-*   **Content (+0.6):** ❌ Write a blog post on "Building the Trust Layer for Agents".
-*   **Automation (+0.2):** ✅ COMPLIANT (Already have `deploy.sh` and Dockerfiles).
-*   **GDG (+0.2):** ❌ Harshit to provide link if a member.
+*   **Content (+0.6):** ❌ Write a blog post on "Building the Trust Layer for Agents". Must include `#GeminiLiveAgentChallenge` and exact disclaimer.
+*   **Automation (+0.2):** ✅ COMPLIANT (Already have `deploy.sh` in public repo).
+*   **GDG (+0.2):** ❌ Harshit to provide public GDG profile link if a member.
 
 ---
 
@@ -79,10 +80,10 @@ Brutally honest audit against `hackathon-rules.md`.
 ---
 
 ## 6. Demo Video Strategy (30% of Score)
-**Target Length:** 3m 30s.
+**Target Length:** 3m 30s (Strict limit: ≤4 minutes). **Platform**: YouTube or Vimeo.
 
 ### Script Outline:
-1.  **The Hook (0:00-0:30):** "AI agents are powerful, but do you trust them with your bank or your inbox? Meet Aegis."
+1.  **The Hook (0:00-0:30):** "AI agents are powerful, but do you trust them with your bank or your inbox? Meet Aegis." (Pitch problem and solution value).
 2.  **The Interaction (0:30-1:30):** Show a "Live" voice conversation.
     *   *Prompt:* "What's my next meeting?" (GREEN - silent/fast).
     *   *Interruption:* Interrupt the agent while it's talking to ask for more details.
@@ -107,12 +108,12 @@ Brutally honest audit against `hackathon-rules.md`.
 ---
 
 ## 8. Submission Checklist
-*   [ ] Public GitHub Repository URL.
-*   [ ] 4-minute YouTube Video Link (Public/Unlisted).
-*   [ ] Text Description (Word limit: Check Devpost, usually ~2000 chars).
-*   [ ] Architecture Diagram Image (PNG).
-*   [ ] Google Cloud Proof Video (can be separate 30s link or in main video).
-*   [ ] Testing Instructions (including any .env keys needed for judges).
+*   [ ] Public GitHub Repository URL (containing all code and `deploy.sh`).
+*   [ ] ≤4-minute YouTube or Vimeo Video Link (Public/Unlisted).
+*   [ ] Text Description (Problem solved, tech used, learnings).
+*   [ ] Architecture Diagram Image.
+*   [ ] Google Cloud Proof (Short recording or repository link to GCP usage).
+*   [ ] Testing Instructions (URL to project and login credentials).
 *   [ ] **Bonus:** Blog post link + `#GeminiLiveAgentChallenge` on Socials.
 
 ---
@@ -129,7 +130,7 @@ The rules allow multiple pieces of content. To guarantee the full 0.6, we will d
     *   *Platform:* LinkedIn or X.
     *   *Mandatory:* Must include the hashtag `#GeminiLiveAgentChallenge`.
 3.  **PRO TIP:** Every piece of content **MUST** include this exact disclaimer:
-    > *"I created this piece of content for the purposes of entering the Gemini Live Agent Challenge."*
+    > *"I created this piece of content for the purposes of entering this hackathon."*
     *Missing this sentence means 0 points.*
 
 ### B. Deployment Automation Bonus (+0.2) — "Infrastructure as Code"

@@ -104,6 +104,17 @@ graph TD
 | Mobile App | React PWA |
 | Dashboard | React + SSE |
 
+## Security Roadmap
+
+Aegis is currently a hackathon prototype optimised for demonstration.
+A production deployment would include:
+
+- **JWT Authentication** — replace `X-User-ID` headers with signed tokens
+- **WebAuthn Session Binding** — require verified session before device registration
+- **Distributed State** — Redis for WebAuthn challenges instead of in-memory storage
+- **Rate Limiting** — on `/auth/request`, `/webauthn/*`, and `/action` endpoints
+- **Input Validation** — strict `user_id` and `request_id` format enforcement
+
 ## Quick Start (5 minutes)
 
 1. Visit [aegis.projectalpha.in/setup](https://aegis.projectalpha.in/setup)

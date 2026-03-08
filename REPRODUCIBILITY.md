@@ -36,7 +36,7 @@ brew install portaudio
 
 ### 2. Clone and Prepare Environment
 ```bash
-git clone https://github.com/projectalpha-dev/gemini-live-hackathon.git
+git clone https://github.com/harshitsinghbhandari/gemini-live-hackathon.git
 cd gemini-live-hackathon
 cp .env.example .env
 ```
