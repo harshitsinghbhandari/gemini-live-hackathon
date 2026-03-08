@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Aegis - The trust layer for AI agents</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#7c3bed",
+                "background-light": "#f7f6f8",
+                "background-dark": "#0a0a0f",
+                "surface-dark": "#0f0f17",
+              },
+              fontFamily: {
+                "display": ["Inter", "sans-serif"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0f;
+            min-height: max(884px, 100dvh);
+        }
+        .purple-glow {
+            box-shadow: 0 0 40px 10px rgba(124, 59, 237, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-slate-100 font-display selection:bg-primary/30">
+    <!-- Header / TopAppBar -->
+    <nav class="sticky top-0 z-50 flex items-center bg-background-dark/80 backdrop-blur-md p-4 justify-between border-b border-primary/10">
+        <div class="text-primary flex size-10 shrink-0 items-center justify-center">
+            <span class="material-symbols-outlined text-3xl">shield_lock</span>
+        </div>
+        <h2 class="text-slate-100 text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-2">Aegis</h2>
+        <div class="flex w-10 items-center justify-end">
+            <button class="flex cursor-pointer items-center justify-center rounded-lg h-10 w-10 bg-transparent text-slate-100 transition-colors hover:bg-white/5">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative px-6 pt-16 pb-20 overflow-hidden">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none">
+            <div class="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-primary/20 blur-[100px] rounded-full"></div>
+        </div>
+        <div class="relative z-10 max-w-md mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-6">
+                <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                <span class="text-xs font-medium text-primary uppercase tracking-widest">Built for Mac</span>
+            </div>
+            <h1 class="text-slate-50 tracking-tight text-4xl font-bold leading-[1.1] mb-6">
+                The trust layer for AI agents.
+            </h1>
+            <p class="text-slate-400 text-lg font-normal leading-relaxed mb-10">
+                AI agents can read your emails, send messages, delete files. Who's stopping them?
+            </p>
+            <div class="flex flex-col gap-4">
+                <a href="#demo" class="flex items-center justify-center rounded-xl h-14 px-8 bg-primary text-white text-base font-semibold transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20">
+                    Watch Demo
+                </a>
+                <a href="/setup" class="flex items-center justify-center rounded-xl h-14 px-8 bg-transparent border border-primary/30 text-slate-100 text-base font-semibold transition-all hover:bg-primary/5 active:scale-95">
+                    Get Setup
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Classification Section -->
+    <section class="px-6 py-16 bg-surface-dark/50">
+        <div class="max-w-md mx-auto">
+            <h2 class="text-slate-50 text-2xl font-bold leading-tight mb-8">Every action. <br/><span class="text-primary">Classified. Controlled.</span></h2>
+            <div class="space-y-4">
+                <!-- Card 1 -->
+                <div class="flex items-center p-5 rounded-xl bg-surface-dark border-l-4 border-emerald-500/50 purple-glow">
+                    <div class="size-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mr-4">
+                        <span class="material-symbols-outlined text-emerald-500">done_all</span>
+                    </div>
+                    <div>
+                        <h3 class="text-slate-100 font-semibold text-lg">Silent</h3>
+                        <p class="text-slate-500 text-sm">Safe actions allowed instantly</p>
+                    </div>
+                </div>
+                <!-- Card 2 -->
+                <div class="flex items-center p-5 rounded-xl bg-surface-dark border-l-4 border-amber-500/50 purple-glow">
+                    <div class="size-10 rounded-lg bg-amber-500/10 flex items-center justify-center mr-4">
+                        <span class="material-symbols-outlined text-amber-500">touch_app</span>
+                    </div>
+                    <div>
+                        <h3 class="text-slate-100 font-semibold text-lg">Confirm</h3>
+                        <p class="text-slate-500 text-sm">Requires manual tap on device</p>
+                    </div>
+                </div>
+                <!-- Card 3 -->
+                <div class="flex items-center p-5 rounded-xl bg-surface-dark border-l-4 border-rose-500/50 purple-glow">
+                    <div class="size-10 rounded-lg bg-rose-500/10 flex items-center justify-center mr-4">
+                        <span class="material-symbols-outlined text-rose-500">fingerprint</span>
+                    </div>
+                    <div>
+                        <h3 class="text-slate-100 font-semibold text-lg">Biometric</h3>
+                        <p class="text-slate-500 text-sm">FaceID or TouchID verification</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it Works -->
+    <section class="px-6 py-20">
+        <div class="max-w-md mx-auto">
+            <h2 class="text-slate-50 text-2xl font-bold mb-10 text-center">How it works</h2>
+            <div class="space-y-12">
+                <div class="flex gap-6">
+                    <div class="flex flex-col items-center">
+                        <div class="size-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white shrink-0">1</div>
+                        <div class="w-px h-full bg-primary/20 mt-2"></div>
+                    </div>
+                    <div class="pb-2">
+                        <h4 class="text-slate-100 font-bold text-lg mb-1">You speak naturally</h4>
+                        <p class="text-slate-500">Interact with your AI agent as you normally would on your Mac.</p>
+                    </div>
+                </div>
+                <div class="flex gap-6">
+                    <div class="flex flex-col items-center">
+                        <div class="size-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white shrink-0">2</div>
+                        <div class="w-px h-full bg-primary/20 mt-2"></div>
+                    </div>
+                    <div class="pb-2">
+                        <h4 class="text-slate-100 font-bold text-lg mb-1">Aegis classifies the risk</h4>
+                        <p class="text-slate-500">Our local model determines the sensitivity of the requested action.</p>
+                    </div>
+                </div>
+                <div class="flex gap-6">
+                    <div class="flex flex-col items-center">
+                        <div class="size-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white shrink-0">3</div>
+                        <div class="w-px h-full bg-primary/20 mt-2"></div>
+                    </div>
+                    <div class="pb-2">
+                        <h4 class="text-slate-100 font-bold text-lg mb-1">Your iPhone gets the request</h4>
+                        <p class="text-slate-500">A push notification appears instantly for verification.</p>
+                    </div>
+                </div>
+                <div class="flex gap-6">
+                    <div class="flex flex-col items-center">
+                        <div class="size-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white shrink-0">4</div>
+                    </div>
+                    <div class="pb-2">
+                        <h4 class="text-slate-100 font-bold text-lg mb-1">You approve. It executes.</h4>
+                        <p class="text-slate-500">Control stays in your hands. No hidden actions, ever.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="px-6 py-16 bg-surface-dark border-t border-white/5">
+        <div class="max-w-md mx-auto text-center">
+            <div class="flex justify-center gap-6 mb-10 text-slate-400 font-medium text-sm">
+                <a class="hover:text-primary transition-colors" href="https://github.com/harshitbhandari0318/gemini-live-hackathon">GitHub</a>
+                <a class="hover:text-primary transition-colors" href="https://aegisdashboard.projectalpha.in">Dashboard</a>
+                <a class="hover:text-primary transition-colors" href="/setup">Setup</a>
+            </div>
+            <div class="space-y-2 mb-8">
+                <p class="text-slate-500 text-xs">Built for the Gemini Live Agent Challenge</p>
+                <p class="text-slate-300 text-sm font-semibold tracking-tight">Built by Harshit Singh Bhandari</p>
+            </div>
+            <div class="pt-8 border-t border-white/5">
+                <div class="flex items-center justify-center gap-2 opacity-50 grayscale">
+                    <span class="material-symbols-outlined text-xl">shield_lock</span>
+                    <span class="font-bold text-sm">Aegis 2024</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
