@@ -1,43 +1,31 @@
-// components/ActionCard.jsx
-import React from 'react';
-import { formatTimestamp, toolkitLabel } from '../utils/formatters.js';
 import { TierBadge } from './TierBadge.jsx';
 
 export function ActionCard({ action }) {
-    const {
-        tier,
-        action: text,
-        tool,
-        toolkit,
-        success,
-        blocked,
-        timestamp
-    } = action;
-
-    // Determine border color class
-    let colorClass = 'green';
-    if (tier === 'yellow') colorClass = 'yellow';
-    if (tier === 'red') colorClass = 'red';
-
-    // Status icon
-    let statusIcon = '✓';
-    if (blocked) statusIcon = '🔐';
-    else if (!success && success !== undefined) statusIcon = '⚠️';
-
-    const toolDisplay = tool ? tool : toolkitLabel(toolkit);
+    const timestamp = action.timestamp ? new Date(action.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
 
     return (
-        <div className={`action-card ${colorClass}`}>
-            <div className="card-main">
-                <div className="card-action-text">{text}</div>
-                <div className="card-status-icon">{statusIcon}</div>
+        <div className={`flex items-center px-5 py-4 gap-4 rounded-xl bg-slate-800/20 border-l-[4px] border border-slate-700/50 ${
+            action.tier === 'RED' ? 'border-l-danger' :
+            action.tier === 'YELLOW' ? 'border-l-amber' :
+            'border-l-sage'
+        }`}>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{timestamp}</span>
+                    <TierBadge tier={action.tier} />
+                </div>
+                <p className="text-sm font-bold text-slate-100 truncate uppercase tracking-tight">
+                    {action.action}
+                </p>
             </div>
-            <div className="card-meta">
-                <TierBadge tier={tier} />
-                <span className="card-meta-text">{toolDisplay}</span>
-                <span className="card-meta-text" style={{ marginLeft: 'auto' }}>
-                    {formatTimestamp(timestamp)}
-                </span>
+            <div className="shrink-0">
+                {action.success ? (
+                    <span className="material-symbols-outlined text-sage text-xl">check_circle</span>
+                ) : action.blocked ? (
+                    <span className="material-symbols-outlined text-danger text-xl">cancel</span>
+                ) : (
+                    <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                )}
             </div>
         </div>
     );

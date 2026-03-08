@@ -1,21 +1,37 @@
 import React from 'react';
 
-const Header = ({ status }) => {
-  const isLive = status === 'LIVE';
-
+const Header = ({ status, isOffline, lastActive }) => {
   return (
-    <header className="flex items-center justify-between h-14 px-6 border-b border-purple-500/20 bg-background/50 backdrop-blur-md sticky top-0 z-50">
-      <div className="flex items-center gap-2">
-        <span className="text-xl">🛡️</span>
-        <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-purple-400 bg-clip-text text-transparent">
-          Aegis
-        </h1>
+    <header className="flex items-center justify-between px-8 py-4 border-b border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark sticky top-0 z-50 shrink-0 transition-colors duration-500">
+      <div className="flex items-center gap-3">
+        <div className="text-primary flex items-center justify-center">
+          <span className="material-symbols-outlined text-3xl">shield</span>
+        </div>
+        <h1 className="text-xl font-black tracking-tight uppercase">Aegis</h1>
       </div>
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500 pulse-green' : 'bg-red-500'}`} />
-        <span className={`text-[10px] font-bold tracking-[0.2em] ${isLive ? 'text-green-500' : 'text-red-500'}`}>
-          {status}
-        </span>
+
+      <div className="flex items-center gap-6">
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-500 ${
+          isOffline
+            ? 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+        }`}>
+          <span className="relative flex h-2 w-2">
+            {!isOffline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>}
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${isOffline ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-widest">
+            {isOffline ? 'Agent Offline' : 'Agent Active'}
+          </span>
+        </div>
+
+        <div className="h-8 w-px bg-slate-200 dark:border-slate-800"></div>
+
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden">
+            <span className="material-symbols-outlined text-primary text-lg">person</span>
+          </div>
+        </div>
       </div>
     </header>
   );
