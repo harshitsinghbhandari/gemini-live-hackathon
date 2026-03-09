@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import bcrypt
 from fastapi import FastAPI, HTTPException, Request, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -362,3 +363,65 @@ async def check_registered(user_id_path: str, user_id: str = Depends(get_user_id
     """Check if user has registered Face ID"""
     doc = await db.collection("users").document(user_id_path).collection("webauthn_credentials").document(user_id_path).get()
     return {"registered": doc.exists}
+
+@app.post("/auth/register-pin")
+async def register_pin(request: Request):
+    """Register or update user PIN. No auth required for setup."""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        pin = data.get("pin")
+
+        if not user_id or not pin:
+            raise HTTPException(status_code=400, detail="Missing user_id or pin")
+
+        # Hash the PIN
+        salt = bcrypt.gensalt()
+        pin_hash = bcrypt.hashpw(pin.encode('utf-8'), salt)
+
+        # Store in Firestore: users/{user_id}/config/auth
+        auth_doc = db.collection("users").document(user_id).collection("config").document("auth")
+        await auth_doc.set({
+            "pin_hash": pin_hash.decode('utf-8'),
+            "created_at": datetime.datetime.now(datetime.timezone.utc)
+        })
+
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error registering PIN: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/auth/verify-pin")
+async def verify_pin(request: Request):
+    """Verify user PIN. Returns success and user_id if valid."""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        pin = data.get("pin")
+
+        if not user_id or not pin:
+            raise HTTPException(status_code=400, detail="Missing user_id or pin")
+
+        # Fetch pinned hash from Firestore
+        auth_doc = await db.collection("users").document(user_id).collection("config").document("auth").get()
+        if not auth_doc.exists:
+            logger.warning(f"No PIN found for user: {user_id}")
+            raise HTTPException(status_code=401, detail="Invalid ID or PIN")
+
+        auth_data = auth_doc.to_dict()
+        stored_hash = auth_data.get("pin_hash")
+
+        if not stored_hash:
+            raise HTTPException(status_code=401, detail="Invalid ID or PIN")
+
+        # Verify PIN
+        if bcrypt.checkpw(pin.encode('utf-8'), stored_hash.encode('utf-8')):
+            return {"success": True, "user_id": user_id}
+        else:
+            raise HTTPException(status_code=401, detail="Invalid ID or PIN")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error verifying PIN: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

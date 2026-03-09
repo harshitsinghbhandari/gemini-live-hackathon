@@ -10,6 +10,9 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import httpx
+import logging
+from . import config
 
 app = FastAPI(title="Aegis Helper Server", version="1.0.0")
 
@@ -26,6 +29,28 @@ app.add_middleware(
 agent_process: subprocess.Popen = None
 start_time: float = None
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Register PIN with backend if configured."""
+    if config.AEGIS_PIN and config.USER_ID:
+        try:
+            async with httpx.AsyncClient() as client:
+                payload = {
+                    "user_id": config.USER_ID,
+                    "pin": config.AEGIS_PIN
+                }
+                response = await client.post(
+                    f"{config.BACKEND_URL}/auth/register-pin",
+                    json=payload,
+                    timeout=10.0
+                )
+                if response.status_code == 200:
+                    print(f"✅ PIN registered successfully for user {config.USER_ID}")
+                else:
+                    print(f"⚠️ PIN registration failed: {response.status_code} - {response.text}")
+        except Exception as e:
+            print(f"❌ Error registering PIN during startup: {e}")
 
 @app.get("/health")
 async def health():

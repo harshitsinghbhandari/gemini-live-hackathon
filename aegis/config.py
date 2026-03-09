@@ -10,6 +10,7 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 COMPOSIO_API_KEY = os.environ.get("COMPOSIO_API_KEY")
 USER_ID = os.environ.get("USER_ID", "harshitbhandari0318")
 COMPOSIO_USER_ID = os.environ.get("COMPOSIO_USER_ID", USER_ID)
+AEGIS_PIN = os.environ.get("AEGIS_PIN", "")
 
 # Model Names
 GEMINI_MODEL = "gemini-2.5-flash"

@@ -1,5 +1,7 @@
 // src/config.js
-export const getUserId = () => localStorage.getItem("aegis_user_id");
+export const getUserId = () => {
+    return localStorage.getItem("aegis_user_id") || "";
+};
 
 export const CONFIG = {
     get USER_ID() { return getUserId(); },

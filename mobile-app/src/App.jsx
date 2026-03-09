@@ -6,18 +6,17 @@ import { usePendingAuth } from './hooks/usePendingAuth.js';
 import { MirrorPage } from './pages/MirrorPage.jsx';
 import { RedAuthPage } from './pages/RedAuthPage.jsx';
 import { PostAuthPage } from './pages/PostAuthPage.jsx';
-import { OnboardingPage } from './pages/OnboardingPage.jsx';
-import { getUserId } from './config.js';
+import PinGate from './components/PinGate.jsx';
+import { CONFIG } from './config.js';
 
 const STATES = {
-    ONBOARDING: 'ONBOARDING',
     MIRROR: 'MIRROR',
     RED_AUTH: 'RED_AUTH',
     POST_AUTH: 'POST_AUTH'
 };
 
 export default function App() {
-    const [appState, setAppState] = useState(getUserId() ? STATES.MIRROR : STATES.ONBOARDING);
+    const [appState, setAppState] = useState(STATES.MIRROR);
     const [authResult, setAuthResult] = useState(null); // 'approved' or 'denied'
 
     // Only poll if we are in MIRROR mode
@@ -47,28 +46,26 @@ export default function App() {
     };
 
     return (
-        <div className="app-shell">
-            {appState === STATES.ONBOARDING && (
-                <OnboardingPage onComplete={() => setAppState(STATES.MIRROR)} />
-            )}
+        <PinGate backendUrl={CONFIG.BACKEND_URL}>
+            <div className="app-shell">
+                {appState === STATES.MIRROR && (
+                    <MirrorPage />
+                )}
 
-            {appState === STATES.MIRROR && (
-                <MirrorPage />
-            )}
+                {appState === STATES.RED_AUTH && pendingReq && (
+                    <RedAuthPage
+                        request={pendingReq}
+                        onResolve={handleResolveAuth}
+                    />
+                )}
 
-            {appState === STATES.RED_AUTH && pendingReq && (
-                <RedAuthPage
-                    request={pendingReq}
-                    onResolve={handleResolveAuth}
-                />
-            )}
-
-            {appState === STATES.POST_AUTH && (
-                <PostAuthPage
-                    result={authResult}
-                    onDismiss={handlePostAuthDismiss}
-                />
-            )}
-        </div>
+                {appState === STATES.POST_AUTH && (
+                    <PostAuthPage
+                        result={authResult}
+                        onDismiss={handlePostAuthDismiss}
+                    />
+                )}
+            </div>
+        </PinGate>
     );
 }

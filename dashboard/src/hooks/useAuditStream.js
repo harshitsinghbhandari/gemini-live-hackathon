@@ -8,7 +8,8 @@ export const useAuditStream = (onNewEntry) => {
 
   useEffect(() => {
     const connect = () => {
-      const eventSource = new EventSource(`${BACKEND_URL}/audit/stream`);
+      const userId = localStorage.getItem('aegis_user_id') || '';
+      const eventSource = new EventSource(`${BACKEND_URL}/audit/stream?user_id=${userId}`);
 
       eventSource.onopen = () => {
         setStatus('LIVE');

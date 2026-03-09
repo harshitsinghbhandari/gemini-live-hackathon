@@ -43,11 +43,16 @@ export function MirrorPage({ onStopSession }) {
             {/* Status Bar */}
             <div className="h-12 w-full flex items-center justify-between px-8 pt-4 shrink-0">
                 <span className="text-slate-100 text-sm font-semibold">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[18px] text-slate-100">signal_cellular_4_bar</span>
-                    <span className="material-symbols-outlined text-[18px] text-slate-100">wifi</span>
-                    <span className="material-symbols-outlined text-[18px] text-slate-100">battery_full</span>
-                </div>
+                <button
+                    onClick={() => {
+                        localStorage.removeItem('aegis_user_id');
+                        localStorage.removeItem('aegis_pin_verified');
+                        window.location.reload();
+                    }}
+                    className="p-2 rounded-full bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-red-400 transition-colors"
+                >
+                    <span className="material-symbols-outlined text-xl">logout</span>
+                </button>
             </div>
 
             {/* Main Content */}

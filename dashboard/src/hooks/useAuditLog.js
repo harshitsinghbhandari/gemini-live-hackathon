@@ -11,7 +11,11 @@ export const useAuditLog = () => {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/audit/log?limit=50`);
+        const response = await fetch(`${BACKEND_URL}/audit/log?limit=50`, {
+          headers: {
+            'X-User-ID': localStorage.getItem('aegis_user_id') || ''
+          }
+        });
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`);
         }

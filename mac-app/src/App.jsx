@@ -12,6 +12,8 @@ import { ListeningPage } from './pages/ListeningPage.jsx';
 import { ActivityPage } from './pages/ActivityPage.jsx';
 import { YellowPausePage } from './pages/YellowPausePage.jsx';
 import { RedAuthPage } from './pages/RedAuthPage.jsx';
+import PinGate from './components/PinGate.jsx';
+import { CONFIG } from './config.js';
 
 const STATES = {
     IDLE: 'IDLE',
@@ -105,50 +107,52 @@ export default function App() {
 
     // ── Render ─────────────────────────────────────────────────────────
     return (
-        <div className="app-shell">
-            {/* Layer 1: Base page */}
-            {appState === STATES.IDLE && (
-                <IdlePage
-                    isConnected={isConnected}
-                    onStart={handleStart}
-                />
-            )}
-            {(appState === STATES.LISTENING) && (
-                <ListeningPage
-                    waveform={waveform}
-                    sessionSeconds={sessionSeconds}
-                    agentStatus={status}
-                    onStop={handleStop}
-                />
-            )}
-            {(appState === STATES.ACTIVITY || appState === STATES.YELLOW_PAUSE || appState === STATES.RED_AUTH) && (
-                <ActivityPage
-                    actions={actions}
-                    sessionSeconds={sessionSeconds}
-                    agentStatus={status}
-                    onStop={handleStop}
-                />
-            )}
+        <PinGate backendUrl={CONFIG.BACKEND_URL}>
+            <div className="app-shell">
+                {/* Layer 1: Base page */}
+                {appState === STATES.IDLE && (
+                    <IdlePage
+                        isConnected={isConnected}
+                        onStart={handleStart}
+                    />
+                )}
+                {(appState === STATES.LISTENING) && (
+                    <ListeningPage
+                        waveform={waveform}
+                        sessionSeconds={sessionSeconds}
+                        agentStatus={status}
+                        onStop={handleStop}
+                    />
+                )}
+                {(appState === STATES.ACTIVITY || appState === STATES.YELLOW_PAUSE || appState === STATES.RED_AUTH) && (
+                    <ActivityPage
+                        actions={actions}
+                        sessionSeconds={sessionSeconds}
+                        agentStatus={status}
+                        onStop={handleStop}
+                    />
+                )}
 
-            {/* Layer 2: YELLOW overlay */}
-            {appState === STATES.YELLOW_PAUSE && pendingYellow && (
-                <YellowPausePage
-                    pending={pendingYellow}
-                    actions={actions}
-                    sessionSeconds={sessionSeconds}
-                    sendMessage={sendMessage}
-                    onResolve={handleYellowResolve}
-                />
-            )}
+                {/* Layer 2: YELLOW overlay */}
+                {appState === STATES.YELLOW_PAUSE && pendingYellow && (
+                    <YellowPausePage
+                        pending={pendingYellow}
+                        actions={actions}
+                        sessionSeconds={sessionSeconds}
+                        sendMessage={sendMessage}
+                        onResolve={handleYellowResolve}
+                    />
+                )}
 
-            {/* Layer 3: RED AUTH overlay */}
-            {appState === STATES.RED_AUTH && pendingRed && (
-                <RedAuthPage
-                    pending={pendingRed}
-                    onApproved={handleRedApproved}
-                    onDenied={handleRedDenied}
-                />
-            )}
-        </div>
+                {/* Layer 3: RED AUTH overlay */}
+                {appState === STATES.RED_AUTH && pendingRed && (
+                    <RedAuthPage
+                        pending={pendingRed}
+                        onApproved={handleRedApproved}
+                        onDenied={handleRedDenied}
+                    />
+                )}
+            </div>
+        </PinGate>
     );
 }
