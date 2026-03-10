@@ -8,6 +8,7 @@ from typing import Dict, Any
 from .classifier import classify_action
 from .auth import request_touch_id
 from .executor import search_and_execute
+from .screen_executor import is_screen_tool, execute_screen_action
 from .context import AegisContext
 from . import config
 from . import ws_server
@@ -101,36 +102,52 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
         logger.error(f"Error in remote auth flow: {e}, falling back to local")
         return await request_touch_id(f"Aegis: {classification['speak']}")
 
-async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed: bool = False, on_auth_request=None) -> Dict[str, Any]:
+async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed: bool = False, on_auth_request: callable = None, tool_name: str = None, tool_args: dict = None) -> Dict[str, Any]:
+    """
+    The secure gateway for all Aegis actions.
+    Steps:
+    1. Classify risk tier (GREEN, YELLOW, RED) - skip if tool_name is provided
+    2. Check if this specific action was previously session-approved (GREEN or pre-authorized YELLOW)
+    3. If RED, trigger Touch ID / Biometric auth
+    4. If YELLOW, ask for verbal confirmation (handled by voice.py, but we signal here)
+    5. Execute if auth is cleared
+    """
     start_time = datetime.datetime.now()
     logger.info(f"🤖 Processing proposed action: {proposed_action}")
 
-    classification = await classify_action(proposed_action)
-
-    tier = classification["tier"]
-    speak = classification["speak"]
-    tool = classification.get("tool")
-    arguments = classification.get("arguments", {})
-
-    logger.info(f"🎯 Tier: {tier} | Reason: {classification['reason']} | Pre-confirmed: {pre_confirmed}")
-    logger.debug(f"🔧 Tool: {tool} | Args: {arguments}")
-
-    result = {
-        "action": proposed_action,
-        "tier": tier,
-        "reason": classification["reason"],
-        "upgraded": classification["upgraded"],
-        "speak": speak,
-        "tool": tool,
-        "executed": False,
-        "auth_used": False,
-        "confirmed_verbally": pre_confirmed,
-        "blocked": False,
-        "success": False,
-        "error": None
-    }
-
     try:
+        # 1. Classify / Fetch existing classification
+        if tool_name:
+            # Skip full classification if tool is already known
+            classification = await classify_action(proposed_action, tool_hint=tool_name)
+            tool = tool_name
+            arguments = tool_args or {}
+        else:
+            classification = await classify_action(proposed_action)
+            tool = classification.get("tool")
+            arguments = classification.get("arguments", {})
+
+        tier = classification.get("tier", "RED")
+        speak = classification.get("speak", "I need to check something before I do that.")
+
+        logger.info(f"🎯 Tier: {tier} | Reason: {classification.get('reason')} | Pre-confirmed: {pre_confirmed}")
+        logger.debug(f"🔧 Tool: {tool} | Args: {arguments}")
+
+        result = {
+            "action": proposed_action,
+            "tier": tier,
+            "reason": classification.get("reason"),
+            "upgraded": classification.get("upgraded"),
+            "speak": speak,
+            "tool": tool,
+            "executed": False,
+            "auth_used": False,
+            "confirmed_verbally": pre_confirmed,
+            "blocked": False,
+            "success": False,
+            "error": None
+        }
+
         if tier == "RED":
             logger.info("🔴 RED — requesting Auth...")
             # Notify caller (e.g. menu bar) that auth is happening
@@ -177,12 +194,17 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
         elif tier == "GREEN":
             logger.info("🟢 GREEN — proceeding with execution")
 
-        # Execute via Composio if not blocked
+        # Execute via correct executor if not blocked
         if not result["blocked"] and tool:
-            exec_result = await search_and_execute(proposed_action, arguments, context)
+            if is_screen_tool(tool):
+                logger.info(f"🖥️  Native Screen Executor: {tool}")
+                exec_result = await execute_screen_action(tool, arguments)
+            else:
+                exec_result = await search_and_execute(proposed_action, arguments, context)
+            
             result["success"] = exec_result["success"]
             if exec_result["success"]:
-                result["output"] = exec_result.get("data")
+                result["output"] = exec_result.get("data") or exec_result.get("description")
                 result["executed"] = True
             else:
                 result["error"] = exec_result.get("error")

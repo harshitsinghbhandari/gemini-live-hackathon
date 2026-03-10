@@ -3,29 +3,63 @@ import base64
 import json
 import logging
 import pyaudio
+from google import genai
+from google.genai import types
+from . import config
+from .context import AegisContext
 from .gate import gate_action
+import os
+from .screen_executor import is_screen_tool, SCREEN_TOOL_DECLARATIONS
+from .screen.capture import capture_screen
 from . import ws_server
 
 logger = logging.getLogger("aegis.voice")
+
+def load_tools():
+    path = os.path.join(os.path.dirname(__file__), "tools.json")
+    try:
+        if os.path.exists(path):
+            with open(path) as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to load tools.json: {e}")
+    return {}
+
+TOOLS = load_tools()
+
+def get_tool_names_prompt():
+    screen_names = [t["name"] for t in SCREEN_TOOL_DECLARATIONS]
+    composio_names = list(TOOLS.keys())
+    all_names = screen_names + composio_names
+    return "Available tools:\n" + "\n".join(f"  {n}" for n in all_names)
+
+def get_schemas_for(tool_names: list) -> dict:
+    screen_map = {t["name"]: t for t in SCREEN_TOOL_DECLARATIONS}
+    result = {}
+    for name in tool_names:
+        if name in TOOLS:
+            result[name] = TOOLS[name]
+        elif name in screen_map:
+            result[name] = screen_map[name]
+        else:
+            result[name] = {"error": f"Unknown tool: {name}"}
+    return result
 
 SYSTEM_PROMPT = """
 You are Aegis, a trusted AI agent that controls the user's Mac computer.
 
 You can hear the user's voice.
-
 When the user asks you to do something:
-1. Understand their intent
-2. Decide what action to take
-3. Call the execute_action function with a plain english description
+1. Identify which tool(s) you need from the list below.
+2. If you don't have the parameter schema for a tool, call get_tool_schema([tool_name])
+3. Once you have the schema, call the tool with the correct arguments.
+
+{tool_list}
 
 You speak naturally and concisely. You always tell the user:
 - What you're about to do
 - Whether it needs their fingerprint (RED actions)
 - What happened after execution
-
-When calling execute_action for the FIRST time on a prompt, ALWAYS set confirmed=False.
-If the execute_action returns needs_confirmation=True, ask the user to confirm.
-If the user confirms, call execute_action AGAIN with the SAME action and confirmed=True.
 
 You are calm, trustworthy, and never do anything without being clear about it.
 Keep responses short and conversational — this is voice, not text.
@@ -37,29 +71,29 @@ class AegisVoiceAgent:
         self.status_callback = status_callback
         self.pya = pyaudio.PyAudio()
         self.client = genai.Client(api_key=config.GOOGLE_API_KEY)
+        
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=SYSTEM_PROMPT.format(tool_list=get_tool_names_prompt()),
             thinking_config=types.ThinkingConfig(thinking_budget=0),
             tools=[{
-                "function_declarations": [{
-                    "name": "execute_action",
-                    "description": "Execute an action on the user's computer after security check",
-                    "parameters": {
-                        "type": "OBJECT",
-                        "properties": {
-                            "action": {
-                                "type": "STRING",
-                                "description": "Plain english description of what to do, e.g. 'fetch my latest emails'"
+                "function_declarations": [
+                    {
+                        "name": "get_tool_schema",
+                        "description": "Get the parameter schema for one or more tools before calling them. Be reasonable — only request schemas you actually need.",
+                        "parameters": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "tool_names": {
+                                    "type": "ARRAY",
+                                    "items": {"type": "STRING"},
+                                    "description": "List of tool names to get schemas for"
+                                }
                             },
-                            "confirmed": {
-                                "type": "BOOLEAN",
-                                "description": "ALWAYS false initially. Set to true ONLY if you are re-calling this tool after the user verbally confirmed."
-                            }
-                        },
-                        "required": ["action", "confirmed"]
+                            "required": ["tool_names"]
+                        }
                     }
-                }]
+                ]
             }]
         )
 
@@ -144,36 +178,61 @@ class AegisVoiceAgent:
                         self._update_status("executing")
                         logger.info("⏳ Pausing audio input during tool execution...")
                         try:
+                            function_responses = []
                             for fn in response.tool_call.function_calls:
-                                if fn.name == "execute_action":
-                                    action = fn.args.get("action", "")
-                                    confirmed = fn.args.get("confirmed", False)
-                                    logger.info(f"📥 Received action: '{action}' (confirmed: {confirmed})")
+                                if fn.name == "get_tool_schema":
+                                    requested = fn.args.get("tool_names", [])
+                                    logger.info(f"🔍 Gemini requested schemas for: {requested}")
+                                    schemas = get_schemas_for(requested)
+                                    logger.info(f"📤 Returning schemas for: {list(schemas.keys())}")
+                                    
+                                    function_responses.append({
+                                        "id": fn.id,
+                                        "name": fn.name,
+                                        "response": {"result": schemas}
+                                    })
 
-                                    # Signal auth status for RED tier (gate_action triggers Touch ID)
+                                else:
+                                    # Real tool call (dynamic)
+                                    tool_name = fn.name
+                                    arguments = dict(fn.args) if fn.args else {}
+                                    logger.info(f"📥 Received tool call: {tool_name} with args: {arguments}")
+
+                                    simulated_action = f"Run tool {tool_name} with arguments {json.dumps(arguments)}"
+                                    
                                     result = await gate_action(
-                                        action, self.context,
-                                        pre_confirmed=confirmed,
+                                        simulated_action, self.context,
+                                        tool_name=tool_name,
+                                        tool_args=arguments,
                                         on_auth_request=lambda: self._update_status("auth")
                                     )
 
                                     if result.get("needs_confirmation"):
-                                        tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm this action: " + result['speak'] + ". If they say yes, call execute_action again with confirmed=true."}
+                                        tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm this action: " + result['speak'] + ". If they say yes, call the tool again with the same arguments."}
                                     else:
                                         if result.get("blocked") and result.get("tier") == "RED":
                                             self._update_status("blocked")
-
-                                        # Use full result for tool response to Aegis
                                         tool_response = {"result": json.dumps(result)}
 
-                                    logger.info(f"📤 Sending tool response back to Aegis: {tool_response}")
-                                    await session.send_tool_response(
-                                        function_responses=[types.FunctionResponse(
-                                            id=fn.id,
-                                            name=fn.name,
-                                            response=tool_response
-                                        )]
-                                    )
+                                    function_responses.append({
+                                        "id": fn.id,
+                                        "name": fn.name,
+                                        "response": tool_response
+                                    })
+
+                                    if is_screen_tool(fn.name):
+                                        logger.info("📸 Sending fresh screenshot to Gemini Live context")
+                                        shot = capture_screen()
+                                        await session.send_realtime_input(
+                                            audio=types.Blob(
+                                                data=shot["base64"],
+                                                mime_type=shot["mime_type"]
+                                            )
+                                        )
+
+                            if function_responses:
+                                await session.send(input={"function_responses": function_responses})
+
                         except Exception as e:
                             logger.error(f"Error processing tool call: {e}")
                         finally:

@@ -1,3 +1,4 @@
+from google.genai import types
 import logging
 import json
 import re
@@ -6,6 +7,12 @@ from google import genai
 from . import config
 
 logger = logging.getLogger("aegis.classifier")
+
+TIER_RULES_SUMMARY = """
+- GREEN: Read-only, listing, searching. (e.g. screen_read, GMAIL_FETCH_EMAILS)
+- YELLOW: Creating, modifying, replying, moving. (e.g. cursor_click, GMAIL_CREATE_EMAIL_DRAFT)
+- RED: Deleting, sending emails, transactions, sensitive data. (e.g. keyboard_type_sensitive, GMAIL_SEND_EMAIL)
+"""
 
 RISK_PROMPT = """
 You are a security classifier for an AI agent controlling a Mac computer.
@@ -34,9 +41,9 @@ Tier rules:
   listing anything. No writing, no creating, no sending.
 
 TIER RULES FOR NEW TOOLKITS:
-- GREEN (read-only): listing tasks, reading docs, viewing sheets, getting presentations, listing GitHub issues/PRs
-- YELLOW (creates/modifies): creating docs, adding rows to sheets, creating presentations, adding tasks, creating GitHub issues
-- RED (irreversible): deleting docs, clearing sheets, deleting tasks, merging PRs, deleting repositories
+- GREEN (read-only): listing tasks, reading docs, viewing sheets, getting presentations, listing GitHub issues/PRs, screen_capture, screen_read, cursor_move
+- YELLOW (creates/modifies): creating docs, adding rows to sheets, creating presentations, adding tasks, creating GitHub issues, cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_hotkey, keyboard_press
+- RED (irreversible): deleting docs, clearing sheets, deleting tasks, merging PRs, deleting repositories, keyboard_type_sensitive
 
 TOOLKIT REFERENCE — use these exact tool names:
 
@@ -75,6 +82,11 @@ GREEN: GITHUB_LIST_REPOSITORY_ISSUES, GITHUB_GET_AN_ISSUE, GITHUB_LIST_PULL_REQU
 YELLOW: GITHUB_CREATE_AN_ISSUE, GITHUB_ADD_ASSIGNEES_TO_AN_ISSUE, GITHUB_ADD_LABELS_TO_AN_ISSUE, GITHUB_CREATE_A_PULL_REQUEST_REVIEW
 RED: GITHUB_DELETE_A_REPOSITORY, GITHUB_MERGE_A_PULL_REQUEST
 
+=== SCREEN CONTROL (Native) ===
+GREEN: screen_capture, screen_read, cursor_move
+YELLOW: cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_hotkey, keyboard_press
+RED: keyboard_type_sensitive
+
 EXAMPLES:
 "create a doc about meeting notes" → GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN, YELLOW
 "read my spreadsheet" → GOOGLESHEETS_GET_BATCH_VALUES, GREEN
@@ -86,6 +98,11 @@ EXAMPLES:
 "show me open PRs" → GITHUB_LIST_PULL_REQUESTS, GREEN
 "merge this PR" → GITHUB_MERGE_A_PULL_REQUEST, RED
 "delete this task list" → GOOGLETASKS_DELETE_TASK_LIST, RED
+"what is on my screen" → screen_read, GREEN, {}
+"click the submit button" → cursor_click, YELLOW, {"x": 500, "y": 300, "description": "submit button"}
+"type my password" → keyboard_type_sensitive, RED, {"text": "password123"}
+"press enter" → keyboard_press, YELLOW, {"key": "enter"}
+"press command space" → keyboard_hotkey, YELLOW, {"keys": ["command", "space"]}
 
 IMPORTANT:
 - Always extract concrete values from the action description into arguments
@@ -113,20 +130,44 @@ def parse_response(text: str) -> Optional[Dict[str, Any]]:
         logger.error(f"Failed to parse Gemini response as JSON: {e}\nRaw text: {text}")
         return None
 
-async def classify_action(proposed_action: str) -> Dict[str, Any]:
-    """Classifies the proposed action using Gemini."""
+async def classify_action(proposed_action: str, tool_hint: str = None) -> Dict[str, Any]:
+    """
+    Classifies the proposed action using Gemini.
+    If tool_hint is provided, we skip tool selection and only determine the tier.
+    """
     try:
         client = genai.Client(api_key=config.GOOGLE_API_KEY)
 
+        if tool_hint:
+            system_instruction = f"""
+            You are a security classifier for an AI agent controlling a Mac.
+            
+            The agent has already selected the tool: {tool_hint}
+            The user's intent is: {proposed_action}
+            
+            Determine the security tier (GREEN, YELLOW, RED) based on these rules:
+            {TIER_RULES_SUMMARY}
+            
+            Respond ONLY with valid JSON:
+            {{
+              "tier": "RED" | "YELLOW" | "GREEN",
+              "reason": "one sentence explanation why this tool+intent matches this tier",
+              "speak": "what to say to the user before acting",
+              "tool": "{tool_hint}",
+              "arguments": {{}} 
+            }}
+            """
+            prompt = "Determine the security tier for this action."
+        else:
+            system_instruction = RISK_PROMPT
+            prompt = f"Proposed action: {proposed_action}"
+
         response = await client.aio.models.generate_content(
             model=config.GEMINI_MODEL,
-            contents=[
-                {
-                    "parts": [
-                        {"text": f"Proposed action: {proposed_action}\n\n{RISK_PROMPT}"}
-                    ]
-                }
-            ]
+            contents=[prompt],
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction
+            )
         )
 
         if not response or not response.text:
