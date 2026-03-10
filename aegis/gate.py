@@ -7,7 +7,7 @@ import uuid
 from typing import Dict, Any
 from .classifier import classify_action
 from .auth import request_touch_id
-from .executor import search_and_execute
+from .executor import search_and_execute, execute_composio_tool
 from .screen_executor import is_screen_tool, execute_screen_action
 from .context import AegisContext
 from . import config
@@ -199,6 +199,10 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
             if is_screen_tool(tool):
                 logger.info(f"🖥️  Native Screen Executor: {tool}")
                 exec_result = await execute_screen_action(tool, arguments)
+            elif tool_name:
+                # This was a direct tool call from Gemini Live
+                logger.info(f"🛠️  Direct Tool Execution: {tool}")
+                exec_result = await execute_composio_tool(tool, arguments, context)
             else:
                 exec_result = await search_and_execute(proposed_action, arguments, context)
             
