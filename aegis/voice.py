@@ -165,9 +165,9 @@ class AegisVoiceAgent:
         ws_server.broadcast("status", value=status)
 
     def _denormalize(self, x: int, y: int) -> tuple[int, int]:
-        """Convert Gemini 0-1000 coordinates to Aegis capture scale (1470, 956)"""
-        # capture.py uses (1470, 956) as default scale_to
-        target_w, target_h = 1470, 956
+        """Convert Gemini 0-1000 coordinates to dynamic screen bounds."""
+        import pyautogui
+        target_w, target_h = pyautogui.size()
         # Ensure coordinates are within 0-1000 range as per ComputerUse spec
         nx = max(0, min(1000, x))
         ny = max(0, min(1000, y))
@@ -253,7 +253,7 @@ class AegisVoiceAgent:
                         try:
                             function_responses = []
                             
-                            # Handle standard function calls (get_tool_schema, Composio tools)
+                            # Handle all function calls (standard, Composio, and ComputerUse natively)
                             if response.tool_call.function_calls:
                                 for fn in response.tool_call.function_calls:
                                     if fn.name == "get_tool_schema":
@@ -270,8 +270,79 @@ class AegisVoiceAgent:
                                             )
                                         ))
 
+                                    # Map native ComputerUse to Aegis Screen Tools if applicable
+                                    elif fn.name in ["open_web_browser", "navigate", "click_at", "double_click_at", "right_click_at", "drag_and_drop", "scroll", "type_text_at", "key_combination", "wait"]:
+                                        logger.info(f"🖥️  Received ComputerUse action: {fn.name}")
+                                        
+                                        mapped_tool = None
+                                        mapped_args = {}
+                                        
+                                        if fn.name == "open_web_browser":
+                                            mapped_tool = "SCREEN_HOTKEY"
+                                            mapped_args = {"keys": ["command", "space"]} # Simulate opening Spotlight or browser
+                                        elif fn.name == "navigate":
+                                            mapped_tool = "SCREEN_TYPE"
+                                            mapped_args = {"text": fn.args["url"], "press_enter": True}
+                                        elif fn.name == "click_at":
+                                            mapped_tool = "SCREEN_CLICK"
+                                            mapped_args["x"], mapped_args["y"] = self._denormalize(fn.args["x"], fn.args["y"])
+                                        elif fn.name == "double_click_at":
+                                            mapped_tool = "SCREEN_DOUBLE_CLICK"
+                                            mapped_args["x"], mapped_args["y"] = self._denormalize(fn.args["x"], fn.args["y"])
+                                        elif fn.name == "right_click_at":
+                                            mapped_tool = "SCREEN_RIGHT_CLICK"
+                                            mapped_args["x"], mapped_args["y"] = self._denormalize(fn.args["x"], fn.args["y"])
+                                        elif fn.name == "drag_and_drop":
+                                            mapped_tool = "SCREEN_DRAG"
+                                            mapped_args["x1"], mapped_args["y1"] = self._denormalize(fn.args["x1"], fn.args["y1"])
+                                            mapped_args["x2"], mapped_args["y2"] = self._denormalize(fn.args["x2"], fn.args["y2"])
+                                        elif fn.name == "scroll":
+                                            mapped_tool = "SCREEN_SCROLL"
+                                            mapped_args["x"], mapped_args["y"] = self._denormalize(fn.args["x"], fn.args["y"])
+                                            mapped_args["clicks"] = -10 if fn.args["direction"] == "down" else 10
+                                        elif fn.name == "type_text_at":
+                                            mapped_tool = "SCREEN_TYPE"
+                                            tx, ty = self._denormalize(fn.args["x"], fn.args["y"])
+                                            # Gating the implicit click before typing
+                                            await gate_action(f"Click at ({tx}, {ty})", self.context, tool_name="SCREEN_CLICK", tool_args={"x": tx, "y": ty})
+                                            mapped_args = {"text": fn.args["text"]}
+                                        elif fn.name == "key_combination":
+                                            mapped_tool = "SCREEN_HOTKEY"
+                                            mapped_args = {"keys": fn.args["keys"]}
+                                        elif fn.name == "wait":
+                                            mapped_tool = "SCREEN_MOVE"
+                                            mapped_args = {"x": 735, "y": 478}
+                                        
+                                        if mapped_tool:
+                                            simulated_action = f"ComputerUse: {fn.name} with args {json.dumps(fn.args)}"
+                                            result = await gate_action(
+                                                simulated_action, self.context,
+                                                tool_name=mapped_tool,
+                                                tool_args=mapped_args,
+                                                on_auth_request=lambda: self._update_status("auth")
+                                            )
+                                            
+                                            shot = capture_screen()
+                                            response_payload = {"url": "macOS Desktop"}
+                                            if not result.get("success"):
+                                                response_payload["error"] = result.get("error", "Action blocked or failed")
+                                            
+                                            function_responses.append(types.Part(
+                                                function_response=types.FunctionResponse(
+                                                    id=fn.id,
+                                                    name=fn.name,
+                                                    response=response_payload,
+                                                    parts=[types.FunctionResponsePart(
+                                                        inline_data=types.FunctionResponseBlob(
+                                                            data=base64.b64decode(shot["base64"]),
+                                                            mime_type=shot["mime_type"]
+                                                        )
+                                                    )]
+                                                )
+                                            ))
+
                                     else:
-                                        # Real tool call (dynamic)
+                                        # Real tool call (dynamic) - not a ComputerUse or Internal tool
                                         tool_name = fn.name
                                         arguments = dict(fn.args) if fn.args else {}
                                         logger.info(f"📥 Received tool call: {tool_name} with args: {arguments}")
@@ -308,84 +379,12 @@ class AegisVoiceAgent:
                                             )
                                         ))
 
-                            # Handle native ComputerUse calls
-                            if response.tool_call.computer_use:
-                                cu = response.tool_call.computer_use
-                                for action in cu.actions:
-                                    logger.info(f"🖥️  Received ComputerUse action: {action.name}")
-                                    
-                                    # Map native ComputerUse to Aegis Screen Tools
-                                    mapped_tool = None
-                                    mapped_args = {}
-                                    
-                                    if action.name == "open_web_browser":
-                                        mapped_tool = "SCREEN_HOTKEY"
-                                        mapped_args = {"keys": ["command", "space"]} # Simulate opening Spotlight or browser
-                                    elif action.name == "navigate":
-                                        mapped_tool = "SCREEN_TYPE"
-                                        mapped_args = {"text": action.args["url"], "press_enter": True}
-                                    elif action.name == "click_at":
-                                        mapped_tool = "SCREEN_CLICK"
-                                        mapped_args["x"], mapped_args["y"] = self._denormalize(action.args["x"], action.args["y"])
-                                    elif action.name == "double_click_at":
-                                        mapped_tool = "SCREEN_DOUBLE_CLICK"
-                                        mapped_args["x"], mapped_args["y"] = self._denormalize(action.args["x"], action.args["y"])
-                                    elif action.name == "right_click_at":
-                                        mapped_tool = "SCREEN_RIGHT_CLICK"
-                                        mapped_args["x"], mapped_args["y"] = self._denormalize(action.args["x"], action.args["y"])
-                                    elif action.name == "drag_and_drop":
-                                        mapped_tool = "SCREEN_DRAG"
-                                        mapped_args["x1"], mapped_args["y1"] = self._denormalize(action.args["x1"], action.args["y1"])
-                                        mapped_args["x2"], mapped_args["y2"] = self._denormalize(action.args["x2"], action.args["y2"])
-                                    elif action.name == "scroll":
-                                        mapped_tool = "SCREEN_SCROLL"
-                                        mapped_args["x"], mapped_args["y"] = self._denormalize(action.args["x"], action.args["y"])
-                                        mapped_args["clicks"] = -10 if action.args["direction"] == "down" else 10
-                                    elif action.name == "type_text_at":
-                                        mapped_tool = "SCREEN_TYPE"
-                                        tx, ty = self._denormalize(action.args["x"], action.args["y"])
-                                        # Gating the implicit click before typing
-                                        await gate_action(f"Click at ({tx}, {ty})", self.context, tool_name="SCREEN_CLICK", tool_args={"x": tx, "y": ty})
-                                        mapped_args = {"text": action.args["text"]}
-                                    elif action.name == "key_combination":
-                                        mapped_tool = "SCREEN_HOTKEY"
-                                        mapped_args = {"keys": action.args["keys"]}
-                                    elif action.name == "wait":
-                                        mapped_tool = "SCREEN_MOVE"
-                                        mapped_args = {"x": 735, "y": 478}
-                                    
-                                    if mapped_tool:
-                                        simulated_action = f"ComputerUse: {action.name} with args {json.dumps(action.args)}"
-                                        result = await gate_action(
-                                            simulated_action, self.context,
-                                            tool_name=mapped_tool,
-                                            tool_args=mapped_args,
-                                            on_auth_request=lambda: self._update_status("auth")
-                                        )
-                                        
-                                        shot = capture_screen()
-                                        response_payload = {"url": "macOS Desktop"}
-                                        if not result.get("success"):
-                                            response_payload["error"] = result.get("error", "Action blocked or failed")
-                                        
-                                        function_responses.append(types.Part(
-                                            function_response=types.FunctionResponse(
-                                                id=action.id,
-                                                name=action.name,
-                                                response=response_payload,
-                                                parts=[types.FunctionResponsePart(
-                                                    inline_data=types.FunctionResponseBlob(
-                                                        data=base64.b64decode(shot["base64"]),
-                                                        mime_type=shot["mime_type"]
-                                                    )
-                                                )]
-                                            )
-                                        ))
-
                             if function_responses:
-                                await session.send(input=types.LiveClientToolResponse(
-                                    function_responses=[p.function_response for p in function_responses]
-                                ))
+                                await session.send(
+                                    input=types.LiveClientToolResponse(
+                                        function_responses=[p.function_response for p in function_responses]
+                                    )
+                                )
 
                         except Exception as e:
                             logger.error(f"Error executing tools: {e}")
