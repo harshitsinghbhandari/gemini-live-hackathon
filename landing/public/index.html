@@ -1,189 +1,612 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Aegis - The trust layer for AI agents</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    <script id="tailwind-config">
-        tailwind.config = {
-          darkMode: "class",
-          theme: {
-            extend: {
-              colors: {
-                "primary": "#7c3bed",
-                "background-light": "#f7f6f8",
-                "background-dark": "#0a0a0f",
-                "surface-dark": "#0f0f17",
-              },
-              fontFamily: {
-                "display": ["Inter", "sans-serif"]
-              },
-              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
-            },
-          },
-        }
-    </script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0a0a0f;
-            min-height: max(884px, 100dvh);
-        }
-        .purple-glow {
-            box-shadow: 0 0 40px 10px rgba(124, 59, 237, 0.05);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aegis — The Trust Layer for AI Agents</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:#080810;--surface:#0f0f1a;--surface2:#141428;
+      --border:rgba(139,92,246,0.15);--border2:rgba(139,92,246,0.08);
+      --purple:#8b5cf6;--purple-lt:#a78bfa;--purple-dk:#5b21b6;--glow:rgba(139,92,246,0.25);
+      --green:#22c55e;--green-bg:rgba(34,197,94,0.08);--green-bd:rgba(34,197,94,0.25);
+      --yellow:#f59e0b;--yellow-bg:rgba(245,158,11,0.08);--yellow-bd:rgba(245,158,11,0.25);
+      --red:#ef4444;--red-bg:rgba(239,68,68,0.08);--red-bd:rgba(239,68,68,0.25);
+      --text:#f1f0ff;--text2:#9e9cb8;--text3:#5c5a72;
+      --display:'Syne',sans-serif;--body:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
+    img{display:block;max-width:100%}
+    .container{max-width:1100px;margin:0 auto;padding:0 max(1.5rem,4vw)}
+
+    /* NAV */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 max(1.5rem,4vw);background:rgba(8,8,16,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border2)}
+    .nav-logo{font-family:var(--display);font-weight:800;font-size:1.15rem;letter-spacing:-0.02em;display:flex;align-items:center;gap:.5rem}
+    .nav-logo-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--purple),var(--purple-dk));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+    .nav-links{display:flex;align-items:center;gap:2rem;font-size:.875rem;color:var(--text2)}
+    .nav-links a:hover{color:var(--text)}
+    .btn-nav{padding:.5rem 1.25rem;background:var(--purple);border-radius:8px;font-weight:500;color:#fff !important;transition:background .2s}
+    .btn-nav:hover{background:var(--purple-lt)}
+    .btn-primary{display:inline-block;padding:.75rem 1.75rem;background:var(--purple);border-radius:10px;font-weight:600;font-size:.95rem;color:#fff;transition:all .2s;border:1px solid transparent}
+    .btn-primary:hover{background:var(--purple-lt);transform:translateY(-1px);box-shadow:0 8px 30px var(--glow)}
+    .btn-ghost{display:inline-block;padding:.75rem 1.75rem;background:transparent;border:1px solid var(--border);border-radius:10px;font-weight:500;font-size:.95rem;color:var(--text2);transition:all .2s}
+    .btn-ghost:hover{border-color:var(--purple);color:var(--text)}
+
+    /* HERO */
+    #hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:8rem 1.5rem 5rem;overflow:hidden;position:relative}
+    .hero-glow{position:absolute;border-radius:50%;filter:blur(120px);pointer-events:none;width:700px;height:700px;background:radial-gradient(circle,rgba(91,33,182,.45) 0%,transparent 70%);top:-150px;left:50%;transform:translateX(-50%)}
+    .hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(139,92,246,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,.04) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,black 30%,transparent 100%)}
+    .hero-badge{position:relative;display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .85rem;border:1px solid var(--border);border-radius:999px;font-family:var(--mono);font-size:.75rem;color:var(--purple-lt);background:rgba(139,92,246,.07);margin-bottom:2rem;animation:fadeUp .6s ease both}
+    .badge-dot{width:6px;height:6px;border-radius:50%;background:var(--purple-lt);animation:pulse 2s ease infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .hero-title{position:relative;font-family:var(--display);font-size:clamp(3.5rem,9vw,7.5rem);font-weight:800;line-height:.92;letter-spacing:-.045em;margin-bottom:.35em;animation:fadeUp .6s .1s ease both}
+    .hero-tagline{position:relative;font-family:var(--display);font-size:clamp(1rem,2.5vw,1.35rem);font-weight:500;color:var(--text2);margin-bottom:1.5rem;animation:fadeUp .6s .2s ease both}
+    .hero-tagline em{font-style:normal;color:var(--purple-lt)}
+    .hero-sub{position:relative;max-width:540px;font-size:1.05rem;color:var(--text2);line-height:1.7;margin:0 auto 2.5rem;animation:fadeUp .6s .3s ease both}
+    .hero-actions{position:relative;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:4rem;animation:fadeUp .6s .4s ease both}
+    .hero-ss{position:relative;width:100%;max-width:900px;animation:fadeUp .8s .5s ease both}
+    .hero-ss::before{content:'';position:absolute;inset:-1px;border-radius:16px;background:linear-gradient(135deg,rgba(139,92,246,.5),rgba(91,33,182,.2),transparent 60%);z-index:0}
+    .ss-frame{position:relative;z-index:1;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface);box-shadow:0 0 0 1px rgba(139,92,246,.1),0 40px 100px rgba(0,0,0,.8),0 0 80px rgba(91,33,182,.15)}
+    .ss-bar{height:36px;background:var(--surface2);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 1rem;gap:.4rem}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .dr{background:#ff5f57}.dy{background:#febc2e}.dg{background:#28c840}
+    .ss-url{flex:1;text-align:center;font-family:var(--mono);font-size:.7rem;color:var(--text3)}
+    .ss-img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover;object-position:top}
+    .ss-ph{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;color:var(--text3);font-family:var(--mono);font-size:.8rem}
+
+    /* TICKER */
+    .ticker{padding:1.5rem 0;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);overflow:hidden;background:var(--surface)}
+    .ticker-track{display:flex;width:max-content;animation:ticker 35s linear infinite}
+    .ticker-item{display:flex;align-items:center;gap:.75rem;padding:0 2rem;font-family:var(--mono);font-size:.75rem;color:var(--text3);white-space:nowrap}
+    .t-sep{color:var(--purple-dk)}
+    @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .tag{font-family:var(--mono);font-size:.65rem;font-weight:500;padding:.15rem .45rem;border-radius:4px;border:1px solid}
+    .tag-g{color:var(--green);border-color:var(--green-bd);background:var(--green-bg)}
+    .tag-y{color:var(--yellow);border-color:var(--yellow-bd);background:var(--yellow-bg)}
+    .tag-r{color:var(--red);border-color:var(--red-bd);background:var(--red-bg)}
+
+    /* SECTIONS */
+    .sec{padding:7rem 0;position:relative}
+    .sec-divider{height:1px;background:linear-gradient(to right,transparent,var(--border),transparent);max-width:900px;margin:0 auto}
+    .sec-header{text-align:center;margin-bottom:4rem}
+    .eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--purple-lt);margin-bottom:.75rem}
+    .sec-title{font-family:var(--display);font-size:clamp(2rem,4vw,3rem);font-weight:800;letter-spacing:-.03em;line-height:1.1;margin-bottom:1rem}
+    .sec-desc{max-width:520px;margin:0 auto;color:var(--text2);font-size:1.05rem;line-height:1.7}
+
+    /* PROBLEM */
+    .problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+    .problem-card{padding:2rem;border:1px solid var(--border2);border-radius:14px;background:var(--surface);transition:border-color .3s}
+    .problem-card:hover{border-color:var(--border)}
+    .problem-icon{font-size:1.5rem;margin-bottom:1rem}
+    .problem-card h3{font-family:var(--display);font-size:1.1rem;font-weight:700;margin-bottom:.5rem;letter-spacing:-.01em}
+    .problem-card p{color:var(--text2);font-size:.95rem;line-height:1.6}
+
+    /* TIERS */
+    .tiers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+    .tier-card{border-radius:16px;overflow:hidden;border:1px solid;background:var(--surface);transition:transform .3s,box-shadow .3s}
+    .tier-card:hover{transform:translateY(-4px)}
+    .tier-card.green{border-color:var(--green-bd)}.tier-card.green:hover{box-shadow:0 20px 60px rgba(34,197,94,.12)}
+    .tier-card.yellow{border-color:var(--yellow-bd)}.tier-card.yellow:hover{box-shadow:0 20px 60px rgba(245,158,11,.12)}
+    .tier-card.red{border-color:var(--red-bd)}.tier-card.red:hover{box-shadow:0 20px 60px rgba(239,68,68,.15)}
+    .tier-head{padding:1.75rem 1.75rem 1.25rem;border-bottom:1px solid}
+    .tier-card.green .tier-head{border-color:var(--green-bd);background:var(--green-bg)}
+    .tier-card.yellow .tier-head{border-color:var(--yellow-bd);background:var(--yellow-bg)}
+    .tier-card.red .tier-head{border-color:var(--red-bd);background:var(--red-bg)}
+    .tier-pip{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:.7rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:.25rem .65rem;border-radius:999px;border:1px solid;margin-bottom:1rem}
+    .tier-card.green .tier-pip{color:var(--green);border-color:var(--green-bd)}
+    .tier-card.yellow .tier-pip{color:var(--yellow);border-color:var(--yellow-bd)}
+    .tier-card.red .tier-pip{color:var(--red);border-color:var(--red-bd)}
+    .pip-dot{width:6px;height:6px;border-radius:50%}
+    .tier-card.green .pip-dot{background:var(--green)}
+    .tier-card.yellow .pip-dot{background:var(--yellow);animation:pyellow 1.5s infinite}
+    .tier-card.red .pip-dot{background:var(--red);animation:pred 1s infinite}
+    @keyframes pyellow{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.4)}50%{box-shadow:0 0 0 4px rgba(245,158,11,0)}}
+    @keyframes pred{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 4px rgba(239,68,68,0)}}
+    .tier-head h3{font-family:var(--display);font-size:1.2rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.4rem}
+    .tier-head p{font-size:.9rem;color:var(--text2)}
+    .tier-body{padding:1.5rem 1.75rem}
+    .tier-auth{font-family:var(--mono);font-size:.72rem;color:var(--text3);margin-bottom:1.25rem;letter-spacing:.04em}
+    .tier-card.green .tier-auth strong{color:var(--green)}
+    .tier-card.yellow .tier-auth strong{color:var(--yellow)}
+    .tier-card.red .tier-auth strong{color:var(--red)}
+    .tier-examples{display:flex;flex-direction:column;gap:.5rem}
+    .tier-ex{font-size:.85rem;color:var(--text2);display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .75rem;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid rgba(255,255,255,.04)}
+    .tier-ex::before{content:'›';opacity:.4;flex-shrink:0}
+    .tier-ss{border-top:1px solid}
+    .tier-card.green .tier-ss{border-color:var(--green-bd)}
+    .tier-card.yellow .tier-ss{border-color:var(--yellow-bd)}
+    .tier-card.red .tier-ss{border-color:var(--red-bd)}
+    .tier-ss img,.mini-ph{width:100%;aspect-ratio:4/3;object-fit:cover;object-position:top;display:block}
+    .mini-ph{background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;color:var(--text3);flex-direction:column;gap:.4rem}
+
+    /* DASHBOARD */
+    #dashboard{padding:7rem 0}
+    .dash-wrap{position:relative}
+    .dash-wrap::before{content:'';position:absolute;inset:-2px;border-radius:18px;background:linear-gradient(135deg,rgba(139,92,246,.3),transparent 50%,rgba(91,33,182,.15));z-index:0}
+    .dash-frame{position:relative;z-index:1;border-radius:16px;overflow:hidden;border:1px solid var(--border);box-shadow:0 40px 120px rgba(0,0,0,.9),0 0 80px rgba(91,33,182,.15)}
+    .dash-bar{height:36px;background:var(--surface2);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 1rem;gap:.4rem}
+    .dash-url{flex:1;text-align:center;font-family:var(--mono);font-size:.7rem;color:var(--text3)}
+    .dash-img,.big-ph{width:100%;aspect-ratio:16/9;object-fit:cover;object-position:top;display:block}
+    .big-ph{background:linear-gradient(160deg,var(--surface) 0%,var(--surface2) 100%);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.85rem;color:var(--text3);flex-direction:column;gap:.75rem}
+    .dash-header{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center;margin-bottom:3rem}
+
+    /* MOBILE */
+    #mobile{padding:7rem 0}
+    .mobile-layout{display:grid;grid-template-columns:1fr 1.5fr;gap:5rem;align-items:center}
+    .phone-wrap{display:flex;justify-content:center;position:relative}
+    .phone-wrap::before{content:'';position:absolute;width:300px;height:300px;background:radial-gradient(circle,rgba(139,92,246,.2),transparent 70%);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
+    .phone-frame{position:relative;z-index:1;width:230px;border-radius:38px;border:1px solid var(--border);background:var(--surface);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.8),0 0 40px rgba(91,33,182,.2);padding:12px}
+    .phone-inner{border-radius:28px;overflow:hidden}
+    .phone-inner img,.phone-ph{width:100%;aspect-ratio:9/19;object-fit:cover;display:block}
+    .phone-ph{background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;color:var(--text3);flex-direction:column;gap:.4rem;border-radius:28px}
+    .mobile-text h2{font-family:var(--display);font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:800;letter-spacing:-.03em;line-height:1.1;margin-bottom:1rem}
+    .mobile-text p{color:var(--text2);font-size:1rem;line-height:1.7;margin-bottom:1.5rem}
+    .mf{display:flex;align-items:flex-start;gap:.75rem;padding:.75rem 0;border-bottom:1px solid var(--border2)}
+    .mf:last-of-type{border-bottom:none}
+    .mf-icon{width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,.1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+    .mf h4{font-size:.9rem;font-weight:600;margin-bottom:.2rem}
+    .mf p{font-size:.82rem;color:var(--text3);margin:0}
+
+    /* FEATURES */
+    #features{padding:7rem 0}
+    .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border2);border-radius:16px;overflow:hidden;border:1px solid var(--border2)}
+    .feature-cell{background:var(--bg);padding:2rem;transition:background .2s}
+    .feature-cell:hover{background:var(--surface)}
+    .f-icon{font-size:1.25rem;margin-bottom:.75rem}
+    .feature-cell h4{font-family:var(--display);font-size:.95rem;font-weight:700;margin-bottom:.4rem;letter-spacing:-.01em}
+    .feature-cell p{font-size:.85rem;color:var(--text2);line-height:1.55}
+
+    /* TOOLS */
+    #tools{padding:7rem 0}
+    .tools-list{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+    .tool-card{border:1px solid var(--border2);border-radius:12px;background:var(--surface);overflow:hidden}
+    .tool-head{padding:1rem 1.25rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:.75rem}
+    .tool-name{font-family:var(--display);font-size:.9rem;font-weight:700}
+    .tool-tiers{padding:.75rem 1.25rem;display:flex;flex-direction:column;gap:.35rem}
+    .tool-tier{display:flex;align-items:center;gap:.5rem;font-size:.8rem}
+    .tool-tier span{color:var(--text2)}
+
+    /* STACK */
+    #stack{padding:7rem 0}
+    .stack-chips{display:flex;flex-wrap:wrap;gap:.75rem;justify-content:center;margin-top:3rem}
+    .stack-chip{padding:.5rem 1rem;border:1px solid var(--border);border-radius:999px;font-family:var(--mono);font-size:.78rem;color:var(--text2);background:var(--surface);transition:all .2s}
+    .stack-chip:hover{border-color:var(--purple);color:var(--purple-lt);background:rgba(139,92,246,.06)}
+
+    /* CTA */
+    #cta{padding:8rem 0;text-align:center;overflow:hidden;position:relative}
+    .cta-glow{position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(91,33,182,.3) 0%,transparent 70%);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);filter:blur(80px);pointer-events:none}
+    #cta h2{font-family:var(--display);font-size:clamp(2.5rem,6vw,5rem);font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:1.25rem;position:relative}
+    #cta p{color:var(--text2);font-size:1.1rem;max-width:450px;margin:0 auto 2.5rem;line-height:1.7;position:relative}
+    .cta-actions{position:relative;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+
+    /* FOOTER */
+    footer{border-top:1px solid var(--border2);padding:2rem max(1.5rem,4vw);display:flex;align-items:center;justify-content:space-between;font-size:.82rem;color:var(--text3);flex-wrap:wrap;gap:1rem}
+    footer a{color:var(--text2)}
+    footer a:hover{color:var(--text)}
+    .footer-links{display:flex;gap:1.5rem}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease}
+    .reveal.visible{opacity:1;transform:translateY(0)}
+
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:var(--bg)}
+    ::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:3px}
+
+    @media(max-width:768px){
+      .nav-links{display:none}
+      .problem-grid,.tiers-grid,.dash-header,.mobile-layout,.features-grid,.tools-list{grid-template-columns:1fr}
+    }
+  </style>
 </head>
-<body class="bg-background-dark text-slate-100 font-display selection:bg-primary/30">
-    <!-- Header / TopAppBar -->
-    <nav class="sticky top-0 z-50 flex items-center bg-background-dark/80 backdrop-blur-md p-4 justify-between border-b border-primary/10">
-        <div class="text-primary flex size-10 shrink-0 items-center justify-center">
-            <span class="material-symbols-outlined text-3xl">shield_lock</span>
-        </div>
-        <h2 class="text-slate-100 text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-2">Aegis</h2>
-        <div class="flex w-10 items-center justify-end">
-            <button class="flex cursor-pointer items-center justify-center rounded-lg h-10 w-10 bg-transparent text-slate-100 transition-colors hover:bg-white/5">
-                <span class="material-symbols-outlined">menu</span>
-            </button>
-        </div>
-    </nav>
+<body>
 
-    <!-- Hero Section -->
-    <section class="relative px-6 pt-16 pb-20 overflow-hidden">
-        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none">
-            <div class="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-primary/20 blur-[100px] rounded-full"></div>
-        </div>
-        <div class="relative z-10 max-w-md mx-auto text-center">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-6">
-                <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                <span class="text-xs font-medium text-primary uppercase tracking-widest">Built for Mac</span>
-            </div>
-            <h1 class="text-slate-50 tracking-tight text-4xl font-bold leading-[1.1] mb-6">
-                The trust layer for AI agents.
-            </h1>
-            <p class="text-slate-400 text-lg font-normal leading-relaxed mb-10">
-                AI agents can read your emails, send messages, delete files. Who's stopping them?
-            </p>
-            <div class="flex flex-col gap-4">
-                <a href="#demo" class="flex items-center justify-center rounded-xl h-14 px-8 bg-primary text-white text-base font-semibold transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-primary/20">
-                    Watch Demo
-                </a>
-                <a href="/setup" class="flex items-center justify-center rounded-xl h-14 px-8 bg-transparent border border-primary/30 text-slate-100 text-base font-semibold transition-all hover:bg-primary/5 active:scale-95">
-                    Get Setup
-                </a>
-            </div>
-        </div>
-    </section>
+<!-- NAV -->
+<nav>
+  <div class="nav-logo"><div class="nav-logo-icon">◈</div> Aegis</div>
+  <div class="nav-links">
+    <a href="#tiers">Security Model</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#tools">Tools</a>
+    <a href="https://aegis.projectalpha.in/setup">Setup</a>
+    <a href="https://aegis.projectalpha.in" class="btn-nav">Live Demo →</a>
+  </div>
+</nav>
 
-    <!-- Classification Section -->
-    <section class="px-6 py-16 bg-surface-dark/50">
-        <div class="max-w-md mx-auto">
-            <h2 class="text-slate-50 text-2xl font-bold leading-tight mb-8">Every action. <br/><span class="text-primary">Classified. Controlled.</span></h2>
-            <div class="space-y-4">
-                <!-- Card 1 -->
-                <div class="flex items-center p-5 rounded-xl bg-surface-dark border-l-4 border-emerald-500/50 purple-glow">
-                    <div class="size-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mr-4">
-                        <span class="material-symbols-outlined text-emerald-500">done_all</span>
-                    </div>
-                    <div>
-                        <h3 class="text-slate-100 font-semibold text-lg">Silent</h3>
-                        <p class="text-slate-500 text-sm">Safe actions allowed instantly</p>
-                    </div>
-                </div>
-                <!-- Card 2 -->
-                <div class="flex items-center p-5 rounded-xl bg-surface-dark border-l-4 border-amber-500/50 purple-glow">
-                    <div class="size-10 rounded-lg bg-amber-500/10 flex items-center justify-center mr-4">
-                        <span class="material-symbols-outlined text-amber-500">touch_app</span>
-                    </div>
-                    <div>
-                        <h3 class="text-slate-100 font-semibold text-lg">Confirm</h3>
-                        <p class="text-slate-500 text-sm">Requires manual tap on device</p>
-                    </div>
-                </div>
-                <!-- Card 3 -->
-                <div class="flex items-center p-5 rounded-xl bg-surface-dark border-l-4 border-rose-500/50 purple-glow">
-                    <div class="size-10 rounded-lg bg-rose-500/10 flex items-center justify-center mr-4">
-                        <span class="material-symbols-outlined text-rose-500">fingerprint</span>
-                    </div>
-                    <div>
-                        <h3 class="text-slate-100 font-semibold text-lg">Biometric</h3>
-                        <p class="text-slate-500 text-sm">FaceID or TouchID verification</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-badge"><span class="badge-dot"></span> Built for the Gemini Live Agent Challenge</div>
+  <h1 class="hero-title">Aegis</h1>
+  <p class="hero-tagline">The <em>trust layer</em> for AI agents.</p>
+  <p class="hero-sub">AI agents can now take actions on your behalf — sending emails, merging code, deleting files. Aegis makes sure none of that happens without you knowing. Every action. Every time.</p>
+  <div class="hero-actions">
+    <a href="https://aegis.projectalpha.in" class="btn-primary">Try Live Demo</a>
+    <a href="https://aegis.projectalpha.in/setup" class="btn-ghost">Get Started →</a>
+  </div>
+  <div class="hero-ss">
+    <div class="ss-frame">
+      <div class="ss-bar">
+        <div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div>
+        <div class="ss-url">aegismac.projectalpha.in</div>
+      </div>
+      <img src="screenshots/hero/mac-app.png" alt="Aegis Mac App" class="ss-img"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+      <div class="ss-ph" style="display:none">
+        <span style="font-size:2rem">🎙️</span>
+        <span>screenshots/hero/mac-app.png</span>
+        <span style="font-size:.7rem;opacity:.5">Mac App · Voice Visualization</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <!-- How it Works -->
-    <section class="px-6 py-20">
-        <div class="max-w-md mx-auto">
-            <h2 class="text-slate-50 text-2xl font-bold mb-10 text-center">How it works</h2>
-            <div class="space-y-12">
-                <div class="flex gap-6">
-                    <div class="flex flex-col items-center">
-                        <div class="size-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white shrink-0">1</div>
-                        <div class="w-px h-full bg-primary/20 mt-2"></div>
-                    </div>
-                    <div class="pb-2">
-                        <h4 class="text-slate-100 font-bold text-lg mb-1">You speak naturally</h4>
-                        <p class="text-slate-500">Interact with your AI agent as you normally would on your Mac.</p>
-                    </div>
-                </div>
-                <div class="flex gap-6">
-                    <div class="flex flex-col items-center">
-                        <div class="size-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white shrink-0">2</div>
-                        <div class="w-px h-full bg-primary/20 mt-2"></div>
-                    </div>
-                    <div class="pb-2">
-                        <h4 class="text-slate-100 font-bold text-lg mb-1">Aegis classifies the risk</h4>
-                        <p class="text-slate-500">Our local model determines the sensitivity of the requested action.</p>
-                    </div>
-                </div>
-                <div class="flex gap-6">
-                    <div class="flex flex-col items-center">
-                        <div class="size-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white shrink-0">3</div>
-                        <div class="w-px h-full bg-primary/20 mt-2"></div>
-                    </div>
-                    <div class="pb-2">
-                        <h4 class="text-slate-100 font-bold text-lg mb-1">Your iPhone gets the request</h4>
-                        <p class="text-slate-500">A push notification appears instantly for verification.</p>
-                    </div>
-                </div>
-                <div class="flex gap-6">
-                    <div class="flex flex-col items-center">
-                        <div class="size-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white shrink-0">4</div>
-                    </div>
-                    <div class="pb-2">
-                        <h4 class="text-slate-100 font-bold text-lg mb-1">You approve. It executes.</h4>
-                        <p class="text-slate-500">Control stays in your hands. No hidden actions, ever.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <div class="ticker-item"><span class="tag tag-g">GREEN</span> Read email <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-y">YELLOW</span> Create calendar event <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-r">RED</span> Send email <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-g">GREEN</span> List GitHub issues <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-y">YELLOW</span> Create Google Doc <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-r">RED</span> Merge pull request <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-g">GREEN</span> Read spreadsheet <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-y">YELLOW</span> Reply to thread <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-r">RED</span> Delete repository <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-g">GREEN</span> View presentation <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-y">YELLOW</span> Add calendar event <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-r">RED</span> Trash emails <span class="t-sep">◈</span></div>
+    <!-- duplicate for seamless loop -->
+    <div class="ticker-item"><span class="tag tag-g">GREEN</span> Read email <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-y">YELLOW</span> Create calendar event <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-r">RED</span> Send email <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-g">GREEN</span> List GitHub issues <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-y">YELLOW</span> Create Google Doc <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-r">RED</span> Merge pull request <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-g">GREEN</span> Read spreadsheet <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-y">YELLOW</span> Reply to thread <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-r">RED</span> Delete repository <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-g">GREEN</span> View presentation <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-y">YELLOW</span> Add calendar event <span class="t-sep">◈</span></div>
+    <div class="ticker-item"><span class="tag tag-r">RED</span> Trash emails <span class="t-sep">◈</span></div>
+  </div>
+</div>
 
-    <!-- Footer -->
-    <footer class="px-6 py-16 bg-surface-dark border-t border-white/5">
-        <div class="max-w-md mx-auto text-center">
-            <div class="flex justify-center gap-6 mb-10 text-slate-400 font-medium text-sm">
-                <a class="hover:text-primary transition-colors" href="https://github.com/harshitbhandari0318/gemini-live-hackathon">GitHub</a>
-                <a class="hover:text-primary transition-colors" href="https://aegisdashboard.projectalpha.in">Dashboard</a>
-                <a class="hover:text-primary transition-colors" href="/setup">Setup</a>
-            </div>
-            <div class="space-y-2 mb-8">
-                <p class="text-slate-500 text-xs">Built for the Gemini Live Agent Challenge</p>
-                <p class="text-slate-300 text-sm font-semibold tracking-tight">Built by Harshit Singh Bhandari</p>
-            </div>
-            <div class="pt-8 border-t border-white/5">
-                <div class="flex items-center justify-center gap-2 opacity-50 grayscale">
-                    <span class="material-symbols-outlined text-xl">shield_lock</span>
-                    <span class="font-bold text-sm">Aegis 2024</span>
-                </div>
-            </div>
+<!-- PROBLEM -->
+<section class="sec" id="problem">
+  <div class="container">
+    <div class="sec-header reveal">
+      <p class="eyebrow">The Problem</p>
+      <h2 class="sec-title">Autonomy without accountability<br/>is just chaos with good PR.</h2>
+      <p class="sec-desc">AI agents are powerful. That's exactly the problem. Every delegated task is a potential irreversible action taken without your explicit consent.</p>
+    </div>
+    <div class="problem-grid reveal">
+      <div class="problem-card">
+        <div class="problem-icon">🔓</div>
+        <h3>Agents act first</h3>
+        <p>Without a gate, an agent interpreting "clean up my inbox" might delete three years of email before you can blink.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">🌀</div>
+        <h3>Context gets lost</h3>
+        <p>Agents operate in isolation. They don't know what's irreversible, what's sensitive, or what requires human judgment.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">👁️</div>
+        <h3>No audit trail</h3>
+        <p>When something goes wrong, there's no record of what the agent did, when, and why. Accountability disappears.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon">🔑</div>
+        <h3>No real gate</h3>
+        <p>Confirm dialogs can be bypassed. A trust layer must be structural — biometric, not just a button.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- TIERS -->
+<section class="sec" id="tiers">
+  <div class="container">
+    <div class="sec-header reveal">
+      <p class="eyebrow">The Security Model</p>
+      <h2 class="sec-title">Three tiers. One clear line.</h2>
+      <p class="sec-desc">Every action Aegis takes is classified before it executes. Not as an afterthought — as a first principle.</p>
+    </div>
+    <div class="tiers-grid reveal">
+
+      <!-- GREEN -->
+      <div class="tier-card green">
+        <div class="tier-head">
+          <div class="tier-pip"><span class="pip-dot"></span> Green · Silent</div>
+          <h3>Read-only</h3>
+          <p>Runs without interruption. Nothing written, nothing changed.</p>
         </div>
-    </footer>
+        <div class="tier-body">
+          <p class="tier-auth">AUTH REQUIRED: <strong>None</strong></p>
+          <div class="tier-examples">
+            <div class="tier-ex">Read emails and threads</div>
+            <div class="tier-ex">List calendar events</div>
+            <div class="tier-ex">View documents and sheets</div>
+            <div class="tier-ex">Browse GitHub issues and PRs</div>
+          </div>
+        </div>
+        <div class="tier-ss">
+          <img src="screenshots/tiers/green.png" alt="Green tier"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+          <div class="mini-ph" style="display:none"><span>🟢</span><span>screenshots/tiers/green.png</span></div>
+        </div>
+      </div>
+
+      <!-- YELLOW -->
+      <div class="tier-card yellow">
+        <div class="tier-head">
+          <div class="tier-pip"><span class="pip-dot"></span> Yellow · Confirm</div>
+          <h3>Creates & modifies</h3>
+          <p>Aegis reads the action aloud. You say yes or no.</p>
+        </div>
+        <div class="tier-body">
+          <p class="tier-auth">AUTH REQUIRED: <strong>Voice Confirmation</strong></p>
+          <div class="tier-examples">
+            <div class="tier-ex">Create and update calendar events</div>
+            <div class="tier-ex">Create and edit documents</div>
+            <div class="tier-ex">Reply to email threads</div>
+            <div class="tier-ex">Open GitHub issues, add labels</div>
+          </div>
+        </div>
+        <div class="tier-ss">
+          <img src="screenshots/tiers/yellow.png" alt="Yellow tier"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+          <div class="mini-ph" style="display:none"><span>🟡</span><span>screenshots/tiers/yellow.png</span></div>
+        </div>
+      </div>
+
+      <!-- RED -->
+      <div class="tier-card red">
+        <div class="tier-head">
+          <div class="tier-pip"><span class="pip-dot"></span> Red · Biometric</div>
+          <h3>Irreversible</h3>
+          <p>Touch ID on Mac. Face ID on iPhone. No bypass.</p>
+        </div>
+        <div class="tier-body">
+          <p class="tier-auth">AUTH REQUIRED: <strong>Touch ID / Face ID</strong></p>
+          <div class="tier-examples">
+            <div class="tier-ex">Send, delete, or trash emails</div>
+            <div class="tier-ex">Merge or delete repositories</div>
+            <div class="tier-ex">Delete calendar events</div>
+            <div class="tier-ex">Clear tasks, delete sheets</div>
+          </div>
+        </div>
+        <div class="tier-ss">
+          <img src="screenshots/tiers/red.png" alt="Red tier"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+          <div class="mini-ph" style="display:none"><span>🔴</span><span>screenshots/tiers/red.png</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- DASHBOARD -->
+<section id="dashboard" class="sec">
+  <div class="container">
+    <div class="dash-header reveal">
+      <div>
+        <p class="eyebrow">Real-Time Oversight</p>
+        <h2 class="sec-title" style="text-align:left;margin-bottom:.75rem">Every action.<br/>Live, logged, yours.</h2>
+        <p style="color:var(--text2);font-size:1rem;line-height:1.7;margin-bottom:1.75rem">The Aegis dashboard streams every agent action in real time — what it did, which tier it fell under, and whether it was approved or blocked. Your full audit trail, always on.</p>
+        <a href="https://aegisdashboard.projectalpha.in" class="btn-primary">Open Dashboard →</a>
+      </div>
+      <div></div>
+    </div>
+    <div class="dash-wrap reveal">
+      <div class="dash-frame">
+        <div class="dash-bar">
+          <div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div>
+          <div class="dash-url">aegisdashboard.projectalpha.in</div>
+        </div>
+        <img src="screenshots/dashboard/dashboard.png" alt="Aegis Dashboard" class="dash-img"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="big-ph" style="display:none"><span style="font-size:2rem">📊</span><span>screenshots/dashboard/dashboard.png</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- MOBILE -->
+<section id="mobile" class="sec">
+  <div class="container">
+    <div class="mobile-layout">
+      <div class="phone-wrap reveal">
+        <div class="phone-frame">
+          <div class="phone-inner">
+            <img src="screenshots/mobile/mobile-auth.png" alt="Aegis Mobile"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+            <div class="phone-ph" style="display:none"><span style="font-size:1.5rem">📱</span><span style="text-align:center">screenshots/mobile/<br/>mobile-auth.png</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="mobile-text reveal">
+        <p class="eyebrow">Companion App</p>
+        <h2>Face ID on your phone.<br/>For actions on your Mac.</h2>
+        <p>When a RED action fires, your iPhone becomes the key. Aegis sends a push notification, you review the pending action, and authenticate with Face ID. The agent waits. You decide.</p>
+        <div class="mf">
+          <div class="mf-icon">🔔</div>
+          <div><h4>Instant push notification</h4><p>Get alerted the moment a high-risk action is pending approval.</p></div>
+        </div>
+        <div class="mf">
+          <div class="mf-icon">🧬</div>
+          <div><h4>WebAuthn / Face ID</h4><p>Native biometric auth via FIDO2. No passwords, no workarounds.</p></div>
+        </div>
+        <div class="mf">
+          <div class="mf-icon">⏸️</div>
+          <div><h4>Agent waits for you</h4><p>The action is held until you approve or deny. Nothing runs unilaterally.</p></div>
+        </div>
+        <div style="margin-top:1.5rem">
+          <a href="https://aegismobile.projectalpha.in" class="btn-ghost">Open Mobile App →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- FEATURES -->
+<section id="features" class="sec">
+  <div class="container">
+    <div class="sec-header reveal">
+      <p class="eyebrow">Principles</p>
+      <h2 class="sec-title">Not a wrapper.<br/>A philosophy.</h2>
+    </div>
+    <div class="features-grid reveal">
+      <div class="feature-cell"><div class="f-icon">🔐</div><h4>Classify before execute</h4><p>Every action is risk-classified before it runs. The gate is structural, not optional.</p></div>
+      <div class="feature-cell"><div class="f-icon">🎙️</div><h4>Voice-native</h4><p>Built on Gemini Live API. Talk to your agent naturally — confirmation flows are part of the conversation.</p></div>
+      <div class="feature-cell"><div class="f-icon">🧬</div><h4>Biometric-gated</h4><p>Your fingerprint and your face are the final keys. No bypass path exists for irreversible actions.</p></div>
+      <div class="feature-cell"><div class="f-icon">📡</div><h4>Real-time audit log</h4><p>Every action streams to your dashboard via SSE. The record is permanent, the visibility is instant.</p></div>
+      <div class="feature-cell"><div class="f-icon">📱</div><h4>Cross-device control</h4><p>Your Mac delegates, your iPhone approves. The security boundary spans your devices intentionally.</p></div>
+      <div class="feature-cell"><div class="f-icon">⚡</div><h4>Five-minute setup</h4><p>One install command, a few API keys, and you're running a fully secured agentic environment.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- TOOLS -->
+<section id="tools" class="sec">
+  <div class="container">
+    <div class="sec-header reveal">
+      <p class="eyebrow">Supported Tools</p>
+      <h2 class="sec-title">7 toolkits. All tiered.</h2>
+      <p class="sec-desc">Every supported integration is strictly categorized. Aegis knows what each tool can do — and enforces the right gate accordingly.</p>
+    </div>
+    <div class="tools-list reveal">
+      <div class="tool-card">
+        <div class="tool-head"><span style="font-size:1.1rem">📧</span><span class="tool-name">Gmail</span></div>
+        <div class="tool-tiers">
+          <div class="tool-tier"><span class="tag tag-g">GREEN</span><span>Read emails and threads</span></div>
+          <div class="tool-tier"><span class="tag tag-y">YELLOW</span><span>Create drafts, reply to threads</span></div>
+          <div class="tool-tier"><span class="tag tag-r">RED</span><span>Send, delete, or trash emails</span></div>
+        </div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-head"><span style="font-size:1.1rem">📅</span><span class="tool-name">Google Calendar</span></div>
+        <div class="tool-tiers">
+          <div class="tool-tier"><span class="tag tag-g">GREEN</span><span>List and get events</span></div>
+          <div class="tool-tier"><span class="tag tag-y">YELLOW</span><span>Create and update events</span></div>
+          <div class="tool-tier"><span class="tag tag-r">RED</span><span>Delete events</span></div>
+        </div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-head"><span style="font-size:1.1rem">📄</span><span class="tool-name">Google Docs</span></div>
+        <div class="tool-tiers">
+          <div class="tool-tier"><span class="tag tag-g">GREEN</span><span>Read documents</span></div>
+          <div class="tool-tier"><span class="tag tag-y">YELLOW</span><span>Create and edit documents</span></div>
+          <div class="tool-tier"><span class="tag tag-r">RED</span><span>Delete content or export</span></div>
+        </div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-head"><span style="font-size:1.1rem">📊</span><span class="tool-name">Google Sheets</span></div>
+        <div class="tool-tiers">
+          <div class="tool-tier"><span class="tag tag-g">GREEN</span><span>Read rows and worksheets</span></div>
+          <div class="tool-tier"><span class="tag tag-y">YELLOW</span><span>Add rows, format cells</span></div>
+          <div class="tool-tier"><span class="tag tag-r">RED</span><span>Clear values or delete sheets</span></div>
+        </div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-head"><span style="font-size:1.1rem">🐙</span><span class="tool-name">GitHub</span></div>
+        <div class="tool-tiers">
+          <div class="tool-tier"><span class="tag tag-g">GREEN</span><span>List issues, PRs, commits</span></div>
+          <div class="tool-tier"><span class="tag tag-y">YELLOW</span><span>Create issues, review PRs</span></div>
+          <div class="tool-tier"><span class="tag tag-r">RED</span><span>Merge PRs or delete repos</span></div>
+        </div>
+      </div>
+      <div class="tool-card">
+        <div class="tool-head"><span style="font-size:1.1rem">✅</span><span class="tool-name">Google Tasks</span></div>
+        <div class="tool-tiers">
+          <div class="tool-tier"><span class="tag tag-g">GREEN</span><span>List and read tasks</span></div>
+          <div class="tool-tier"><span class="tag tag-y">YELLOW</span><span>Insert or update tasks</span></div>
+          <div class="tool-tier"><span class="tag tag-r">RED</span><span>Delete or clear task lists</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- STACK -->
+<section id="stack" class="sec">
+  <div class="container">
+    <div class="sec-header reveal">
+      <p class="eyebrow">Tech Stack</p>
+      <h2 class="sec-title">Built on real infrastructure.</h2>
+      <p class="sec-desc">Voice-native, biometric-native, cloud-native. Every layer purpose-built for the agentic workflow.</p>
+    </div>
+    <div class="stack-chips reveal">
+      <span class="stack-chip">Gemini Live API</span>
+      <span class="stack-chip">Gemini 2.5 Flash</span>
+      <span class="stack-chip">Composio</span>
+      <span class="stack-chip">macOS LocalAuthentication</span>
+      <span class="stack-chip">WebAuthn / FIDO2</span>
+      <span class="stack-chip">FastAPI</span>
+      <span class="stack-chip">GCP Cloud Run</span>
+      <span class="stack-chip">Firestore</span>
+      <span class="stack-chip">React PWA</span>
+      <span class="stack-chip">SSE Streaming</span>
+      <span class="stack-chip">pyobjc</span>
+      <span class="stack-chip">Face ID</span>
+      <span class="stack-chip">Touch ID</span>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="cta-glow"></div>
+  <div class="container">
+    <div class="reveal">
+      <h2>Let the agent work.<br/>Keep the control.</h2>
+      <p>Aegis is live. Five minutes to set up.</p>
+      <div class="cta-actions">
+        <a href="https://aegis.projectalpha.in" class="btn-primary">Try Live Demo</a>
+        <a href="https://aegis.projectalpha.in/setup" class="btn-ghost">Read Setup Guide →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span>◈ Aegis · Built by Harshit Singh Bhandari · Gemini Live Agent Challenge · March 2026</span>
+  <div class="footer-links">
+    <a href="https://aegis.projectalpha.in">Demo</a>
+    <a href="https://aegisdashboard.projectalpha.in">Dashboard</a>
+    <a href="https://aegismac.projectalpha.in">Mac App</a>
+    <a href="https://aegismobile.projectalpha.in">Mobile</a>
+    <a href="https://aegis.projectalpha.in/setup">Setup</a>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
 </body>
 </html>

@@ -1,262 +1,1014 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html lang="en">
+
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Aegis - Setup Wizard</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#7c3bed",
-                        "background-light": "#f7f6f8",
-                        "background-dark": "#0a0a0f",
-                        "card-dark": "#0f0f17",
-                        "border-dark": "#1f1f2e",
-                    },
-                    fontFamily: {
-                        "display": ["Inter", "sans-serif"],
-                        "mono": ["JetBrains Mono", "monospace"]
-                    },
-                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
-                },
-            },
-        }
-    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis — Setup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet" />
     <style>
-        body {
-            min-height: max(884px, 100dvh);
-            background-color: #0a0a0f;
+        :root {
+            --bg: #080810;
+            --surface: #0f0f1a;
+            --surface2: #141428;
+            --surface3: #1a1a30;
+            --border: rgba(139, 92, 246, 0.15);
+            --border2: rgba(139, 92, 246, 0.08);
+            --border-mid: rgba(139, 92, 246, 0.3);
+            --purple: #8b5cf6;
+            --purple-lt: #a78bfa;
+            --purple-dk: #5b21b6;
+            --glow: rgba(139, 92, 246, 0.25);
+            --green: #22c55e;
+            --green-bg: rgba(34, 197, 94, 0.08);
+            --green-bd: rgba(34, 197, 94, 0.3);
+            --text: #f1f0ff;
+            --text2: #9e9cb8;
+            --text3: #5c5a72;
+            --display: 'Syne', sans-serif;
+            --body: 'DM Sans', sans-serif;
+            --mono: 'DM Mono', monospace;
         }
-        .step-hidden { display: none; }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html {
+            scroll-behavior: smooth
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--body);
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none
+        }
+
+        /* BG FX */
+        .bg-glow {
+            position: fixed;
+            width: 700px;
+            height: 700px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(91, 33, 182, .35) 0%, transparent 70%);
+            filter: blur(100px);
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(139, 92, 246, .03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 92, 246, .03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 80% 50% at 50% 0%, black 20%, transparent 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* NAV */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 max(1.5rem, 4vw);
+            background: rgba(8, 8, 16, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border2);
+        }
+
+        .nav-logo {
+            font-family: var(--display);
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: -.02em;
+            display: flex;
+            align-items: center;
+            gap: .45rem
+        }
+
+        .nav-logo-icon {
+            width: 26px;
+            height: 26px;
+            background: linear-gradient(135deg, var(--purple), var(--purple-dk));
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .8rem
+        }
+
+        .nav-back {
+            font-family: var(--mono);
+            font-size: .75rem;
+            color: var(--text3);
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            transition: color .2s
+        }
+
+        .nav-back:hover {
+            color: var(--purple-lt)
+        }
+
+        /* CARD */
+        .card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 440px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px rgba(139, 92, 246, .06), 0 40px 100px rgba(0, 0, 0, .7), 0 0 60px rgba(91, 33, 182, .12);
+        }
+
+        .card-top {
+            padding: 2rem 2rem 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border2);
+            background: linear-gradient(180deg, rgba(139, 92, 246, .05) 0%, transparent 100%);
+        }
+
+        .card-logo {
+            font-family: var(--display);
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -.03em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            margin-bottom: 1.5rem
+        }
+
+        .card-logo-icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, var(--purple), var(--purple-dk));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .9rem
+        }
+
+        /* PROGRESS */
+        .progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem
+        }
+
+        .progress-track {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: .5rem
+        }
+
+        .prog-dot {
+            width: 32px;
+            height: 4px;
+            border-radius: 999px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            transition: all .4s ease;
+        }
+
+        .prog-dot.active {
+            background: var(--purple);
+            border-color: var(--purple);
+            box-shadow: 0 0 8px rgba(139, 92, 246, .5)
+        }
+
+        .prog-dot.done {
+            background: var(--purple-dk);
+            border-color: var(--purple-dk);
+            opacity: .5
+        }
+
+        /* CARD BODY */
+        .card-body {
+            padding: 2rem
+        }
+
+        .step {
+            display: none
+        }
+
+        .step.visible {
+            display: block
+        }
+
+        /* STEP HEADER */
+        .step-eyebrow {
+            font-family: var(--mono);
+            font-size: .7rem;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--purple-lt);
+            margin-bottom: .5rem
+        }
+
+        .step-title {
+            font-family: var(--display);
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -.025em;
+            margin-bottom: .35rem
+        }
+
+        .step-sub {
+            font-size: .875rem;
+            color: var(--text2);
+            line-height: 1.6;
+            margin-bottom: 1.75rem
+        }
+
+        /* FORM */
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: .4rem;
+            margin-bottom: 1rem
+        }
+
+        .field label {
+            font-size: .8rem;
+            font-weight: 500;
+            color: var(--text2);
+            letter-spacing: .01em
+        }
+
+        .field input {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: .75rem 1rem;
+            color: var(--text);
+            font-family: var(--body);
+            font-size: .9rem;
+            transition: border-color .2s, box-shadow .2s;
+            outline: none;
+        }
+
+        .field input::placeholder {
+            color: var(--text3)
+        }
+
+        .field input:focus {
+            border-color: var(--purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, .12)
+        }
+
+        .field-hint {
+            font-family: var(--mono);
+            font-size: .68rem;
+            color: var(--text3);
+            margin-top: .25rem
+        }
+
+        .field-hint a {
+            color: var(--purple-lt);
+            transition: color .2s
+        }
+
+        .field-hint a:hover {
+            color: var(--text)
+        }
+
+        /* TOOL GRID */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: .6rem;
+            margin-bottom: 1.5rem
+        }
+
+        .tool-label {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            padding: .75rem 1rem;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all .2s;
+            user-select: none;
+        }
+
+        .tool-label:hover {
+            border-color: var(--border-mid)
+        }
+
+        .tool-label.checked {
+            border-color: var(--purple);
+            background: rgba(139, 92, 246, .08)
+        }
+
+        .tool-label input[type=checkbox] {
+            display: none
+        }
+
+        .tool-checkbox {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1.5px solid var(--border-mid);
+            background: var(--surface);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .2s;
+        }
+
+        .tool-label.checked .tool-checkbox {
+            background: var(--purple);
+            border-color: var(--purple)
+        }
+
+        .tool-checkbox::after {
+            content: '';
+            display: none;
+            width: 9px;
+            height: 6px;
+            border-left: 2px solid #fff;
+            border-bottom: 2px solid #fff;
+            transform: rotate(-45deg) translateY(-1px)
+        }
+
+        .tool-label.checked .tool-checkbox::after {
+            display: block
+        }
+
+        .tool-icon {
+            font-size: 1rem
+        }
+
+        .tool-name {
+            font-size: .85rem;
+            font-weight: 500
+        }
+
+        .tool-required {
+            font-family: var(--mono);
+            font-size: .6rem;
+            color: var(--purple-lt);
+            margin-left: auto
+        }
+
+        .composio-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .4rem;
+            font-family: var(--mono);
+            font-size: .75rem;
+            color: var(--text3);
+            padding: .75rem;
+            border: 1px solid var(--border2);
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            transition: all .2s;
+        }
+
+        .composio-link:hover {
+            border-color: var(--border-mid);
+            color: var(--purple-lt)
+        }
+
+        /* INSTALL BLOCK */
+        .install-block {
+            position: relative;
+            background: rgba(0, 0, 0, .4);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: .75rem;
+            transition: border-color .2s;
+            overflow: hidden;
+        }
+
+        .install-block:hover {
+            border-color: var(--border-mid)
+        }
+
+        .install-block code {
+            font-family: var(--mono);
+            font-size: .78rem;
+            color: var(--purple-lt);
+            word-break: break-all
+        }
+
+        .copy-hint {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, .7);
+            opacity: 0;
+            transition: opacity .2s;
+            border-radius: 10px;
+            font-family: var(--mono);
+            font-size: .75rem;
+            color: #fff;
+        }
+
+        .install-block:hover .copy-hint {
+            opacity: 1
+        }
+
+        .copied-toast {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(34, 197, 94, .15);
+            border-radius: 10px;
+            font-family: var(--mono);
+            font-size: .75rem;
+            color: var(--green);
+            opacity: 0;
+            transition: opacity .2s;
+            pointer-events: none;
+        }
+
+        .install-block.copied .copied-toast {
+            opacity: 1
+        }
+
+        .install-block.copied .copy-hint {
+            opacity: 0
+        }
+
+        .dl-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .6rem;
+            padding: .85rem;
+            border: 1px solid var(--border-mid);
+            border-radius: 10px;
+            color: var(--purple-lt);
+            font-family: var(--display);
+            font-size: .9rem;
+            font-weight: 600;
+            background: rgba(139, 92, 246, .05);
+            cursor: pointer;
+            transition: all .2s;
+            margin-bottom: .75rem;
+        }
+
+        .dl-btn:hover {
+            background: rgba(139, 92, 246, .12);
+            border-color: var(--purple)
+        }
+
+        /* QR */
+        .qr-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .75rem;
+            padding: 1.5rem;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 14px;
+            margin-bottom: 1.5rem;
+        }
+
+        .qr-frame {
+            background: #fff;
+            padding: 8px;
+            border-radius: 10px;
+            width: 120px;
+            height: 120px
+        }
+
+        .qr-frame img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 4px
+        }
+
+        .qr-label {
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--text3)
+        }
+
+        /* BUTTONS */
+        .btn-main {
+            width: 100%;
+            padding: .9rem;
+            background: var(--purple);
+            border-radius: 10px;
+            font-family: var(--display);
+            font-size: .95rem;
+            font-weight: 700;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: all .2s;
+            letter-spacing: -.01em;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, .3);
+        }
+
+        .btn-main:hover {
+            background: var(--purple-lt);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 28px rgba(139, 92, 246, .4)
+        }
+
+        .btn-main:active {
+            transform: translateY(0)
+        }
+
+        /* SUCCESS */
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, .1);
+            border: 1.5px solid var(--border-mid);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+            font-size: 2.2rem;
+        }
+
+        .success-links {
+            display: flex;
+            flex-direction: column;
+            gap: .6rem;
+            margin: 1.5rem 0
+        }
+
+        .success-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 12px;
+            transition: all .2s;
+        }
+
+        .success-link:hover {
+            border-color: var(--border-mid);
+            background: var(--surface3)
+        }
+
+        .success-link-left {
+            display: flex;
+            align-items: center;
+            gap: .75rem
+        }
+
+        .link-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(139, 92, 246, .1);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .9rem
+        }
+
+        .link-label {
+            font-size: .9rem;
+            font-weight: 500
+        }
+
+        .link-arrow {
+            color: var(--text3);
+            font-size: 1rem
+        }
+
+        .restart-btn {
+            background: none;
+            border: none;
+            color: var(--text3);
+            font-size: .82rem;
+            cursor: pointer;
+            transition: color .2s;
+            font-family: var(--body);
+            margin-top: 1.25rem;
+            display: block;
+            width: 100%;
+            text-align: center
+        }
+
+        .restart-btn:hover {
+            color: var(--text2)
+        }
+
+        /* ERROR */
+        .error-msg {
+            background: rgba(239, 68, 68, .08);
+            border: 1px solid rgba(239, 68, 68, .25);
+            border-radius: 8px;
+            padding: .75rem 1rem;
+            font-size: .82rem;
+            color: #fca5a5;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .error-msg.visible {
+            display: block
+        }
+
+        /* STEP 3 STEPS */
+        .install-steps {
+            display: flex;
+            flex-direction: column;
+            gap: .5rem;
+            margin-bottom: 1.25rem
+        }
+
+        .install-step {
+            display: flex;
+            align-items: flex-start;
+            gap: .75rem;
+            padding: .75rem;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 10px
+        }
+
+        .install-step-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, .15);
+            border: 1px solid var(--border-mid);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--mono);
+            font-size: .65rem;
+            color: var(--purple-lt);
+            flex-shrink: 0;
+            margin-top: .1rem
+        }
+
+        .install-step-text {
+            font-size: .82rem;
+            color: var(--text2);
+            line-height: 1.5
+        }
+
+        .install-step-text strong {
+            color: var(--text);
+            font-weight: 500
+        }
+
+        @media(max-width:480px) {
+            .card-body {
+                padding: 1.5rem
+            }
+
+            .tools-grid {
+                grid-template-columns: 1fr
+            }
+        }
     </style>
 </head>
-<body class="bg-background-dark text-slate-100 font-display min-h-screen flex items-center justify-center p-4">
-    <!-- Main Container -->
-    <div class="w-full max-w-md bg-card-dark border border-border-dark rounded-xl shadow-2xl overflow-hidden">
-        <!-- Header & Progress -->
-        <div class="pt-8 px-6 text-center">
-            <h1 class="text-2xl font-bold tracking-tight mb-6">Aegis</h1>
-            <!-- Progress Indicator -->
-            <div class="flex items-center justify-center gap-3 mb-8" id="progress-indicator">
-                <div class="h-2 w-8 rounded-full bg-primary" data-step="1"></div>
-                <div class="h-2 w-8 rounded-full bg-border-dark" data-step="2"></div>
-                <div class="h-2 w-8 rounded-full bg-border-dark" data-step="3"></div>
-                <div class="h-2 w-8 rounded-full bg-border-dark" data-step="4"></div>
+
+<body>
+
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
+
+    <!-- NAV -->
+    <nav>
+        <div class="nav-logo">
+            <div class="nav-logo-icon">◈</div>
+            Aegis
+        </div>
+        <a href="index.html" class="nav-back">← Back to home</a>
+    </nav>
+
+    <!-- CARD -->
+    <div class="card">
+
+        <!-- Header -->
+        <div class="card-top">
+            <div class="card-logo">
+                <div class="card-logo-icon">◈</div>
+                Setup Aegis
+            </div>
+            <div class="progress">
+                <div class="progress-track">
+                    <div class="prog-dot active" id="prog-1"></div>
+                    <div class="prog-dot" id="prog-2"></div>
+                    <div class="prog-dot" id="prog-3"></div>
+                    <div class="prog-dot" id="prog-4"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Step Content Wrapper -->
-        <div class="px-6 pb-8">
+        <!-- Body -->
+        <div class="card-body">
 
-            <!-- Step 1: Your Details -->
-            <div class="space-y-6" id="step-1">
-                <div class="space-y-1">
-                    <h2 class="text-xl font-semibold">Your Details</h2>
-                    <p class="text-primary text-sm">Configure your core credentials to get started.</p>
+            <!-- STEP 1: Credentials -->
+            <div class="step visible" id="step-1">
+                <p class="step-eyebrow">Step 1 of 4</p>
+                <h2 class="step-title">Your Details</h2>
+                <p class="step-sub">Configure your core credentials to get started.</p>
+
+                <div id="error-1" class="error-msg">Please fill in all fields before continuing.</div>
+
+                <div class="field">
+                    <label>Username</label>
+                    <input id="username" type="text" placeholder="e.g. alex_aegis" autocomplete="off" />
+                    <span class="field-hint">This becomes your USER_ID in the config file.</span>
                 </div>
-                <div class="space-y-4">
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-sm font-medium text-slate-400">Username</label>
-                        <input id="username" class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="e.g. alex_aegis" type="text" required/>
+                <div class="field">
+                    <label>Google API Key</label>
+                    <input id="google_api_key" type="password" placeholder="AIzaSy..." />
+                    <span class="field-hint">Get yours at <a href="https://aistudio.google.com"
+                            target="_blank">aistudio.google.com →</a></span>
+                </div>
+                <div class="field" style="margin-bottom:1.75rem">
+                    <label>Composio API Key</label>
+                    <input id="composio_api_key" type="password" placeholder="comp_..." />
+                    <span class="field-hint">Get yours at <a href="https://app.composio.dev"
+                            target="_blank">app.composio.dev →</a></span>
+                </div>
+
+                <button class="btn-main" onclick="goToStep(2)">Next Step →</button>
+            </div>
+
+            <!-- STEP 2: Tools -->
+            <div class="step" id="step-2">
+                <p class="step-eyebrow">Step 2 of 4</p>
+                <h2 class="step-title">Connect Your Tools</h2>
+                <p class="step-sub">Aegis needs access to these tools to assist you. Gmail and Calendar are required.
+                </p>
+
+                <div id="error-2" class="error-msg">Gmail and Google Calendar are required to continue.</div>
+
+                <div class="tools-grid">
+                    <label class="tool-label" id="label-gmail" onclick="toggleTool(this)">
+                        <input type="checkbox" id="tool-gmail" />
+                        <div class="tool-checkbox"></div>
+                        <span class="tool-icon">📧</span>
+                        <span class="tool-name">Gmail</span>
+                        <span class="tool-required">req</span>
+                    </label>
+                    <label class="tool-label" id="label-calendar" onclick="toggleTool(this)">
+                        <input type="checkbox" id="tool-calendar" />
+                        <div class="tool-checkbox"></div>
+                        <span class="tool-icon">📅</span>
+                        <span class="tool-name">Calendar</span>
+                        <span class="tool-required">req</span>
+                    </label>
+                    <label class="tool-label" id="label-github" onclick="toggleTool(this)">
+                        <input type="checkbox" id="tool-github" />
+                        <div class="tool-checkbox"></div>
+                        <span class="tool-icon">🐙</span>
+                        <span class="tool-name">GitHub</span>
+                    </label>
+                    <label class="tool-label" id="label-tasks" onclick="toggleTool(this)">
+                        <input type="checkbox" id="tool-tasks" />
+                        <div class="tool-checkbox"></div>
+                        <span class="tool-icon">✅</span>
+                        <span class="tool-name">Tasks</span>
+                    </label>
+                    <label class="tool-label" id="label-docs" onclick="toggleTool(this)">
+                        <input type="checkbox" id="tool-docs" />
+                        <div class="tool-checkbox"></div>
+                        <span class="tool-icon">📄</span>
+                        <span class="tool-name">Docs</span>
+                    </label>
+                    <label class="tool-label" id="label-sheets" onclick="toggleTool(this)">
+                        <input type="checkbox" id="tool-sheets" />
+                        <div class="tool-checkbox"></div>
+                        <span class="tool-icon">📊</span>
+                        <span class="tool-name">Sheets</span>
+                    </label>
+                </div>
+
+                <a class="composio-link" href="https://app.composio.dev" target="_blank">
+                    <span style="font-size:.9rem">🔗</span> Authorize tools on Composio Dashboard →
+                </a>
+
+                <button class="btn-main" onclick="goToStep(3)">Next Step →</button>
+            </div>
+
+            <!-- STEP 3: Install -->
+            <div class="step" id="step-3">
+                <p class="step-eyebrow">Step 3 of 4</p>
+                <h2 class="step-title">Download & Install</h2>
+                <p class="step-sub">Get Aegis running on your Mac in under a minute.</p>
+
+                <div class="install-steps">
+                    <div class="install-step">
+                        <div class="install-step-num">1</div>
+                        <div class="install-step-text"><strong>Download your .env file</strong> — pre-filled with your
+                            credentials.</div>
                     </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-sm font-medium text-slate-400">Google API Key</label>
-                        <input id="google_api_key" class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="AIzaSy..." type="password" required/>
+                    <div class="install-step">
+                        <div class="install-step-num">2</div>
+                        <div class="install-step-text"><strong>Run the install command</strong> in your terminal — it
+                            handles everything.</div>
                     </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-sm font-medium text-slate-400">Composio API Key</label>
-                        <input id="composio_api_key" class="w-full bg-background-dark border border-border-dark focus:border-primary focus:ring-1 focus:ring-primary rounded-lg p-3 text-slate-100 transition-all placeholder:text-slate-600" placeholder="comp_..." type="password" required/>
+                    <div class="install-step">
+                        <div class="install-step-num">3</div>
+                        <div class="install-step-text"><strong>Scan the QR code</strong> to open Aegis on your iPhone.
+                        </div>
                     </div>
                 </div>
-                <button onclick="goToStep(2)" class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-4 rounded-lg transition-colors shadow-lg shadow-primary/20">
-                    Next Step
+
+                <button class="dl-btn" onclick="downloadEnv()">
+                    <span>⬇</span> Download .env file
                 </button>
+
+                <div class="install-block" id="install-block" onclick="copyInstallCmd()">
+                    <code>curl -sSL https://aegis.projectalpha.in/install.sh | bash</code>
+                    <div class="copy-hint">Click to copy</div>
+                    <div class="copied-toast">✓ Copied to clipboard</div>
+                </div>
+
+                <div class="qr-wrap">
+                    <div class="qr-frame">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://aegismobile.projectalpha.in"
+                            alt="Mobile App QR" />
+                    </div>
+                    <p class="qr-label">Scan to open Aegis on iPhone</p>
+                </div>
+
+                <button class="btn-main" onclick="goToStep(4)">Finish Setup →</button>
             </div>
 
-            <!-- Step 2: Connect Your Tools -->
-            <div class="space-y-6 step-hidden" id="step-2">
-                <div class="space-y-1">
-                    <h2 class="text-xl font-semibold">Connect Your Tools</h2>
-                    <p class="text-primary text-sm">Aegis needs access to these tools to assist you.</p>
+            <!-- STEP 4: Ready -->
+            <div class="step" id="step-4">
+                <div style="text-align:center;margin-bottom:1.5rem">
+                    <div class="success-icon">◈</div>
+                    <p class="step-eyebrow" style="justify-content:center;display:flex">All set</p>
+                    <h2 class="step-title" id="welcome-msg" style="margin-bottom:.35rem">You're Ready</h2>
+                    <p style="font-size:.9rem;color:var(--text2)">Your secure AI agent is now active.</p>
                 </div>
-                <div class="grid grid-cols-2 gap-3 mb-6">
-                    <label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
-                        <input id="tool-gmail" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
-                        <span class="text-sm">Gmail</span>
-                    </label>
-                    <label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
-                        <input id="tool-calendar" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
-                        <span class="text-sm">Calendar</span>
-                    </label>
-                    <label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
-                        <input id="tool-github" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
-                        <span class="text-sm">GitHub</span>
-                    </label>
-                    <label class="flex items-center gap-3 p-3 bg-background-dark border border-border-dark rounded-lg cursor-pointer hover:border-primary/50 transition-all">
-                        <input id="tool-tasks" class="rounded border-border-dark bg-background-dark text-primary focus:ring-primary" type="checkbox"/>
-                        <span class="text-sm">Tasks</span>
-                    </label>
-                </div>
-                <a class="block text-center text-primary text-sm font-medium mb-6" href="https://app.composio.dev" target="_blank">Open Composio Dashboard →</a>
-                <button onclick="goToStep(3)" class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-4 rounded-lg transition-colors">Next Step</button>
-            </div>
 
-            <!-- Step 3: Download & Install -->
-            <div class="space-y-6 step-hidden" id="step-3">
-                <div class="space-y-1">
-                    <h2 class="text-xl font-semibold">Download & Install</h2>
-                    <p class="text-primary text-sm">Final steps to get Aegis running on your Mac.</p>
+                <div class="success-links">
+                    <a class="success-link" href="https://aegismac.projectalpha.in" target="_blank">
+                        <div class="success-link-left">
+                            <div class="link-icon">💻</div>
+                            <span class="link-label">Open Mac App</span>
+                        </div>
+                        <span class="link-arrow">→</span>
+                    </a>
+                    <a class="success-link" href="https://aegismobile.projectalpha.in" target="_blank">
+                        <div class="success-link-left">
+                            <div class="link-icon">📱</div>
+                            <span class="link-label">Open on iPhone</span>
+                        </div>
+                        <span class="link-arrow">→</span>
+                    </a>
+                    <a class="success-link" href="https://aegisdashboard.projectalpha.in" target="_blank">
+                        <div class="success-link-left">
+                            <div class="link-icon">📊</div>
+                            <span class="link-label">View Dashboard</span>
+                        </div>
+                        <span class="link-arrow">→</span>
+                    </a>
                 </div>
-                <button onclick="downloadEnv()" class="w-full border border-primary text-primary font-medium py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/5">
-                    <span class="material-symbols-outlined">download</span>
-                    Download .env
-                </button>
-                <div class="bg-black/40 p-4 rounded-lg overflow-x-auto border border-border-dark cursor-pointer group relative" onclick="copyInstallCommand()">
-                    <code id="install-cmd" class="text-xs font-mono text-primary leading-relaxed">curl -sSL https://aegis.projectalpha.in/install.sh | bash</code>
-                    <div class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                        <span class="text-xs font-medium text-white">Click to copy</span>
-                    </div>
-                </div>
-                <div class="flex flex-col items-center gap-3 p-6 bg-background-dark border border-border-dark rounded-xl">
-                    <div class="w-32 h-32 bg-white p-2 rounded-lg">
-                        <img id="qr-code" alt="App Download QR Code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://aegismobile.projectalpha.in"/>
-                    </div>
-                    <p class="text-xs text-slate-400">Scan for Mobile App</p>
-                </div>
-                <button onclick="goToStep(4)" class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-4 rounded-lg transition-colors">Finish Setup</button>
-            </div>
 
-            <!-- Step 4: You're Ready -->
-            <div class="space-y-6 step-hidden" id="step-4">
-                <div class="text-center space-y-2">
-                    <div class="flex justify-center mb-4">
-                        <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary">
-                            <span class="material-symbols-outlined text-primary text-5xl font-light">verified_user</span>
-                        </div>
-                    </div>
-                    <h2 class="text-2xl font-bold" id="welcome-message">You're Ready</h2>
-                    <p class="text-slate-400">Your secure assistant is now active.</p>
-                </div>
-                <div class="space-y-3">
-                    <a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="https://aegismac.projectalpha.in">
-                        <div class="flex items-center gap-4">
-                            <span class="material-symbols-outlined text-slate-400 group-hover:text-primary">desktop_mac</span>
-                            <span class="font-medium">Open Mac App</span>
-                        </div>
-                        <span class="material-symbols-outlined text-slate-600">chevron_right</span>
-                    </a>
-                    <a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="https://aegismobile.projectalpha.in">
-                        <div class="flex items-center gap-4">
-                            <span class="material-symbols-outlined text-slate-400 group-hover:text-primary">smartphone</span>
-                            <span class="font-medium">Open on iPhone</span>
-                        </div>
-                        <span class="material-symbols-outlined text-slate-600">chevron_right</span>
-                    </a>
-                    <a class="flex items-center justify-between p-4 bg-background-dark border border-border-dark rounded-xl hover:border-primary/50 transition-all group" href="https://aegisdashboard.projectalpha.in">
-                        <div class="flex items-center gap-4">
-                            <span class="material-symbols-outlined text-slate-400 group-hover:text-primary">dashboard</span>
-                            <span class="font-medium">View Dashboard</span>
-                        </div>
-                        <span class="material-symbols-outlined text-slate-600">chevron_right</span>
-                    </a>
-                </div>
-                <div class="mt-10 text-center">
-                    <button onclick="goToStep(1)" class="text-slate-500 text-sm hover:text-slate-300 transition-colors">Setup another account</button>
-                </div>
+                <button class="restart-btn" onclick="goToStep(1)">Set up another account</button>
             </div>
 
         </div>
     </div>
 
     <script>
-        let currentStep = 1;
-        const formData = {
-            username: '',
-            google_api_key: '',
-            composio_api_key: ''
-        };
+        let current = 1;
+        const data = { username: '', google_api_key: '', composio_api_key: '' };
 
         function goToStep(step) {
-            if (step > currentStep) {
-                if (currentStep === 1) {
-                    const username = document.getElementById('username').value;
-                    const googleKey = document.getElementById('google_api_key').value;
-                    const composioKey = document.getElementById('composio_api_key').value;
-
-                    if (!username || !googleKey || !composioKey) {
-                        alert('Please fill in all details.');
+            // Validate
+            if (step > current) {
+                if (current === 1) {
+                    const u = document.getElementById('username').value.trim();
+                    const g = document.getElementById('google_api_key').value.trim();
+                    const c = document.getElementById('composio_api_key').value.trim();
+                    if (!u || !g || !c) {
+                        document.getElementById('error-1').classList.add('visible');
                         return;
                     }
-                    formData.username = username;
-                    formData.google_api_key = googleKey;
-                    formData.composio_api_key = composioKey;
-                } else if (currentStep === 2) {
-                    const gmailChecked = document.getElementById('tool-gmail').checked;
-                    const calendarChecked = document.getElementById('tool-calendar').checked;
-
-                    if (!gmailChecked || !calendarChecked) {
-                        alert('Please connect at least Gmail and Google Calendar.');
+                    document.getElementById('error-1').classList.remove('visible');
+                    data.username = u; data.google_api_key = g; data.composio_api_key = c;
+                }
+                if (current === 2) {
+                    const gmail = document.getElementById('tool-gmail').checked;
+                    const cal = document.getElementById('tool-calendar').checked;
+                    if (!gmail || !cal) {
+                        document.getElementById('error-2').classList.add('visible');
                         return;
                     }
+                    document.getElementById('error-2').classList.remove('visible');
                 }
             }
 
-            // Hide all steps
+            // Hide current, show next
+            document.getElementById(`step-${current}`).classList.remove('visible');
+            document.getElementById(`step-${step}`).classList.add('visible');
+
+            // Update progress
             for (let i = 1; i <= 4; i++) {
-                document.getElementById(`step-${i}`).classList.add('step-hidden');
-                const indicator = document.querySelector(`[data-step="${i}"]`);
-                if (i <= step) {
-                    indicator.classList.remove('bg-border-dark');
-                    indicator.classList.add('bg-primary');
-                    if (i < step) indicator.classList.add('opacity-40');
-                    else indicator.classList.remove('opacity-40');
-                } else {
-                    indicator.classList.remove('bg-primary', 'opacity-40');
-                    indicator.classList.add('bg-border-dark');
-                }
+                const dot = document.getElementById(`prog-${i}`);
+                dot.classList.remove('active', 'done');
+                if (i < step) dot.classList.add('done');
+                else if (i === step) dot.classList.add('active');
             }
 
-            // Show current step
-            document.getElementById(`step-${step}`).classList.remove('step-hidden');
-            currentStep = step;
+            current = step;
 
             if (step === 4) {
-                document.getElementById('welcome-message').innerText = `Welcome, ${formData.username}`;
+                document.getElementById('welcome-msg').textContent = `Welcome, ${data.username}`;
             }
+        }
+
+        function toggleTool(label) {
+            const cb = label.querySelector('input[type=checkbox]');
+            cb.checked = !cb.checked;
+            if (cb.checked) label.classList.add('checked');
+            else label.classList.remove('checked');
         }
 
         function downloadEnv() {
-            const envContent = `GOOGLE_API_KEY=${formData.google_api_key}
-COMPOSIO_API_KEY=${formData.composio_api_key}
-USER_ID=${formData.username}
-COMPOSIO_USER_ID=${formData.username}
-DEVICE_ID=${formData.username}-macbook
+            const content =
+                `GOOGLE_API_KEY=${data.google_api_key}
+COMPOSIO_API_KEY=${data.composio_api_key}
+USER_ID=${data.username}
+COMPOSIO_USER_ID=${data.username}
+DEVICE_ID=${data.username}-macbook
 BACKEND_URL=https://apiaegis.projectalpha.in
 DASHBOARD_URL=https://aegisdashboard.projectalpha.in`;
-
-            const blob = new Blob([envContent], { type: 'text/plain' });
-            const url = window.URL.createObjectURL(blob);
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = '.env';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            a.href = url; a.download = '.env';
+            document.body.appendChild(a); a.click();
+            URL.revokeObjectURL(url); a.remove();
         }
 
-        function copyInstallCommand() {
-            const cmd = document.getElementById('install-cmd').innerText;
+        function copyInstallCmd() {
+            const cmd = 'curl -sSL https://aegis.projectalpha.in/install.sh | bash';
             navigator.clipboard.writeText(cmd).then(() => {
-                alert('Install command copied to clipboard!');
+                const block = document.getElementById('install-block');
+                block.classList.add('copied');
+                setTimeout(() => block.classList.remove('copied'), 2000);
             });
         }
     </script>
 </body>
+
 </html>
