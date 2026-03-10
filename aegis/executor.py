@@ -122,7 +122,7 @@ Return complete arguments JSON:
         logger.error(f"Error in Gemini argument filling: {e}")
         return partial_args
 
-async def search_and_execute(action: str, tool_args: Dict[str, Any], context: AegisContext) -> Dict[str, Any]:
+async def search_and_execute(action: str, tool_args: Dict[str, Any], context: AegisContext, call_id: str = None) -> Dict[str, Any]:
     """
     Step 1: Use Tool Router to find the right tool + plan
     Step 2: Execute it
@@ -196,7 +196,7 @@ async def search_and_execute(action: str, tool_args: Dict[str, Any], context: Ae
 
         if execute_result.get("successful"):
             logger.info(f"✅ Successfully executed tool {primary_tool}")
-            return {"success": True, "data": execute_result.get("data")}
+            return {"success": True, "data": execute_result.get("data"), "call_id": call_id}
         else:
             error_msg = execute_result.get("error", "Unknown execute error")
             logger.error(f"Tool execution failed: {error_msg}")
@@ -207,7 +207,7 @@ async def search_and_execute(action: str, tool_args: Dict[str, Any], context: Ae
         logger.exception(error_msg)
         return {"success": False, "error": error_msg}
 
-async def execute_composio_tool(tool_name: str, tool_args: dict, context: AegisContext) -> Dict[str, Any]:
+async def execute_composio_tool(tool_name: str, tool_args: dict, context: AegisContext, call_id: str = None) -> Dict[str, Any]:
     """
     Directly execute a Composio tool by name.
     """
@@ -230,7 +230,7 @@ async def execute_composio_tool(tool_name: str, tool_args: dict, context: AegisC
 
         if execute_result.get("successful"):
             logger.info(f"✅ Successfully executed tool {tool_name}")
-            return {"success": True, "data": execute_result.get("data")}
+            return {"success": True, "data": execute_result.get("data"), "call_id": call_id}
         else:
             error_msg = execute_result.get("error", "Unknown execute error")
             logger.error(f"Tool execution failed: {error_msg}")

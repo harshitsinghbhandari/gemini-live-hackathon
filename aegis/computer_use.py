@@ -10,11 +10,27 @@ logger = logging.getLogger("aegis.computer_use")
 
 def denormalize(x: int, y: int) -> tuple[int, int]:
     """Convert Gemini 0-1000 coordinates to dynamic screen bounds with Retina support."""
-    screen_w, screen_h = pyautogui.size() 
+    try:
+        # Use AppKit to get precise logical coordinates (points) on macOS
+        from AppKit import NSScreen
+        screen = NSScreen.mainScreen()
+        screen_w = screen.frame().size.width
+        screen_h = screen.frame().size.height
+        scale = screen.backingScaleFactor()
+    except Exception:
+        # Fallback to pyautogui for non-macOS or if AppKit fails
+        screen_w, screen_h = pyautogui.size()
+        scale = 1.0
+
     nx = max(0, min(1000, x))
     ny = max(0, min(1000, y))
+
+    # Calculate target in points.
+    # If scale=2.0 (Retina), pyautogui's moveTo(x, y) expects logical coordinates (points),
+    # which we already calculated using NSScreen frame size.
     dx, dy = int(nx / 1000 * screen_w), int(ny / 1000 * screen_h)
-    logger.info(f"📍 Scaling: ({x}, {y}) -> ({dx}, {dy}) on screen {screen_w}x{screen_h}")
+
+    logger.info(f"📍 Scaling: ({x}, {y}) -> ({dx}, {dy}) on screen {screen_w}x{screen_h} (scale={scale})")
     return dx, dy
 
 async def handle_computer_use(fn, agent_context, update_status_fn):
@@ -76,7 +92,8 @@ async def handle_computer_use(fn, agent_context, update_status_fn):
         simulated_action, agent_context,
         tool_name=mapped_tool,
         tool_args=mapped_args,
-        on_auth_request=update_status_fn
+        on_auth_request=update_status_fn,
+        call_id=fn.id
     )
     
     logger.info(f"   Gate Result: {result.get('success', False)} - {result.get('error', 'No error')}")
@@ -91,13 +108,6 @@ async def handle_computer_use(fn, agent_context, update_status_fn):
         name=fn.name,
         response=response_payload
     )
-    if shot:
-        logger.info(f"📸 Attached post-action screenshot ({len(shot['base64'])} chars)")
-        f_resp.parts = [types.Part(
-            inline_data=types.Blob(
-                data=base64.b64decode(shot["base64"]),
-                mime_type=shot["mime_type"]
-            )
-        )]
     
-    return types.Part(function_response=f_resp)
+    # Return the response and the screenshot data for the caller to send
+    return f_resp, shot
