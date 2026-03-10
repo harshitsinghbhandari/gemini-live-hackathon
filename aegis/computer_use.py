@@ -9,12 +9,13 @@ from .screen.capture import capture_screen
 logger = logging.getLogger("aegis.computer_use")
 
 def denormalize(x: int, y: int) -> tuple[int, int]:
-    """Convert Gemini 0-1000 coordinates to dynamic screen bounds with Retina support."""
+    """Convert Gemini 0-1000 coordinates to dynamic screen bounds with 2.0x Retina scaling."""
     screen_w, screen_h = pyautogui.size() 
     nx = max(0, min(1000, x))
     ny = max(0, min(1000, y))
-    dx, dy = int(nx / 1000 * screen_w), int(ny / 1000 * screen_h)
-    logger.info(f"📍 Scaling: ({x}, {y}) -> ({dx}, {dy}) on screen {screen_w}x{screen_h}")
+    # Apply 2.0x multiplier for macOS Retina display scaling
+    dx, dy = int(nx / 1000 * screen_w * 2.0), int(ny / 1000 * screen_h * 2.0)
+    logger.info(f"📍 Scaling: ({x}, {y}) -> ({dx}, {dy}) on screen {screen_w}x{screen_h} (Retina 2.0x)")
     return dx, dy
 
 async def handle_computer_use(fn, agent_context, update_status_fn):

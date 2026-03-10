@@ -42,8 +42,9 @@ This document provides a comprehensive overview of every file within the `aegis`
 - **Role**: Global State Management.
 - **Detailed Purpose**: A simple container for tracking the active session and agent status across different loops.
 - **Core Functionality**:
-    - `AegisContext`: A dataclass storing references to the Gemini Live session, Composio client, and flags like `is_executing_tool`.
-- **Why it exists**: Audio, Visual, and Feedback loops run concurrently; this shared context prevents them from stepping on each other (e.g., stops audio capture while the model is speaking).
+    - `SessionState`: An Enum (LISTENING, THINKING, EXECUTING, DEAD) representing the orchestrator's central state.
+    - `AegisContext`: A dataclass storing references to the Gemini Live session, Composio client, and the central `state`.
+- **Why it exists**: Audio, Visual, and Feedback loops run concurrently; this shared context provides the unified state-gate needed to prevent policy violations (e.g., stops audio capture during tool execution).
 
 ### [executor.py](file:///Users/harshitsinghbhandari/Downloads/main-quests/gemini-live-hackathon/aegis/executor.py)
 - **Role**: External Integration Engine (Composio).
@@ -90,13 +91,15 @@ This document provides a comprehensive overview of every file within the `aegis`
 
 ### [voice.py](file:///Users/harshitsinghbhandari/Downloads/main-quests/gemini-live-hackathon/aegis/voice.py)
 - **Role**: Multimodal Hub (The Heart of Aegis).
-- **Detailed Purpose**: Manages the high-speed duplex stream of audio and video with the Gemini Live API.
+- **Detailed Purpose**: Manages the high-speed duplex stream of audio and video with the Gemini Live API using a state-gated architecture.
 - **Core Functionality**:
-    - `_send_audio_loop`: Streams mic data to Gemini.
-    - `_receive_and_play_loop`: Plays Gemini's voice and intercepts tool calls.
-    - `_visual_stream_loop`: Periodically sends screenshots to give the AI "vision."
-    - **Turn Gating**: Ensures media input stops during tool execution or model responding to prevent policy violations (Status 1008).
-- **Why it exists**: To provide the "Live" experience by coordinating Real-time Audio, Vision, and Action in a single seamless loop.
+    - `SessionBridge`: Decouples hardware I/O from the Gemini loop via an `asyncio.Queue`.
+    - `_send_audio_loop`: Streams mic data to the bridge.
+    - `_receive_and_play_loop`: Acts as the **Master Controller**, managing state transitions and intercepting tool calls.
+    - `_visual_stream_loop`: Periodically sends screenshots to provide continuous vision.
+    - **Strict Media Gating**: Ensures media inputs are dropped unless the state is `LISTENING`, preventing policy violations (Status 1008).
+    - **Session Resumption**: Captures handles to recover from network disconnects.
+- **Why it exists**: To provide a stable, high-performance "Live" experience by coordinating Real-time Audio, Vision, and Action through a unified state machine.
 
 ### [ws_server.py](file:///Users/harshitsinghbhandari/Downloads/main-quests/gemini-live-hackathon/aegis/ws_server.py)
 - **Role**: Real-time Telemetry Server.
