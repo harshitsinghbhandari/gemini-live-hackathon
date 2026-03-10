@@ -103,6 +103,7 @@ class AegisVoiceAgent:
         self.status_callback = status_callback
         self.pya = pyaudio.PyAudio()
         self.client = genai.Client(api_key=config.GOOGLE_API_KEY)
+        self.alive = True
         
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
@@ -152,7 +153,6 @@ class AegisVoiceAgent:
             ]
         )
 
-
     def _update_status(self, status: str):
         """Thread-safe status update forwarded to the menu bar and WebSocket UI."""
         if self.status_callback:
@@ -165,13 +165,28 @@ class AegisVoiceAgent:
         ws_server.broadcast("status", value=status)
 
     def _denormalize(self, x: int, y: int) -> tuple[int, int]:
-        """Convert Gemini 0-1000 coordinates to dynamic screen bounds."""
+        """Convert Gemini 0-1000 coordinates to dynamic screen bounds with Retina support."""
         import pyautogui
-        target_w, target_h = pyautogui.size()
-        # Ensure coordinates are within 0-1000 range as per ComputerUse spec
+        # Mac Retina displays often report half-size; 
+        # check if you need to multiply by 2 if clicks land in top-left
+        screen_w, screen_h = pyautogui.size() 
+        
         nx = max(0, min(1000, x))
         ny = max(0, min(1000, y))
-        return int(nx / 1000 * target_w), int(ny / 1000 * target_h)
+        
+        return int(nx / 1000 * screen_w), int(ny / 1000 * screen_h)
+
+    async def _send_to_session(self, session, **kwargs):
+        """Drops media frames if a tool is currently executing or session is dead."""
+        if not self.alive or self.context.is_executing_tool:
+            return 
+        try:
+            await session.send_realtime_input(**kwargs)
+        except Exception as e:
+            logger.error(f"Media send failed: {e}")
+            if "1008" in str(e) or "Requested entity was not found" in str(e):
+                logger.error("🛑 Session fatal error detected. Stopping loops.")
+                self.alive = False
 
     async def _send_audio_loop(self, session, mic_info):
         """Captures mic and sends to Gemini"""
@@ -186,7 +201,7 @@ class AegisVoiceAgent:
         )
 
         try:
-            while True:
+            while self.alive:
                 if self.context.is_executing_tool:
                     await asyncio.sleep(0.1)
                     continue
@@ -199,11 +214,13 @@ class AegisVoiceAgent:
                 peak = max(abs(s) for s in shorts) / 32768.0
                 ws_server.broadcast("waveform", value=round(peak, 3))
 
-                await session.send_realtime_input(
+                await self._send_to_session(
+                    session,
                     audio=types.Blob(data=data, mime_type=f"audio/pcm;rate={config.SEND_SAMPLE_RATE}")
                 )
         except Exception as e:
-            logger.error(f"Error in send_audio_loop: {e}")
+            if self.alive:
+                logger.error(f"Error in send_audio_loop: {e}")
         finally:
             stream.close()
 
@@ -218,8 +235,11 @@ class AegisVoiceAgent:
         )
 
         try:
-            while True:
+            while self.alive:
                 async for response in session.receive():
+                    if not self.alive:
+                        break
+                    
                     if response.server_content:
                         if response.server_content.interrupted:
                             logger.info("⚡ Interrupted")
@@ -252,10 +272,10 @@ class AegisVoiceAgent:
                         logger.info("⏳ Pausing audio input during tool execution...")
                         try:
                             function_responses = []
-                            
                             # Handle all function calls (standard, Composio, and ComputerUse natively)
                             if response.tool_call.function_calls:
                                 for fn in response.tool_call.function_calls:
+                                    logger.info(f"Function call: {fn}")
                                     if fn.name == "get_tool_schema":
                                         requested = fn.args.get("tool_names", [])
                                         logger.info(f"🔍 Gemini requested schemas for: {requested}")
@@ -278,39 +298,42 @@ class AegisVoiceAgent:
                                         mapped_args = {}
                                         
                                         if fn.name == "open_web_browser":
-                                            mapped_tool = "SCREEN_HOTKEY"
+                                            mapped_tool = "keyboard_hotkey"
                                             mapped_args = {"keys": ["command", "space"]} # Simulate opening Spotlight or browser
                                         elif fn.name == "navigate":
-                                            mapped_tool = "SCREEN_TYPE"
+                                            mapped_tool = "keyboard_type"
                                             mapped_args = {"text": fn.args["url"], "press_enter": True}
                                         elif fn.name == "click_at":
-                                            mapped_tool = "SCREEN_CLICK"
+                                            mapped_tool = "cursor_click"
                                             mapped_args["x"], mapped_args["y"] = self._denormalize(fn.args["x"], fn.args["y"])
+                                            mapped_args["description"] = f"Click at ({fn.args['x']}, {fn.args['y']})"
                                         elif fn.name == "double_click_at":
-                                            mapped_tool = "SCREEN_DOUBLE_CLICK"
+                                            mapped_tool = "cursor_double_click"
                                             mapped_args["x"], mapped_args["y"] = self._denormalize(fn.args["x"], fn.args["y"])
+                                            mapped_args["description"] = f"Double-click at ({fn.args['x']}, {fn.args['y']})"
                                         elif fn.name == "right_click_at":
-                                            mapped_tool = "SCREEN_RIGHT_CLICK"
+                                            mapped_tool = "cursor_right_click"
                                             mapped_args["x"], mapped_args["y"] = self._denormalize(fn.args["x"], fn.args["y"])
+                                            mapped_args["description"] = f"Right-click at ({fn.args['x']}, {fn.args['y']})"
                                         elif fn.name == "drag_and_drop":
-                                            mapped_tool = "SCREEN_DRAG"
+                                            mapped_tool = "cursor_drag"
                                             mapped_args["x1"], mapped_args["y1"] = self._denormalize(fn.args["x1"], fn.args["y1"])
                                             mapped_args["x2"], mapped_args["y2"] = self._denormalize(fn.args["x2"], fn.args["y2"])
                                         elif fn.name == "scroll":
-                                            mapped_tool = "SCREEN_SCROLL"
+                                            mapped_tool = "cursor_scroll"
                                             mapped_args["x"], mapped_args["y"] = self._denormalize(fn.args["x"], fn.args["y"])
                                             mapped_args["clicks"] = -10 if fn.args["direction"] == "down" else 10
                                         elif fn.name == "type_text_at":
-                                            mapped_tool = "SCREEN_TYPE"
+                                            mapped_tool = "keyboard_type"
                                             tx, ty = self._denormalize(fn.args["x"], fn.args["y"])
                                             # Gating the implicit click before typing
-                                            await gate_action(f"Click at ({tx}, {ty})", self.context, tool_name="SCREEN_CLICK", tool_args={"x": tx, "y": ty})
+                                            await gate_action(f"Click at ({tx}, {ty})", self.context, tool_name="cursor_click", tool_args={"x": tx, "y": ty, "description": "Focus before typing"})
                                             mapped_args = {"text": fn.args["text"]}
                                         elif fn.name == "key_combination":
-                                            mapped_tool = "SCREEN_HOTKEY"
+                                            mapped_tool = "keyboard_hotkey"
                                             mapped_args = {"keys": fn.args["keys"]}
                                         elif fn.name == "wait":
-                                            mapped_tool = "SCREEN_MOVE"
+                                            mapped_tool = "cursor_move"
                                             mapped_args = {"x": 735, "y": 478}
                                         
                                         if mapped_tool:
@@ -327,19 +350,20 @@ class AegisVoiceAgent:
                                             if not result.get("success"):
                                                 response_payload["error"] = result.get("error", "Action blocked or failed")
                                             
-                                            function_responses.append(types.Part(
-                                                function_response=types.FunctionResponse(
-                                                    id=fn.id,
-                                                    name=fn.name,
-                                                    response=response_payload,
-                                                    parts=[types.FunctionResponsePart(
-                                                        inline_data=types.FunctionResponseBlob(
-                                                            data=base64.b64decode(shot["base64"]),
-                                                            mime_type=shot["mime_type"]
-                                                        )
-                                                    )]
-                                                )
-                                            ))
+                                            f_resp = types.FunctionResponse(
+                                                id=fn.id,
+                                                name=fn.name,
+                                                response=response_payload
+                                            )
+                                            if shot:
+                                                f_resp.parts = [types.Part(
+                                                    inline_data=types.Blob(
+                                                        data=base64.b64decode(shot["base64"]),
+                                                        mime_type=shot["mime_type"]
+                                                    )
+                                                )]
+                                            
+                                            function_responses.append(types.Part(function_response=f_resp))
 
                                     else:
                                         # Real tool call (dynamic) - not a ComputerUse or Internal tool
@@ -365,19 +389,20 @@ class AegisVoiceAgent:
 
                                         shot = capture_screen() if is_screen_tool(fn.name) else None
 
-                                        function_responses.append(types.Part(
-                                            function_response=types.FunctionResponse(
-                                                id=fn.id,
-                                                name=fn.name,
-                                                response=tool_response,
-                                                parts=[types.FunctionResponsePart(
-                                                    inline_data=types.FunctionResponseBlob(
-                                                        data=base64.b64decode(shot["base64"]),
-                                                        mime_type=shot["mime_type"]
-                                                    )
-                                                )] if shot else []
-                                            )
-                                        ))
+                                        f_resp = types.FunctionResponse(
+                                            id=fn.id,
+                                            name=fn.name,
+                                            response=tool_response
+                                        )
+                                        if shot:
+                                            f_resp.parts = [types.Part(
+                                                inline_data=types.Blob(
+                                                    data=base64.b64decode(shot["base64"]),
+                                                    mime_type=shot["mime_type"]
+                                                )
+                                            )]
+
+                                        function_responses.append(types.Part(function_response=f_resp))
 
                             if function_responses:
                                 await session.send(
@@ -394,7 +419,8 @@ class AegisVoiceAgent:
                             logger.info("🎙️ Resuming audio input...")
 
         except Exception as e:
-            logger.error(f"Error in receive_and_play_loop: {e}")
+            if self.alive:
+                logger.error(f"Error in receive_and_play_loop: {e}")
         finally:
             self._update_status("idle")
             output_stream.close()
@@ -405,7 +431,7 @@ class AegisVoiceAgent:
         try:
             headers = {"X-User-ID": config.USER_ID}
             async with aiohttp.ClientSession(headers=headers) as session:
-                while True:
+                while self.alive:
                     async with session.get(f"{config.BACKEND_URL}/session/status", timeout=5) as resp:
                         if resp.status == 200:
                             data = await resp.json()
@@ -415,11 +441,43 @@ class AegisVoiceAgent:
                                 if self.context.session:
                                     # This will likely break the loops and trigger finally block
                                     await self.context.session.close()
+                                    self.alive = False
                                 return
                     # Increased polling interval to 10s to reduce backend load
                     await asyncio.sleep(10)
         except Exception as e:
-            logger.warning(f"Remote stop check failed: {e}")
+            if self.alive:
+                logger.warning(f"Remote stop check failed: {e}")
+
+    async def _visual_stream_loop(self, session):
+        """Periodically sends low-res screenshots to Gemini Live for continuous visual context."""
+        logger.info("🎬 Starting visual stream loop...")
+        try:
+            while self.alive:
+                # Skip streaming while a tool is executing to save bandwidth and focus
+                if self.context.is_executing_tool:
+                    await asyncio.sleep(0.5)
+                    continue
+
+                # Capture at a reduced resolution for efficiency (1024x1024 works well for Gemini)
+                shot = capture_screen(scale_to=(1024, 1024), quality=50)
+                
+                # Use 'video' for screenshots; the SDK maps this to the visual track
+                await self._send_to_session(
+                    session,
+                    video=types.Blob(
+                        data=base64.b64decode(shot["base64"]), 
+                        mime_type=shot["mime_type"] # Keep this as image/jpeg
+                    )
+                )
+                
+                # Broad polling interval — 2 seconds is enough for general awareness
+                await asyncio.sleep(2.0)
+        except asyncio.CancelledError:
+            logger.info("🎬 Visual stream loop cancelled.")
+        except Exception as e:
+            if self.alive:
+                logger.error(f"Error in visual_stream_loop: {e}")
 
     async def run(self):
         # Notify backend that session has started
@@ -451,7 +509,8 @@ class AegisVoiceAgent:
 
                 await asyncio.gather(
                     self._send_audio_loop(session, mic_info),
-                    self._receive_and_play_loop(session)
+                    self._receive_and_play_loop(session),
+                    self._visual_stream_loop(session)
                 )
         except Exception as e:
             logger.exception(f"Unexpected error in run_aegis: {e}")

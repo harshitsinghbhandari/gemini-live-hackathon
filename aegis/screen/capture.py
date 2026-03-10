@@ -10,13 +10,14 @@ import mss
 import mss.tools
 
 
-def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956)) -> dict:
+def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int = 60) -> dict:
     """
     Capture the full screen and return as base64-encoded JPEG.
     
     Args:
         monitor: Monitor index (1 = primary)
         scale_to: Resize to this resolution before encoding (saves tokens)
+        quality: JPEG compression quality (1-100)
     
     Returns:
         dict with keys:
@@ -34,11 +35,11 @@ def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956)) -> dict:
 
         # Scale down if needed (reduces tokens sent to Gemini)
         if scale_to and img.size != scale_to:
-            img = img.resize(scale_to, Image.LANCZOS)
+            img = img.resize(scale_to, Image.BILINEAR)
 
         # Encode as JPEG (much smaller than PNG, good enough for UI understanding)
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=75)
+        img.save(buffer, format="JPEG", quality=quality)
         buffer.seek(0)
 
         encoded = base64.b64encode(buffer.read()).decode("utf-8")
