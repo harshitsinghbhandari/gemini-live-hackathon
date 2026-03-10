@@ -102,7 +102,7 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
         logger.error(f"Error in remote auth flow: {e}, falling back to local")
         return await request_touch_id(f"Aegis: {classification['speak']}")
 
-async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed: bool = False, on_auth_request: callable = None, tool_name: str = None, tool_args: dict = None) -> Dict[str, Any]:
+async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed: bool = False, on_auth_request: callable = None, tool_name: str = None, tool_args: dict = None, call_id: str = None) -> Dict[str, Any]:
     """
     The secure gateway for all Aegis actions.
     Steps:
@@ -140,6 +140,7 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
             "upgraded": classification.get("upgraded"),
             "speak": speak,
             "tool": tool,
+            "call_id": call_id,
             "executed": False,
             "auth_used": False,
             "confirmed_verbally": pre_confirmed,
@@ -202,9 +203,9 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
             elif tool_name:
                 # This was a direct tool call from Gemini Live
                 logger.info(f"🛠️  Direct Tool Execution: {tool}")
-                exec_result = await execute_composio_tool(tool, arguments, context)
+                exec_result = await execute_composio_tool(tool, arguments, context, call_id=call_id)
             else:
-                exec_result = await search_and_execute(proposed_action, arguments, context)
+                exec_result = await search_and_execute(proposed_action, arguments, context, call_id=call_id)
             
             result["success"] = exec_result["success"]
             if exec_result["success"]:
@@ -244,7 +245,7 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
 
     # Broadcast Action Card to WebSocket (truncate output for performance)
     ws_data = {
-        "id": str(uuid.uuid4()),
+        "id": call_id or str(uuid.uuid4()),
         "timestamp": audit_entry["timestamp"],
         "action": proposed_action,
         "tier": tier,

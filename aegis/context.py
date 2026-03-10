@@ -1,10 +1,40 @@
 from dataclasses import dataclass
 from typing import Any, Optional
+from enum import Enum, auto
+
+class SessionState(Enum):
+    LISTENING = auto()
+    THINKING = auto()
+    EXECUTING = auto()
+    BUSY = auto()
 
 @dataclass
 class AegisContext:
     session: Any = None
     user_id: str = "default_user"
     composio: Any = None
-    is_executing_tool: bool = False
-    is_model_responding: bool = False
+    state: SessionState = SessionState.LISTENING
+    resumption_handle: Optional[Any] = None
+
+    @property
+    def is_executing_tool(self) -> bool:
+        return self.state == SessionState.EXECUTING
+
+    @is_executing_tool.setter
+    def is_executing_tool(self, value: bool):
+        if value:
+            self.state = SessionState.EXECUTING
+        elif self.state == SessionState.EXECUTING:
+            self.state = SessionState.LISTENING
+
+    @property
+    def is_model_responding(self) -> bool:
+        return self.state in (SessionState.THINKING, SessionState.EXECUTING, SessionState.BUSY)
+
+    @is_model_responding.setter
+    def is_model_responding(self, value: bool):
+        if value:
+            if self.state == SessionState.LISTENING:
+                self.state = SessionState.THINKING
+        else:
+            self.state = SessionState.LISTENING
