@@ -7,3 +7,4 @@ class AegisContext:
     user_id: str = "default_user"
     composio: Any = None
     is_executing_tool: bool = False
+    is_model_responding: bool = False
