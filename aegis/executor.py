@@ -206,3 +206,37 @@ async def search_and_execute(action: str, tool_args: Dict[str, Any], context: Ae
         error_msg = f"Unexpected error in search_and_execute: {e}"
         logger.exception(error_msg)
         return {"success": False, "error": error_msg}
+
+async def execute_composio_tool(tool_name: str, tool_args: dict, context: AegisContext) -> Dict[str, Any]:
+    """
+    Directly execute a Composio tool by name.
+    """
+    if not context.composio:
+        try:
+            context.composio = Composio(api_key=config.COMPOSIO_API_KEY)
+        except Exception as e:
+            logger.error(f"Failed to initialize Composio: {e}")
+            return {"success": False, "error": f"Composio initialization failed: {e}"}
+
+    try:
+        logger.info(f"Directly executing {tool_name} with args: {json.dumps(tool_args, indent=2)}")
+        execute_result = await asyncio.to_thread(
+            context.composio.tools.execute,
+            slug=tool_name,
+            arguments=tool_args,
+            user_id=config.COMPOSIO_USER_ID,
+            dangerously_skip_version_check=True
+        )
+
+        if execute_result.get("successful"):
+            logger.info(f"✅ Successfully executed tool {tool_name}")
+            return {"success": True, "data": execute_result.get("data")}
+        else:
+            error_msg = execute_result.get("error", "Unknown execute error")
+            logger.error(f"Tool execution failed: {error_msg}")
+            return {"success": False, "error": str(error_msg)}
+
+    except Exception as e:
+        error_msg = f"Unexpected error in execute_composio_tool: {e}"
+        logger.exception(error_msg)
+        return {"success": False, "error": error_msg}

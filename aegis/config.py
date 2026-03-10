@@ -14,9 +14,10 @@ AEGIS_PIN = os.environ.get("AEGIS_PIN", "")
 
 # Model Names
 GEMINI_MODEL = "gemini-2.5-flash"
-GEMINI_LIVE_MODEL = "gemini-2.0-flash-native-audio-preview-12-2025"
+GEMINI_LIVE_MODEL = "gemini-2.5-flash-native-audio-latest"
 
 # Audio Config
+VOICE_NAME = "Aoede"
 SEND_SAMPLE_RATE = 16000
 RECEIVE_SAMPLE_RATE = 24000
 CHUNK_SIZE = 1024

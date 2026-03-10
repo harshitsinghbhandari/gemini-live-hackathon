@@ -42,7 +42,7 @@ def get_tool_names_prompt():
     all_names = screen_names + composio_names
     return "Available tools:\n" + "\n".join(f"  {n}" for n in all_names)
 
-def get_schemas_for(tool_names: list) -> dict:
+def get_schemas_for(tool_names: list, context: AegisContext = None) -> dict:
     screen_map = {t["name"]: t for t in SCREEN_TOOL_DECLARATIONS}
     result = {}
     for name in tool_names:
@@ -50,6 +50,28 @@ def get_schemas_for(tool_names: list) -> dict:
             result[name] = TOOLS[name]
         elif name in screen_map:
             result[name] = screen_map[name]
+        elif context and context.composio:
+            try:
+                # Dynamic fallback to fetch schema from Composio
+                import httpx
+                url = f"https://backend.composio.dev/api/v3/tools/{name.lower()}?toolkit_versions=latest"
+                headers = {"x-api-key": config.COMPOSIO_API_KEY}
+                with httpx.Client() as client:
+                    resp = client.get(url, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        schema = data.get("input_parameters") or data.get("expected_schema")
+                        if schema:
+                            result[name] = {
+                                "name": name,
+                                "description": data.get("description", ""),
+                                "parameters": schema
+                            }
+                            continue
+                result[name] = {"error": f"Unknown tool: {name}"}
+            except Exception as e:
+                logger.error(f"Failed to fetch schema for {name} from Composio: {e}")
+                result[name] = {"error": f"Failed to fetch schema for {name}: {e}"}
         else:
             result[name] = {"error": f"Unknown tool: {name}"}
     return result
@@ -88,8 +110,17 @@ class AegisVoiceAgent:
             speech_config=SpeechConfig(
                 voice_config=VoiceConfig(
                     prebuilt_voice_config=PrebuiltVoiceConfig(
-                        voice_name="Aoede",
+                        voice_name=config.VOICE_NAME,
                     )
+                ),
+            ),
+            realtime_input_config=types.RealtimeInputConfig(
+                automatic_activity_detection=types.AutomaticActivityDetection(
+                    disabled=False,
+                    start_of_speech_sensitivity=types.StartSensitivity.START_SENSITIVITY_HIGH,
+                    end_of_speech_sensitivity=types.EndSensitivity.END_SENSITIVITY_HIGH,
+                    prefix_padding_ms=200,
+                    silence_duration_ms=500,
                 ),
             ),
             thinking_config=ThinkingConfig(include_thoughts=True),
@@ -137,7 +168,10 @@ class AegisVoiceAgent:
         """Convert Gemini 0-1000 coordinates to Aegis capture scale (1470, 956)"""
         # capture.py uses (1470, 956) as default scale_to
         target_w, target_h = 1470, 956
-        return int(x / 1000 * target_w), int(y / 1000 * target_h)
+        # Ensure coordinates are within 0-1000 range as per ComputerUse spec
+        nx = max(0, min(1000, x))
+        ny = max(0, min(1000, y))
+        return int(nx / 1000 * target_w), int(ny / 1000 * target_h)
 
     async def _send_audio_loop(self, session, mic_info):
         """Captures mic and sends to Gemini"""
@@ -186,22 +220,31 @@ class AegisVoiceAgent:
         try:
             while True:
                 async for response in session.receive():
-                    if response.server_content and response.server_content.interrupted:
-                        logger.info("⚡ Interrupted")
-                        continue
+                    if response.server_content:
+                        if response.server_content.interrupted:
+                            logger.info("⚡ Interrupted")
+                            # Immediately stop playback
+                            await asyncio.to_thread(output_stream.stop_stream)
+                            await asyncio.to_thread(output_stream.start_stream)
+                            continue
 
-                    # Skip non-audio server content (text/thought parts from thinking models)
-                    if response.server_content and response.server_content.model_turn:
-                        for part in response.server_content.model_turn.parts:
-                            if hasattr(part, 'thought') and part.thought:
-                                logger.debug("💭 Thinking...")
-                                continue
-                            if hasattr(part, 'text') and part.text and not part.inline_data:
-                                logger.debug(f"📝 Model text: {part.text[:80]}")
-                                continue
+                        if response.server_content.turn_complete:
+                            logger.info("🏁 Turn complete")
+                            ws_server.broadcast("turn_complete")
 
-                    if response.data:
-                        await asyncio.to_thread(output_stream.write, response.data)
+                        # Skip non-audio server content (text/thought parts from thinking models)
+                        if response.server_content.model_turn:
+                            for part in response.server_content.model_turn.parts:
+                                if getattr(part, "thought", False):
+                                    logger.debug(f"💭 Thinking: {part.text}")
+                                    ws_server.broadcast("thought", value=part.text)
+                                    continue
+                                if part.text:
+                                    logger.debug(f"📝 Model text: {part.text[:80]}")
+                                    ws_server.broadcast("text", value=part.text)
+                                    continue
+                                if part.inline_data:
+                                    await asyncio.to_thread(output_stream.write, part.inline_data.data)
 
                     if response.tool_call:
                         self.context.is_executing_tool = True
@@ -216,14 +259,16 @@ class AegisVoiceAgent:
                                     if fn.name == "get_tool_schema":
                                         requested = fn.args.get("tool_names", [])
                                         logger.info(f"🔍 Gemini requested schemas for: {requested}")
-                                        schemas = get_schemas_for(requested)
+                                        schemas = get_schemas_for(requested, self.context)
                                         logger.info(f"📤 Returning schemas for: {list(schemas.keys())}")
                                         
-                                        function_responses.append({
-                                            "id": fn.id,
-                                            "name": fn.name,
-                                            "response": {"result": schemas}
-                                        })
+                                        function_responses.append(types.Part(
+                                            function_response=types.FunctionResponse(
+                                                id=fn.id,
+                                                name=fn.name,
+                                                response={"result": schemas}
+                                            )
+                                        ))
 
                                     else:
                                         # Real tool call (dynamic)
@@ -247,21 +292,21 @@ class AegisVoiceAgent:
                                                 self._update_status("blocked")
                                             tool_response = {"result": json.dumps(result)}
 
-                                        function_responses.append({
-                                            "id": fn.id,
-                                            "name": fn.name,
-                                            "response": tool_response
-                                        })
+                                        shot = capture_screen() if is_screen_tool(fn.name) else None
 
-                                        if is_screen_tool(fn.name):
-                                            logger.info("📸 Sending fresh screenshot to Gemini Live context")
-                                            shot = capture_screen()
-                                            await session.send_realtime_input(
-                                                media=types.Blob(
-                                                    data=base64.b64decode(shot["base64"]),
-                                                    mime_type=shot["mime_type"]
-                                                )
+                                        function_responses.append(types.Part(
+                                            function_response=types.FunctionResponse(
+                                                id=fn.id,
+                                                name=fn.name,
+                                                response=tool_response,
+                                                parts=[types.FunctionResponsePart(
+                                                    inline_data=types.FunctionResponseBlob(
+                                                        data=base64.b64decode(shot["base64"]),
+                                                        mime_type=shot["mime_type"]
+                                                    )
+                                                )] if shot else []
                                             )
+                                        ))
 
                             # Handle native ComputerUse calls
                             if response.tool_call.computer_use:
@@ -299,6 +344,7 @@ class AegisVoiceAgent:
                                     elif action.name == "type_text_at":
                                         mapped_tool = "SCREEN_TYPE"
                                         tx, ty = self._denormalize(action.args["x"], action.args["y"])
+                                        # Gating the implicit click before typing
                                         await gate_action(f"Click at ({tx}, {ty})", self.context, tool_name="SCREEN_CLICK", tool_args={"x": tx, "y": ty})
                                         mapped_args = {"text": action.args["text"]}
                                     elif action.name == "key_combination":
@@ -317,27 +363,29 @@ class AegisVoiceAgent:
                                             on_auth_request=lambda: self._update_status("auth")
                                         )
                                         
+                                        shot = capture_screen()
                                         response_payload = {"url": "macOS Desktop"}
                                         if not result.get("success"):
                                             response_payload["error"] = result.get("error", "Action blocked or failed")
                                         
-                                        function_responses.append({
-                                            "id": action.id,
-                                            "name": action.name,
-                                            "response": response_payload
-                                        })
-
-                                        logger.info("📸 Sending fresh screenshot after ComputerUse action")
-                                        shot = capture_screen()
-                                        await session.send_realtime_input(
-                                            media=types.Blob(
-                                                data=base64.b64decode(shot["base64"]),
-                                                mime_type=shot["mime_type"]
+                                        function_responses.append(types.Part(
+                                            function_response=types.FunctionResponse(
+                                                id=action.id,
+                                                name=action.name,
+                                                response=response_payload,
+                                                parts=[types.FunctionResponsePart(
+                                                    inline_data=types.FunctionResponseBlob(
+                                                        data=base64.b64decode(shot["base64"]),
+                                                        mime_type=shot["mime_type"]
+                                                    )
+                                                )]
                                             )
-                                        )
+                                        ))
 
                             if function_responses:
-                                await session.send(input={"function_responses": function_responses})
+                                await session.send(input=types.LiveClientToolResponse(
+                                    function_responses=[p.function_response for p in function_responses]
+                                ))
 
                         except Exception as e:
                             logger.error(f"Error executing tools: {e}")
