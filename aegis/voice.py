@@ -5,6 +5,15 @@ import logging
 import pyaudio
 from google import genai
 from google.genai import types
+from google.genai.types import (
+    ComputerUse,
+    Environment,
+    ThinkingConfig,
+    Tool,
+    SpeechConfig,
+    VoiceConfig,
+    PrebuiltVoiceConfig,
+)
 from . import config
 from .context import AegisContext
 from .gate import gate_action
@@ -48,11 +57,12 @@ def get_schemas_for(tool_names: list) -> dict:
 SYSTEM_PROMPT = """
 You are Aegis, a trusted AI agent that controls the user's Mac computer.
 
-You can hear the user's voice.
+You can hear the user's voice and see the user's screen via screenshots.
 When the user asks you to do something:
-1. Identify which tool(s) you need from the list below.
-2. If you don't have the parameter schema for a tool, call get_tool_schema([tool_name])
-3. Once you have the schema, call the tool with the correct arguments.
+1. Identify which tool(s) you need.
+2. If you need to interact with the screen (click, type, scroll, etc.), use the `computer_use` tool.
+3. If you need a specific capability from the list below and don't have the schema, call `get_tool_schema([tool_name])`.
+4. Once you have the schema, call the tool with the correct arguments.
 
 {tool_list}
 
@@ -75,26 +85,40 @@ class AegisVoiceAgent:
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             system_instruction=SYSTEM_PROMPT.format(tool_list=get_tool_names_prompt()),
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-            tools=[{
-                "function_declarations": [
-                    {
-                        "name": "get_tool_schema",
-                        "description": "Get the parameter schema for one or more tools before calling them. Be reasonable — only request schemas you actually need.",
-                        "parameters": {
-                            "type": "OBJECT",
-                            "properties": {
-                                "tool_names": {
-                                    "type": "ARRAY",
-                                    "items": {"type": "STRING"},
-                                    "description": "List of tool names to get schemas for"
-                                }
-                            },
-                            "required": ["tool_names"]
+            speech_config=SpeechConfig(
+                voice_config=VoiceConfig(
+                    prebuilt_voice_config=PrebuiltVoiceConfig(
+                        voice_name="Aoede",
+                    )
+                ),
+            ),
+            thinking_config=ThinkingConfig(include_thoughts=True),
+            tools=[
+                Tool(
+                    computer_use=ComputerUse(
+                        environment=Environment.ENVIRONMENT_BROWSER,
+                    )
+                ),
+                {
+                    "function_declarations": [
+                        {
+                            "name": "get_tool_schema",
+                            "description": "Get the parameter schema for one or more tools before calling them. Be reasonable — only request schemas you actually need.",
+                            "parameters": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "tool_names": {
+                                        "type": "ARRAY",
+                                        "items": {"type": "STRING"},
+                                        "description": "List of tool names to get schemas for"
+                                    }
+                                },
+                                "required": ["tool_names"]
+                            }
                         }
-                    }
-                ]
-            }]
+                    ]
+                }
+            ]
         )
 
 
@@ -108,6 +132,12 @@ class AegisVoiceAgent:
         
         # Broadcast to WebSocket UI
         ws_server.broadcast("status", value=status)
+
+    def _denormalize(self, x: int, y: int) -> tuple[int, int]:
+        """Convert Gemini 0-1000 coordinates to Aegis capture scale (1470, 956)"""
+        # capture.py uses (1470, 956) as default scale_to
+        target_w, target_h = 1470, 956
+        return int(x / 1000 * target_w), int(y / 1000 * target_h)
 
     async def _send_audio_loop(self, session, mic_info):
         """Captures mic and sends to Gemini"""
@@ -164,10 +194,10 @@ class AegisVoiceAgent:
                     if response.server_content and response.server_content.model_turn:
                         for part in response.server_content.model_turn.parts:
                             if hasattr(part, 'thought') and part.thought:
-                                logger.debug("💭 Skipping thought part")
+                                logger.debug("💭 Thinking...")
                                 continue
                             if hasattr(part, 'text') and part.text and not part.inline_data:
-                                logger.debug(f"📝 Skipping text part: {part.text[:80]}")
+                                logger.debug(f"📝 Model text: {part.text[:80]}")
                                 continue
 
                     if response.data:
@@ -179,53 +209,129 @@ class AegisVoiceAgent:
                         logger.info("⏳ Pausing audio input during tool execution...")
                         try:
                             function_responses = []
-                            for fn in response.tool_call.function_calls:
-                                if fn.name == "get_tool_schema":
-                                    requested = fn.args.get("tool_names", [])
-                                    logger.info(f"🔍 Gemini requested schemas for: {requested}")
-                                    schemas = get_schemas_for(requested)
-                                    logger.info(f"📤 Returning schemas for: {list(schemas.keys())}")
-                                    
-                                    function_responses.append({
-                                        "id": fn.id,
-                                        "name": fn.name,
-                                        "response": {"result": schemas}
-                                    })
+                            
+                            # Handle standard function calls (get_tool_schema, Composio tools)
+                            if response.tool_call.function_calls:
+                                for fn in response.tool_call.function_calls:
+                                    if fn.name == "get_tool_schema":
+                                        requested = fn.args.get("tool_names", [])
+                                        logger.info(f"🔍 Gemini requested schemas for: {requested}")
+                                        schemas = get_schemas_for(requested)
+                                        logger.info(f"📤 Returning schemas for: {list(schemas.keys())}")
+                                        
+                                        function_responses.append({
+                                            "id": fn.id,
+                                            "name": fn.name,
+                                            "response": {"result": schemas}
+                                        })
 
-                                else:
-                                    # Real tool call (dynamic)
-                                    tool_name = fn.name
-                                    arguments = dict(fn.args) if fn.args else {}
-                                    logger.info(f"📥 Received tool call: {tool_name} with args: {arguments}")
-
-                                    simulated_action = f"Run tool {tool_name} with arguments {json.dumps(arguments)}"
-                                    
-                                    result = await gate_action(
-                                        simulated_action, self.context,
-                                        tool_name=tool_name,
-                                        tool_args=arguments,
-                                        on_auth_request=lambda: self._update_status("auth")
-                                    )
-
-                                    if result.get("needs_confirmation"):
-                                        tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm this action: " + result['speak'] + ". If they say yes, call the tool again with the same arguments."}
                                     else:
-                                        if result.get("blocked") and result.get("tier") == "RED":
-                                            self._update_status("blocked")
-                                        tool_response = {"result": json.dumps(result)}
+                                        # Real tool call (dynamic)
+                                        tool_name = fn.name
+                                        arguments = dict(fn.args) if fn.args else {}
+                                        logger.info(f"📥 Received tool call: {tool_name} with args: {arguments}")
 
-                                    function_responses.append({
-                                        "id": fn.id,
-                                        "name": fn.name,
-                                        "response": tool_response
-                                    })
+                                        simulated_action = f"Run tool {tool_name} with arguments {json.dumps(arguments)}"
+                                        
+                                        result = await gate_action(
+                                            simulated_action, self.context,
+                                            tool_name=tool_name,
+                                            tool_args=arguments,
+                                            on_auth_request=lambda: self._update_status("auth")
+                                        )
 
-                                    if is_screen_tool(fn.name):
-                                        logger.info("📸 Sending fresh screenshot to Gemini Live context")
+                                        if result.get("needs_confirmation"):
+                                            tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm this action: " + result['speak'] + ". If they say yes, call the tool again with the same arguments."}
+                                        else:
+                                            if result.get("blocked") and result.get("tier") == "RED":
+                                                self._update_status("blocked")
+                                            tool_response = {"result": json.dumps(result)}
+
+                                        function_responses.append({
+                                            "id": fn.id,
+                                            "name": fn.name,
+                                            "response": tool_response
+                                        })
+
+                                        if is_screen_tool(fn.name):
+                                            logger.info("📸 Sending fresh screenshot to Gemini Live context")
+                                            shot = capture_screen()
+                                            await session.send_realtime_input(
+                                                media=types.Blob(
+                                                    data=base64.b64decode(shot["base64"]),
+                                                    mime_type=shot["mime_type"]
+                                                )
+                                            )
+
+                            # Handle native ComputerUse calls
+                            if response.tool_call.computer_use:
+                                cu = response.tool_call.computer_use
+                                for action in cu.actions:
+                                    logger.info(f"🖥️  Received ComputerUse action: {action.name}")
+                                    
+                                    # Map native ComputerUse to Aegis Screen Tools
+                                    mapped_tool = None
+                                    mapped_args = {}
+                                    
+                                    if action.name == "open_web_browser":
+                                        mapped_tool = "SCREEN_HOTKEY"
+                                        mapped_args = {"keys": ["command", "space"]} # Simulate opening Spotlight or browser
+                                    elif action.name == "navigate":
+                                        mapped_tool = "SCREEN_TYPE"
+                                        mapped_args = {"text": action.args["url"], "press_enter": True}
+                                    elif action.name == "click_at":
+                                        mapped_tool = "SCREEN_CLICK"
+                                        mapped_args["x"], mapped_args["y"] = self._denormalize(action.args["x"], action.args["y"])
+                                    elif action.name == "double_click_at":
+                                        mapped_tool = "SCREEN_DOUBLE_CLICK"
+                                        mapped_args["x"], mapped_args["y"] = self._denormalize(action.args["x"], action.args["y"])
+                                    elif action.name == "right_click_at":
+                                        mapped_tool = "SCREEN_RIGHT_CLICK"
+                                        mapped_args["x"], mapped_args["y"] = self._denormalize(action.args["x"], action.args["y"])
+                                    elif action.name == "drag_and_drop":
+                                        mapped_tool = "SCREEN_DRAG"
+                                        mapped_args["x1"], mapped_args["y1"] = self._denormalize(action.args["x1"], action.args["y1"])
+                                        mapped_args["x2"], mapped_args["y2"] = self._denormalize(action.args["x2"], action.args["y2"])
+                                    elif action.name == "scroll":
+                                        mapped_tool = "SCREEN_SCROLL"
+                                        mapped_args["x"], mapped_args["y"] = self._denormalize(action.args["x"], action.args["y"])
+                                        mapped_args["clicks"] = -10 if action.args["direction"] == "down" else 10
+                                    elif action.name == "type_text_at":
+                                        mapped_tool = "SCREEN_TYPE"
+                                        tx, ty = self._denormalize(action.args["x"], action.args["y"])
+                                        await gate_action(f"Click at ({tx}, {ty})", self.context, tool_name="SCREEN_CLICK", tool_args={"x": tx, "y": ty})
+                                        mapped_args = {"text": action.args["text"]}
+                                    elif action.name == "key_combination":
+                                        mapped_tool = "SCREEN_HOTKEY"
+                                        mapped_args = {"keys": action.args["keys"]}
+                                    elif action.name == "wait":
+                                        mapped_tool = "SCREEN_MOVE"
+                                        mapped_args = {"x": 735, "y": 478}
+                                    
+                                    if mapped_tool:
+                                        simulated_action = f"ComputerUse: {action.name} with args {json.dumps(action.args)}"
+                                        result = await gate_action(
+                                            simulated_action, self.context,
+                                            tool_name=mapped_tool,
+                                            tool_args=mapped_args,
+                                            on_auth_request=lambda: self._update_status("auth")
+                                        )
+                                        
+                                        response_payload = {"url": "macOS Desktop"}
+                                        if not result.get("success"):
+                                            response_payload["error"] = result.get("error", "Action blocked or failed")
+                                        
+                                        function_responses.append({
+                                            "id": action.id,
+                                            "name": action.name,
+                                            "response": response_payload
+                                        })
+
+                                        logger.info("📸 Sending fresh screenshot after ComputerUse action")
                                         shot = capture_screen()
                                         await session.send_realtime_input(
-                                            audio=types.Blob(
-                                                data=shot["base64"],
+                                            media=types.Blob(
+                                                data=base64.b64decode(shot["base64"]),
                                                 mime_type=shot["mime_type"]
                                             )
                                         )
@@ -234,14 +340,16 @@ class AegisVoiceAgent:
                                 await session.send(input={"function_responses": function_responses})
 
                         except Exception as e:
-                            logger.error(f"Error processing tool call: {e}")
+                            logger.error(f"Error executing tools: {e}")
                         finally:
-                            logger.info("▶️ Resuming audio input.")
                             self.context.is_executing_tool = False
                             self._update_status("listening")
+                            logger.info("🎙️ Resuming audio input...")
+
         except Exception as e:
             logger.error(f"Error in receive_and_play_loop: {e}")
         finally:
+            self._update_status("idle")
             output_stream.close()
 
     async def _check_remote_stop(self):
