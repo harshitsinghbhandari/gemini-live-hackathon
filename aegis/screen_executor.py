@@ -264,6 +264,37 @@ SCREEN_TOOL_DECLARATIONS = [
             "properties": {},
             "required": []
         }
+    },
+    {
+        "name": "smart_plan",
+        "description": "Ask the AI Architect (Gemini Pro) to break down a complex request into a step-by-step strategy. Use this for multi-stage tasks like messaging, drafting, or navigating complex apps.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "goal": {"type": "string", "description": "The high-level goal, e.g. 'Search for Harshit on WhatsApp and say hello'"}
+            },
+            "required": ["goal"]
+        }
+    },
+    {
+        "name": "verify_ui_state",
+        "description": "Perform a visual check to ensure the screen matches expectations (e.g., 'Is the search results list visible?'). Use this between plan steps.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "expected": {"type": "string", "description": "What you expect to see on screen, e.g. 'WhatsApp contact list'"}
+            },
+            "required": ["expected"]
+        }
+    },
+    {
+        "name": "plan_complete",
+        "description": "Signal that the current execution plan is finished and the task is complete. This re-enables the microphone.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
     }
 ]
 
@@ -276,14 +307,18 @@ class WindowContext:
         self.crop_height = None
         self.last_target_x = None
         self.last_target_y = None
+        self.active_session_lock = False
 
 window_state = WindowContext()
 
-def reset_view():
+def reset_view(context=None):
     window_state.crop_origin_x = 0
     window_state.crop_origin_y = 0
     window_state.crop_width = None
     window_state.crop_height = None
+    if context:
+        context.execution_plan = None
+        context.plan_index = 0
 
 def get_current_view():
     """Returns a full screenshot, or a zoomed-in crop if screen_crop is active."""
@@ -444,6 +479,89 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
                 return {"success": False, "error": "No target set. Use cursor_target first."}
             return click(int(window_state.last_target_x), int(window_state.last_target_y))
 
+        elif tool_name == "smart_plan":
+            goal = args.get("goal")
+            if not goal:
+                return {"success": False, "error": "Missing required argument: goal"}
+            
+            shot = get_current_view()
+            
+            prompt = f"""
+            You are the Strategist Architect. Break down the user's goal into a precise step-by-step Execution Plan.
+            
+            Goal: {goal}
+            
+            Current Screen Resolution: 1470x956.
+            
+            Output a JSON list of actions. Each action should have a 'step' number, 'action' type, and 'description'.
+            Example:
+            [
+              {{"step": 1, "action": "open_app", "description": "Open WhatsApp"}},
+              {{"step": 2, "action": "search", "description": "Search for Harshit"}},
+              {{"step": 3, "action": "message", "description": "Type 'Hello' and press enter"}}
+            ]
+            
+            Return ONLY the raw JSON list.
+            """
+            
+            try:
+                # Use Gemini Pro for complex reasoning
+                client_pro = genai.Client(api_key=config.GOOGLE_API_KEY)
+                response = await client_pro.aio.models.generate_content(
+                    model=config.GEMINI_PRO_MODEL,
+                    contents=[
+                        types.Part.from_bytes(
+                            data=base64.b64decode(shot["base64"]),
+                            mime_type=shot["mime_type"]
+                        ),
+                        prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+                
+                plan = json.loads(response.text)
+                return {
+                    "success": True,
+                    "action": "smart_plan",
+                    "plan": plan,
+                    "message": "Planning complete. Live Agent (Operator) will now follow this script."
+                }
+            except Exception as e:
+                logger.error(f"Strategist failed: {e}")
+                return {"success": False, "error": f"Planning failed: {str(e)}"}
+
+        elif tool_name == "verify_ui_state":
+            expected = args.get("expected")
+            if not expected:
+                return {"success": False, "error": "Missing required argument: expected"}
+            
+            shot = get_current_view()
+            prompt = f"Does the current screen show: {expected}? Respond with 'YES' or 'NO' and a brief reason."
+            
+            try:
+                response = await client.aio.models.generate_content(
+                    model=config.GEMINI_MODEL, # Flash is fine for fast verification
+                    contents=[
+                        types.Part.from_bytes(
+                            data=base64.b64decode(shot["base64"]),
+                            mime_type=shot["mime_type"]
+                        ),
+                        prompt
+                    ]
+                )
+                verified = "YES" in response.text.upper()
+                return {
+                    "success": True,
+                    "action": "verify_ui_state",
+                    "verified": verified,
+                    "reason": response.text
+                }
+            except Exception as e:
+                logger.error(f"Verification failed: {e}")
+                return {"success": False, "error": f"Verification failed: {str(e)}"}
+
         elif tool_name == "cursor_move":
             if "box_2d" not in args:
                 return {"success": False, "error": "Missing required argument: box_2d"}
@@ -483,6 +601,15 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
             if "offset_x" not in args or "offset_y" not in args:
                 return {"success": False, "error": "Missing required arguments: offset_x, offset_y"}
             return nudge(args["offset_x"], args["offset_y"])
+
+        elif tool_name == "plan_complete":
+            # This is handled in voice.py to clear the context, 
+            # but we return success here.
+            return {
+                "success": True, 
+                "action": "plan_complete", 
+                "message": "Plan marked as complete. Aegis is now listening for new commands."
+            }
 
         elif tool_name == "keyboard_type":
             if "text" not in args:
@@ -538,7 +665,7 @@ def is_screen_tool(tool_name: str) -> bool:
     Returns True if the tool name belongs to the screen executor.
     Used by gate.py to route to the correct executor.
     """
-    return tool_name.startswith(("screen_", "cursor_", "keyboard_"))
+    return tool_name.startswith(("screen_", "cursor_", "keyboard_")) or tool_name in ["smart_plan", "verify_ui_state", "plan_complete"]
 
 
 # ─────────────────────────────────────────────

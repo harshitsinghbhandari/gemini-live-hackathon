@@ -14,6 +14,10 @@ class AegisContext:
     user_id: str = "default_user"
     state: SessionState = SessionState.LISTENING
     resumption_handle: Optional[Any] = None
+    
+    # Smart Planning
+    execution_plan: list = None # List of dicts [{"action": "...", ...}]
+    plan_index: int = 0
 
     @property
     def is_executing_tool(self) -> bool:

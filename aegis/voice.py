@@ -49,6 +49,12 @@ PRECISION PILOT WORKFLOW:
 5. If it is perfectly centered on the target, use `cursor_confirm_click`.
 6. If it is slightly off, use `cursor_nudge`.
 
+SMART PLANNING (Strategist + Operator):
+1. For complex, multi-step tasks (e.g. "Message Harshit on WhatsApp"), ALWAYS call `smart_plan` first.
+2. The AI Architect (Strategist) will return a JSON Execution Plan.
+3. Follow the steps precisely. Use `verify_ui_state` between steps to confirm you are on the right screen.
+4. If you get stuck or the screen doesn't match the plan, call `smart_plan` again with a fresh screenshot to get a "Plan Correction".
+
 SCREEN RESOLUTION: 1470x956.
 Be concise. Tell the user what you are doing.
 """
@@ -356,13 +362,29 @@ class AegisVoiceAgent:
                                             logger.info("🤖 No confirmation needed")
                                             if result.get("blocked") and result.get("tier") == "RED":
                                                 self._update_status("blocked")
-                                            tool_response = {"result": json.dumps(result)}
-
-                                        f_resp = types.FunctionResponse(id=fn.id, name=fn.name, response=tool_response)
+                                            
+                                        # Update Context with Smart Plan
+                                        if fn.name == "smart_plan" and result.get("success"):
+                                            plan = result.get("plan")
+                                            if isinstance(plan, list):
+                                                self.context.execution_plan = plan
+                                                self.context.plan_index = 0
+                                                logger.info(f"📋 Plan captured: {len(self.context.execution_plan)} steps")
+                                            else:
+                                                logger.warning(f"⚠️  Smart Plan returned invalid plan format: {type(plan)}")
                                         
-                                        # Settling Delay: Let the UI finish animating
-                                        await asyncio.sleep(0.3)
-                                        shot = get_current_view() # Fresh screenshot (full or cropped) after tool
+                                        if fn.name == "plan_complete":
+                                            self.context.execution_plan = None
+                                            self.context.plan_index = 0
+                                            logger.info("🏁 Plan completed and cleared.")
+                                        
+                                        tool_response = {"result": json.dumps(result)}
+
+                                    f_resp = types.FunctionResponse(id=fn.id, name=fn.name, response=tool_response)
+                                    
+                                    # Settling Delay: Let the UI finish animating before capturing response screenshot
+                                    await asyncio.sleep(config.SETTLING_DELAY)
+                                    shot = get_current_view() # Fresh screenshot (full or cropped) after tool
 
                                     function_responses.append(f_resp)
                                     if shot:

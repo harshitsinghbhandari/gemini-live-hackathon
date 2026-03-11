@@ -12,6 +12,7 @@ AEGIS_PIN = os.environ.get("AEGIS_PIN", "")
 
 # Model Names
 GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_PRO_MODEL = "gemini-3.1-flash-lite-preview" # Strategist model
 GEMINI_LIVE_MODEL = "gemini-2.5-flash-native-audio-latest"
 # GEMINI_LIVE_MODEL = 'gemini-2.0-flash-exp'
 
@@ -23,6 +24,7 @@ CHUNK_SIZE = 1024
 
 # Timeouts & Intervals
 SCREENSHOT_INTERVAL = 3
+SETTLING_DELAY = 0.2  # Seconds between multi-tool actions
 TOUCH_ID_TIMEOUT = 30
 YELLOW_CONFIRM_TIMEOUT = 15
 

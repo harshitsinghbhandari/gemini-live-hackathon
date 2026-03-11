@@ -50,7 +50,7 @@ def move(x: int, y: int, duration: float = 0.0) -> dict:
         dict: {success, x, y}
     """
     try:
-        pyautogui.moveTo(x, y, duration=duration)
+        pyautogui.moveTo(x, y, duration=duration,tween=pyautogui.easeOutElastic)
         return {"success": True, "x": x, "y": y}
     except pyautogui.FailSafeException:
         return {"success": False, "error": "Failsafe triggered — mouse hit screen corner"}

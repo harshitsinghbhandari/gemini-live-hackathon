@@ -208,6 +208,10 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
             if exec_result["success"]:
                 result["output"] = exec_result.get("data") or exec_result.get("description")
                 result["executed"] = True
+                # Pass through additional keys (like 'plan') from the executor
+                for k, v in exec_result.items():
+                    if k not in result:
+                        result[k] = v
             else:
                 result["error"] = exec_result.get("error")
                 logger.error(f"Execution error: {result['error']}")

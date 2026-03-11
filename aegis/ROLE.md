@@ -73,8 +73,10 @@ This document provides a comprehensive overview of every file within the `aegis`
 - **Detailed Purpose**: Handles low-latency local actions like mouse clicks, keyboard typing, and screen scraping.
 - **Core Functionality**:
     - `SCREEN_TOOL_DECLARATIONS`: The JSON schemas sent to Gemini so it knows how to use the mouse and keyboard.
-    - `execute_screen_action(...)`: Routes calls to the low-level wrappers.
-- **Why it exists**: Ensures maximum speed and reliability for desktop-specific tasks.
+    - `smart_plan(goal)`: Sends a screenshot to Gemini Pro to generate a multi-step execution plan.
+    - `verify_ui_state(expected)`: Fast visual check to confirm the current screen matches the expected step.
+    - `plan_complete()`: Marks an autonomous plan as finished, re-enabling the microphone.
+- **Why it exists**: Ensures maximum speed and reliability for desktop-specific tasks while providing high-level reasoning and autonomous loops.
 
 ### [tool_manager.py](file:///Users/harshitsinghbhandari/Downloads/main-quests/gemini-live-hackathon/aegis/tool_manager.py)
 - **Role**: Capability Registry.
