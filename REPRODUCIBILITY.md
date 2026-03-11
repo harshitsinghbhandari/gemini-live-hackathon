@@ -5,7 +5,7 @@ This guide ensures a seamless setup of Aegis from scratch. Follow these steps to
 ## 📋 System Requirements
 
 - **Operating System:** macOS (Intel or Apple Silicon)
-- **Python:** 3.11, 3.12, or 3.13 (Python 3.14 compatibility is experimental)
+- **Python:** 3.11, 3.12, or 3.13
 - **Homebrew:** Required for system dependencies (`portaudio`)
 - **Browser:** Google Chrome (recommended for app mode)
 
@@ -22,7 +22,7 @@ curl -sSL https://aegis.projectalpha.in/install.sh | bash
 2. Installs `portaudio` via Homebrew.
 3. Clones the Aegis repository.
 4. Sets up a Python virtual environment and installs dependencies.
-5. Starts the Helper Server and Agent in the background.
+5. Starts the Helper Server in the background.
 6. Opens the Aegis Dashboard.
 
 ## 🛠️ Manual Setup
@@ -36,7 +36,7 @@ brew install portaudio
 
 ### 2. Clone and Prepare Environment
 ```bash
-git clone https://github.com/harshitsinghbhandari/gemini-live-hackathon.git
+git clone https://github.com/projectalpha-dev/gemini-live-hackathon.git
 cd gemini-live-hackathon
 cp .env.example .env
 ```
@@ -44,8 +44,8 @@ cp .env.example .env
 ### 3. Configure .env
 Fill in your API keys in the `.env` file:
 - `GOOGLE_API_KEY`: Get from [aistudio.google.com](https://aistudio.google.com)
-- `COMPOSIO_API_KEY`: Get from [app.composio.dev](https://app.composio.dev)
 - `USER_ID`: Your chosen username
+- `AEGIS_PIN`: A 4-6 digit pin for security
 - `DEVICE_ID`: A unique identifier (e.g., `my-macbook`)
 
 ### 4. Install Python Dependencies
@@ -63,8 +63,8 @@ pip install -r requirements.txt
 # Start the helper server (required for the Mac PWA)
 python3 -m aegis.helper_server &
 
-# Start the agent
-python3 main.py
+# The Mac PWA (aegismac.projectalpha.in) will connect to the helper server
+# to start the main agent process automatically when you click "Start".
 ```
 
 ## ❓ Troubleshooting

@@ -18,30 +18,33 @@ graph TD
 
     subgraph "Local Mac Agent"
         WsServer["📡 WebSocket Server<br/>(ws://localhost:8765)"]:::local
-        Voice["🎙️ voice.py<br/>(Audio I/O)"]:::gemini
+        Voice["🎙️ voice.py<br/>(Audio & Video I/O)"]:::gemini
         Gemini{"✨ Gemini Live API"}:::gemini
         Classifier["🧠 classifier.py<br/>(Risk Analysis)"]:::local
         Gate["🛡️ gate.py<br/>(Auth Router)"]:::local
         
+        State["🔄 State Machine<br/>(LISTENING/THINKING/EXECUTING/BUSY)"]:::local
+
         TierG["🟢 GREEN<br/>(Silent)"]:::green
         TierY["🟡 YELLOW<br/>(Voice Confirm)"]:::yellow
         TierR["🔴 RED<br/>(Biometric Auth)"]:::red
         
-        Executor["⚡ executor.py<br/>(Tool Runner)"]:::local
-        Tools[/"🛠️ Composio Tools<br/>Gmail, Calendar, Docs, GitHub"/]:::local
+        Executor["⚡ screen_executor.py<br/>(Native ComputerUse)"]:::local
+        Screen[/"🖥️ macOS Screen Control<br/>pyautogui, mss, clipboard"/]:::local
 
         MacPWA -. "Live State / Waveforms" .-> WsServer
         WsServer -.-> Voice
         Voice <--> Gemini
         Voice --> Classifier
         Classifier --> Gate
-        Gate --> TierG
-        Gate --> TierY
-        Gate --> TierR
+        Gate --> State
+        State --> TierG
+        State --> TierY
+        State --> TierR
         TierG --> Executor
         TierY -- "Confirmed by Voice" --> Executor
-        TierR -- "Approved by Mobile" --> Executor
-        Executor --> Tools
+        TierR -- "Approved by Mobile/TouchID" --> Executor
+        Executor --> Screen
     end
 
     subgraph "GCP Backend (Cloud Run)"

@@ -165,7 +165,7 @@
 
     <script>
         const width = 1000;
-        const height = 800;
+        const height = 900;
 
         const svg = d3.select("#diagram-container")
             .append("svg")
@@ -202,7 +202,7 @@
         // Groups
         const groups = [
             { id: "g-device", x: 20, y: 20, w: 220, h: 220, label: "User Interface" },
-            { id: "g-agent", x: 260, y: 20, w: 460, h: 580, label: "Local Mac Agent" },
+            { id: "g-agent", x: 260, y: 20, w: 460, h: 700, label: "Local Mac Agent" },
             { id: "g-gcp", x: 740, y: 20, w: 240, h: 200, label: "GCP Backend (Cloud Run)" },
             { id: "g-clients", x: 740, y: 240, w: 240, h: 240, label: "Remote Dashboards" }
         ];
@@ -215,17 +215,18 @@
             { id: "helper", x: 130, y: 250, w: 180, h: 60, title: "⚙️ Helper Server", sub: "localhost:8766", subclass: "" },
 
             // Local Mac Agent
-            { id: "voice", x: 490, y: 80, w: 180, h: 60, title: "🎙️ voice.py", sub: "Audio I/O & Gemini", subclass: "node-purple" },
+            { id: "voice", x: 490, y: 80, w: 180, h: 60, title: "🎙️ voice.py", sub: "Audio & Video I/O", subclass: "node-purple" },
             { id: "classifier", x: 490, y: 170, w: 180, h: 60, title: "🧠 classifier.py", sub: "Risk Analysis", subclass: "node-blue" },
             { id: "gate", x: 490, y: 260, w: 180, h: 60, title: "🛡️ gate.py", sub: "Auth Router", subclass: "node-blue" },
+            { id: "state", x: 490, y: 350, w: 200, h: 60, title: "🔄 State Machine", sub: "LISTENING/THINKING/...", subclass: "node-purple" },
 
             // Tiers
-            { id: "tier_green", x: 330, y: 360, w: 130, h: 60, title: "🟢 GREEN", sub: "Silent", subclass: "node-green" },
-            { id: "tier_yellow", x: 490, y: 360, w: 130, h: 60, title: "🟡 YELLOW", sub: "Voice Confirm", subclass: "node-yellow" },
-            { id: "tier_red", x: 650, y: 360, w: 130, h: 60, title: "🔴 RED", sub: "Biometric Auth", subclass: "node-red" },
+            { id: "tier_green", x: 330, y: 460, w: 130, h: 60, title: "🟢 GREEN", sub: "Silent", subclass: "node-green" },
+            { id: "tier_yellow", x: 490, y: 460, w: 130, h: 60, title: "🟡 YELLOW", sub: "Voice Confirm", subclass: "node-yellow" },
+            { id: "tier_red", x: 650, y: 460, w: 130, h: 60, title: "🔴 RED", sub: "Biometric Auth", subclass: "node-red" },
 
-            { id: "executor", x: 490, y: 460, w: 240, h: 60, title: "⚡ executor.py", sub: "Composio Tool Runner", subclass: "node-blue" },
-            { id: "tools", x: 490, y: 560, w: 300, h: 60, title: "🛠️ External Tools", sub: "Gmail, Calendar, GitHub, Docs", subclass: "" },
+            { id: "executor", x: 490, y: 560, w: 240, h: 60, title: "⚡ screen_executor.py", sub: "Native ComputerUse", subclass: "node-blue" },
+            { id: "tools", x: 490, y: 660, w: 300, h: 60, title: "🖥️ macOS Screen Control", sub: "pyautogui, mss, clipboard", subclass: "" },
             { id: "wsserver", x: 300, y: 80, w: 140, h: 60, title: "📡 ws_server.py", sub: "ws://localhost:8765", subclass: "" },
 
             // GCP Backend
@@ -245,12 +246,13 @@
             { source: "wsserver", target: "voice", label: "", anim: true },
             { source: "voice", target: "classifier", label: "Text Intent" },
             { source: "classifier", target: "gate", label: "Classification" },
-            { source: "gate", target: "tier_green", label: "Risk: Low" },
-            { source: "gate", target: "tier_yellow", label: "Risk: Medium" },
-            { source: "gate", target: "tier_red", label: "Risk: High" },
+            { source: "gate", target: "state", label: "Proposed Action" },
+            { source: "state", target: "tier_green", label: "Risk: Low" },
+            { source: "state", target: "tier_yellow", label: "Risk: Medium" },
+            { source: "state", target: "tier_red", label: "Risk: High" },
             { source: "tier_green", target: "executor", label: "Direct" },
             { source: "tier_yellow", target: "executor", label: "Voice Checked" },
-            { source: "tier_red", target: "executor", label: "Biometrics Checked" },
+            { source: "tier_red", target: "executor", label: "Auth Checked" },
             { source: "executor", target: "tools", label: "Execute Call" },
 
             { source: "gate", target: "fastapi", label: "POST /action\nPOST /auth/request", pathType: "curve" },
@@ -385,7 +387,7 @@
             .text(d => d.sub || "");
 
         // PNG Export Function
-        function exportPNG() {
+        d3.select("#exportBtn").on("click", function() {
             const svgElement = document.getElementById("architecture-svg");
             const serializer = new XMLSerializer();
             let source = serializer.serializeToString(svgElement);
@@ -419,7 +421,7 @@
                 a.click();
             };
             image.src = url;
-        }
+        });
     </script>
 </body>
 

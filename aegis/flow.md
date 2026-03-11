@@ -1,62 +1,59 @@
-# Aegis Voice Flow Documentation
+# Aegis Multimodal Flow Documentation
 
-This document traces the exact execution path from the moment a user speaks to the completion of an action.
-
----
-
-## 1. User Speaks (Audio Capture & Stream)
-When the user speaks, the audio is captured via the microphone and streamed to the Gemini Live API.
-
-- **Audio Capture Loop**: `aegis/voice.py` -> `AegisVoiceAgent._send_audio_loop`
-- **Reading Chunk**: `data = await asyncio.to_thread(stream.read, config.CHUNK_SIZE, False)`
-- **Broadcasting Waveform**: `ws_server.broadcast("waveform", value=round(peak, 3))`
-- **Sending to Gemini**: `await session.send_realtime_input(audio=types.Blob(data=data, mime_type=f"audio/pcm;rate={config.SEND_SAMPLE_RATE}"))`
+This document traces the exact execution path from user input to screen action.
 
 ---
 
-## 2. Gemini Responds (Audio Playback & Tool Trigger)
-Gemini processes the audio and responds with either audio (speech) or a tool call (action).
+## 1. Input: Audio & Video Stream
+Aegis maintains two continuous outbound streams to Gemini Live.
 
-- **Reception Loop**: `aegis/voice.py` -> `AegisVoiceAgent._receive_and_play_loop`
-- **Listening for Response**: `async for response in session.receive():`
-- **Audio Playback**: `await asyncio.to_thread(output_stream.write, part.inline_data.data)`
-- **Tool Call Detection**: `if response.tool_call:`
-- **Status Update**: `self._update_status("executing")`
+- **Audio Capture**: `voice.py` -> `_send_audio_loop` captures PCM audio at 16kHz.
+- **Vision Capture**: `voice.py` -> `_visual_stream_loop` captures screenshots using `mss`. It uses delta-based change detection (MD5 hashing) to only send frames when the screen changes, optimizing bandwidth.
+- **State Check**: Media is only sent when the state machine is in `LISTENING`.
 
 ---
 
-## 3. Tool Trimming
-Composio and other external integrations have been removed. Gemini only sees screen control tools.
+## 2. Processing: Gemini Live API
+Gemini processes the multimodal stream and responds in real-time.
 
-- **Tools in Config**: `SCREEN_TOOL_DECLARATIONS` in `aegis/voice.py`.
-- **System Prompt**: Now focuses solely on screen control.
-
----
-
-## 4. Security Gating (Authorization)
-Every screen action must pass through the Aegis Secure Gateway.
-
-- **Gateway Entry**: `aegis/gate.py` -> `gate_action`
-- **Classification**: `classification = await classify_action(proposed_action, tool_hint=tool_name)` in `aegis/classifier.py`.
-- **Risk Tiers**:
-    - **RED (Biometric Required)**: Triggers Touch ID via `aegis/auth.py`.
-    - **YELLOW (Verbal Required)**: Prompts the user for verbal confirmation.
-    - **GREEN (Automatic)**: Proceeds directly to execution.
+- **Barge-in**: Handled natively by Gemini Live; Aegis UI reflects this via WebSocket events.
+- **Thought Streaming**: Gemini's internal reasoning is captured via `ThinkingConfig` and broadcast to the dashboard.
 
 ---
 
-## 5. Execution (Action Delivery)
-Once authorized, the action is routed specifically to the screen executor.
+## 3. Decision: Tool Call Interception
+When Gemini decides to act, it issues a `tool_call`.
 
-- **Routing Logic**: `if is_screen_tool(tool):` in `aegis/gate.py`.
-- **Screen Execution**: `aegis/screen_executor.py` -> `execute_screen_action`.
-    - Final Python calls (e.g., `pyautogui` via `aegis/screen/cursor.py`).
+- **Detection**: `voice.py` -> `_receive_and_play_loop` detects the `tool_call`.
+- **State Transition**: Immediately transitions state to `EXECUTING` and purges pending media to prevent policy violations (1008).
 
 ---
 
-## 6. Feedback Loop (Closing the Turn)
-After execution, results and screenshots are sent back to Gemini to confirm completion.
+## 4. Security: The Aegis Gate
+Every action is audited and gated by `gate.py`.
 
-- **Screen Capture**: `shot = capture_screen()` in `voice.py`.
-- **Sending Response**: `await session.send(input=types.LiveClientToolResponse(function_responses=...))`
-- **Resuming Mic**: `self._update_status("listening")`
+- **Classification**: `classifier.py` uses Gemini 2.5 Flash to assign a tier (GREEN/YELLOW/RED).
+- **Authorization**:
+    - **GREEN**: Logged and executed.
+    - **YELLOW**: Agent asks "Should I proceed?" verbally.
+    - **RED**: Agent triggers macOS Touch ID or sends an FCM notification to the mobile app for Face ID.
+
+---
+
+## 5. Execution: Native ComputerUse
+Once authorized, the action is dispatched to `screen_executor.py`.
+
+- **Normalization**: Coordinates are denormalized from Gemini's 0-1000 scale to physical pixels.
+- **Precision**:
+    - `cursor_target` places a red circle.
+    - `screen_crop` provides high-res zoom for small elements.
+- **Automation**: `pyautogui` executes the click, drag, or keypress.
+
+---
+
+## 6. Feedback: Context Refresh
+After execution, the loop closes.
+
+- **Snapshot**: A "Verification Snapshot" is taken after the tool runs.
+- **Return**: The result and the snapshot are sent back to Gemini as a `FunctionResponse`.
+- **Resume**: State transitions back to `LISTENING`.
