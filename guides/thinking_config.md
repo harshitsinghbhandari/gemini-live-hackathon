@@ -1,30 +1,23 @@
-# Thinking Configuration Guide
-Created by Jules
+# ThinkingConfig & Agentic Transparency
 
-## Current State
-Aegis currently provides direct responses from Gemini without an explicit reasoning or "thinking" phase visible to the system or the user. This can lead to "vibe-coding" or unpredictable tool call sequences when performing complex Mac automation tasks.
+Aegis leverages Gemini's reasoning capabilities to provide a transparent user experience. By enabling `ThinkingConfig`, we separate the agent's internal "thought process" from its external "spoken response."
 
-## Target State
-Enable the native **ThinkingConfig** in the Gemini Live API. This allows the model to produce "thoughts" (chain-of-thought reasoning) before generating a final response or tool call. These thoughts help the model navigate complex UI layouts and plan multi-step Composio workflows with higher accuracy.
+## Implementation
 
-## Migration Steps
-1. **Enable Thinking**:
-   - In `aegis/voice.py`, update the `LiveConnectConfig` to include `thinking_config=ThinkingConfig(include_thoughts=True)`.
-2. **Handle Thought Parts**:
-   - Update the `_receive_and_play_loop` in `aegis/voice.py` to detect `part.thought` in the `model_turn`.
-   - Log these thoughts internally for debugging and system audit.
-3. **UI Propagation**:
-   - Update `aegis/ws_server.py` to support a new `thought` event.
-   - Broadcast the model's reasoning steps to the Aegis dashboard or Mac app UI so the user can see what the agent is "planning" (e.g., "I see the 'Send' button is at (500, 300), I will click it now.").
-4. **Model Selection**:
-   - Ensure the `GEMINI_LIVE_MODEL` is set to a version that supports `ThinkingConfig` (e.g., Gemini 3 models).
+In `aegis/voice.py`, the agent is configured with:
+```python
+thinking_config=ThinkingConfig(include_thoughts=True)
+```
 
-## Files Changed
-- `aegis/voice.py`: Update config and receive loop to handle thought parts.
-- `aegis/ws_server.py`: Add broadcast support for thoughts.
-- `aegis/config.py`: Update to a thinking-capable model ID.
+## How Thoughts are Handled
 
-## Gotchas
-- **Token Usage**: `ThinkingConfig` consumes additional tokens for the reasoning steps. Monitor usage to ensure it remains within budget.
-- **Latency**: While thinking improves quality, it adds a small delay before the first audio byte or tool call. Tune the system prompt to keep reasoning concise.
-- **Audio Exclusion**: Thoughts are textual and should never be processed by the `pyaudio` output stream.
+1.  **Capture**: In `_receive_and_play_loop`, we listen for parts of the response where `getattr(part, "thought", False)` is true.
+2.  **Broadcast**: These thoughts are immediately broadcast via WebSockets: `ws_server.broadcast("thought", value=part.text)`.
+3.  **Visualization**: The Mac PWA and Dashboard display these thoughts in a dedicated "Thinking" area, allowing the user to see the agent's plan before it executes.
+
+## Benefits for Trust
+
+This transparency is core to the Aegis "Trust Layer":
+- **Expectation Management**: Users see what the agent intends to do.
+- **Error Detection**: If the agent's reasoning is flawed, the user can barge-in and correct it before an action is taken.
+- **Security Audit**: Thoughts are included in the `aegis_audit.jsonl` log, providing a complete record of why an action was proposed.

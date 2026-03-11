@@ -1,28 +1,24 @@
-# Live API Migration Guide
-Created by Jules
+# Gemini Live API Migration Guide
 
-## Current State
-Aegis currently uses the **Gemini 2.0 Flash Native Audio** preview model (`gemini-2.0-flash-native-audio-preview-12-2025`). The bidirectional streaming implementation in `aegis/voice.py` uses a custom `pyaudio` loop but does not fully leverage the newer SDK signals for interruptions and turn boundaries.
+Aegis has transitioned from a standard text-based agent to a fully multimodal agent powered by the Gemini Live API (`gemini-2.5-flash-native-audio-latest`).
 
-## Target State
-Upgrade to **Gemini 2.5 Flash Native Audio** (`gemini-2.5-flash-native-audio-latest`) or **Gemini 3 Flash** (`gemini-3-flash-preview`). The target implementation should utilize the standardized `google-genai` SDK patterns for low-latency bidirectional voice, ensuring natural barge-in handling and accurate turn completion signals.
+## Key Changes
 
-## Migration Steps
-1. **Update Model Constants**:
-   - Change `GEMINI_LIVE_MODEL` in `aegis/config.py` to the target model ID.
-2. **Refine Interruption Logic**:
-   - In `aegis/voice.py`, update the `_receive_and_play_loop` to check the `response.server_content.interrupted` flag.
-   - Immediately call `output_stream.stop()` and clear any pending audio buffers when `interrupted` is true to ensure natural barge-in behavior.
-3. **Handle Turn Completion**:
-   - Use the `turn_complete` signal from the server to accurately reset the `is_speaking` state and update the UI via `ws_server.broadcast`.
-4. **Modality Filtering**:
-   - Ensure the receive loop handles `model_turn` parts that contain thoughts or text (for thinking models) without attempting to play them as audio.
+### 1. Duplex Multimodal Streaming
+Aegis now uses a persistent WebSocket connection to stream both Audio (Mic) and Video (Screenshots) simultaneously. This enables real-time "Vision" where the agent can see what you are doing as you talk.
 
-## Files Changed
-- `aegis/config.py`: Update model ID and potentially regional endpoint settings.
-- `aegis/voice.py`: Refactor `_receive_and_play_loop` for interruption and turn handling.
+### 2. State Machine Logic
+To manage the high-speed stream, we implemented a custom state machine in `aegis/context.py`. This ensures that media packets are dropped when the model is already executing a tool, preventing the common `1008` (Policy Violation) errors in the Live SDK.
 
-## Gotchas
-- **Session Limits**: Gemini Live sessions have duration limits (typically 15 minutes for audio-only). Implement reconnection logic using `session_resumption` if available in the SDK.
-- **Regional Endpoints**: Native audio capabilities are often tied to specific regional endpoints (e.g., `us-central1`). Ensure the client initialization matches the availability of the model.
-- **Sample Rates**: Ensure the `RECEIVE_SAMPLE_RATE` remains consistent with the model's output (usually 24000Hz PCM).
+### 3. Native ComputerUse
+We moved away from Composio and other external tool routers. Aegis now defines its own `ComputerUse` schemas directly in `aegis/screen_executor.py`, providing lower latency and tighter security integration.
+
+### 4. ThinkingConfig & Thoughts
+Aegis enables `ThinkingConfig(include_thoughts=True)`. This allows the UI to display the agent's internal reasoning ("Thoughts") in real-time via the `thought` WebSocket event, providing transparency into the agent's decision-making process.
+
+## Migration Path for Developers
+
+If you are upgrading an older version of Aegis:
+1.  **Dependencies**: Install `google-genai` and `mss`.
+2.  **Environment**: Ensure `GOOGLE_API_KEY` supports Gemini 2.5.
+3.  **Entry Point**: Start the agent via `main.py` which initializes the `AegisVoiceAgent` with the new Live configuration.

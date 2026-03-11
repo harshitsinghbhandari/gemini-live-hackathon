@@ -1,57 +1,35 @@
-# Architectural Suggestions for Multimodal Performance
+# Multimodal Performance & Vision Optimizations
 
-To reduce latency and improve the responsiveness of Aegis's multimodal capabilities, I suggest the following architectural and implementation changes, drawing from patterns observed in the GenMedia Live system.
-
----
-
-## 1. Move to "Pseudo-Video" Continuous Stream
-**Current Pattern**: Aegis captures a screenshot *reactively* after a tool call completes. This adds the capture/encode/upload time to the critical path of the model's next turn.
-**Suggestion**: Implement a background polling loop (similar to GenMedia's `sender_loop` for camera frames) that sends low-resolution screenshots every 1.5–2 seconds using the `video` part of the Realtime API's `send_realtime_input`.
-- **Benefit**: Gemini’s "visual context" is always fresh. By the time a tool finishes, Gemini may already have seen the result in the background stream, allowing for a faster response.
+Aegis implements a "Vision-First" architecture using the Gemini Live API. This document outlines the optimizations already implemented and future suggestions for multimodal performance.
 
 ---
 
-## 2. Optimize Image Encoding & Resampling
-**Current Implementation**: `capture_screen` uses `Image.LANCZOS` for resizing, which is computationally expensive.
-**Suggestion**:
-- **Faster Filter**: Switch from `Image.LANCZOS` to `Image.BILINEAR`. In high-DPI desktop scenarios, the difference in quality is negligible for AI vision, but the speedup is significant.
-- **JPEG Quality**: Lower JPEG quality to 60-70. GenMedia uses 60% for camera frames to minimize payload size.
-- **Square Padding**: Gemini often processes 1:1 aspect ratio images more efficiently. Padding the 1470x956 screen to a square (e.g., 1024x1024) before sending can improve model accuracy and focus.
+## 1. Implemented: Delta-Based Screenshot Streaming
+**Pattern**: Aegis maintains a continuous background loop that sends screenshots via the `video` parameter of `send_realtime_input`.
+- **Optimization**: We use MD5 hashing to detect changes in the screen state. Frames are only transmitted if the screen content has changed since the last poll (1.0s interval), significantly reducing token consumption and bandwidth.
+- **State Integration**: The stream is tightly coupled with the state machine; frames are dropped during `THINKING` and `EXECUTING` states to prevent Gemini Live policy violations (1008).
 
 ---
 
-## 3. Parallelize Execution and Feedback
-**Current Flow**: `Execute Tool` -> `Wait` -> `Capture Screenshot` -> `Send to Gemini`.
-**Suggestion**:
-- **Immediate Capture**: Fire the screenshot capture *concurrently* with the tool's final status check or security audit logging.
-- **Pipelined Responses**: If the API supports it, send the `FunctionResponse` immediately, and follow up with a `Part` containing the image in a separate message turn if it helps reduce the "Time to First Token" (TTFT).
+## 2. Implemented: High-Resolution Crops (Foveated Vision)
+**Pattern**: To balance bandwidth with accuracy, Aegis uses a "Foveated Vision" strategy.
+- **Base Layer**: Standard background stream is medium resolution.
+- **Precision Layer**: When Gemini needs to interact with a small element, it calls `screen_crop`. This captures a high-resolution, lossless crop of the specific Region of Interest (ROI), providing the model with the clarity needed for precision clicking.
 
 ---
 
-## 4. Delta-Based Screenshot Capture
-**Idea**: To save bandwidth and processing, implement a simple pixel-hash check or "Dirty Region" detection.
-- **Implementation**: Only send a new screenshot if the screen has changed significantly since the last 2-second poll. This reduces the number of tokens Gemini has to process in its context window, keeping the session "snappier" over time.
+## 3. Implemented: Verification Thumbnails
+**Pattern**: For "RED" and "YELLOW" actions, Aegis provides visual feedback before execution.
+- **Mechanism**: The `cursor_target` tool draws a red overlay and returns a 200x200 "Verification Snapshot" of the target area. This allows the model to "see" where it is about to click and correct its coordinates if necessary.
 
 ---
 
-## 5. Tiered Quality Strategy
-**Idea**: Adapt the screenshot quality based on the action type.
-- **GREEN Actions (Read-only)**: Send high-res (LANCZOS, 90 quality) only when Gemini explicitly calls `screen_read`.
-- **YELLOW/RED Actions (Control)**: Use low-res (BILINEAR, 60 quality) for rapid feedback during multi-step tasks like typing or clicking through a menu.
+## 4. Suggestions: Parallelized Media Pipe
+**Current Flow**: Audio and Video are sent sequentially in the hardware loops.
+**Future Optimization**: Implement a multiplexed media pipe that prioritizes audio packets over video frames when bandwidth is constrained, ensuring that voice interaction remains fluid even during heavy screen updates.
 
 ---
 
-## Implementation Reference (Pattern from GenMedia)
-In GenMedia Live, the `sender_loop` handles a queue of different multimodal types (audio, video, image, text). Aegis could adopt this "Bridge" pattern:
-```python
-# Draft pattern for AegisVoiceAgent
-async def _visual_stream_loop(self, session):
-    while self.is_active:
-        shot = capture_screen(scale_to=(768, 768), filter=BILINEAR)
-        await session.send_realtime_input(
-            video=types.Blob(data=shot["base64"], mime_type="image/jpeg")
-        )
-        await asyncio.sleep(2.0)
-```
-This keeps the model "engaged" without blocking the main interaction loop.
-w
+## 5. Suggestions: Predictive Frame Capture
+**Concept**: Capture a screenshot *immediately* upon detecting a tool call, before the gate logic finishes.
+- **Benefit**: By the time the user provides Touch ID or verbal confirmation, the "post-action" screenshot is already being encoded, reducing the latency between auth-approval and the agent's next turn.
