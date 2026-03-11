@@ -12,7 +12,6 @@ class SessionState(Enum):
 class AegisContext:
     session: Any = None
     user_id: str = "default_user"
-    composio: Any = None
     state: SessionState = SessionState.LISTENING
     resumption_handle: Optional[Any] = None
 

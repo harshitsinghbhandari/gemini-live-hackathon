@@ -26,7 +26,7 @@ $RECYCLE.BIN/
 # =========================
 # Logs (runtime only — not sample/batch source dirs)
 # =========================
-*.log
+*.log*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

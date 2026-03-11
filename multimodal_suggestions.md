@@ -54,3 +54,4 @@ async def _visual_stream_loop(self, session):
         await asyncio.sleep(2.0)
 ```
 This keeps the model "engaged" without blocking the main interaction loop.
+w

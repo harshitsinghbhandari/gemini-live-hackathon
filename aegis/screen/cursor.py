@@ -15,6 +15,29 @@ pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.05
 
 
+def get_retina_scale() -> float:
+    """Detect macOS backing scale factor (usually 2.0 for Retina)."""
+    try:
+        import AppKit
+        return AppKit.NSScreen.mainScreen().backingScaleFactor()
+    except Exception:
+        logger.info(f"using fallback scale factor 2.0")
+        return 2.0  # Fallback
+
+def nudge(offset_x: int, offset_y: int, duration: float = 0.2) -> dict:
+    """
+    Move the cursor relative to its current position by (offset_x, offset_y) pixels.
+    GREEN/YELLOW tier - useful for precision nudging without recalculating entirely.
+    """
+    try:
+        pyautogui.moveRel(offset_x, offset_y, duration=duration)
+        pos = pyautogui.position()
+        return {"success": True, "action": "nudge", "x": pos.x, "y": pos.y}
+    except pyautogui.FailSafeException:
+        return {"success": False, "error": "Failsafe triggered — mouse hit screen corner"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 def move(x: int, y: int, duration: float = 0.0) -> dict:
     """
     Move cursor to (x, y) smoothly.

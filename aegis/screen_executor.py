@@ -21,13 +21,14 @@ import asyncio
 import base64
 import json
 import logging
+import random
 from google import genai
 from google.genai import types
 
 from . import config
 from .screen.capture import capture_screen
 from .screen.cursor import (
-    move, click, double_click, right_click, scroll, drag, position
+    move, click, double_click, right_click, scroll, drag, position, nudge, get_retina_scale
 )
 from .screen.type import (
     type_text, press_key, hotkey, type_sensitive
@@ -68,69 +69,84 @@ SCREEN_TOOL_DECLARATIONS = [
     },
     {
         "name": "cursor_move",
-        "description": "Move the cursor to specific coordinates without clicking.",
+        "description": "Move the cursor to a specific bounding box center without clicking.",
         "parameters": {
             "type": "object",
             "properties": {
-                "x": {"type": "integer", "description": "X coordinate (0-1470)"},
-                "y": {"type": "integer", "description": "Y coordinate (0-956)"}
+                "box_2d": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "[ymin, xmin, ymax, xmax] (0-1000 scale)"
+                }
             },
-            "required": ["x", "y"]
+            "required": ["box_2d"]
         }
     },
     {
         "name": "cursor_click",
-        "description": "Move cursor to coordinates and left-click. Use screen_capture first to determine correct coordinates.",
+        "description": "Move cursor to bounding box center and left-click. Use screen_capture first to determine correct coordinates.",
         "parameters": {
             "type": "object",
             "properties": {
-                "x": {"type": "integer", "description": "X coordinate (0-1470)"},
-                "y": {"type": "integer", "description": "Y coordinate (0-956)"},
+                "box_2d": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "[ymin, xmin, ymax, xmax] (0-1000 scale)"
+                },
                 "description": {"type": "string", "description": "What you are clicking on, e.g. 'Submit button', 'Chrome icon'"}
             },
-            "required": ["x", "y", "description"]
+            "required": ["box_2d", "description"]
         }
     },
     {
         "name": "cursor_double_click",
-        "description": "Move cursor to coordinates and double-click.",
+        "description": "Move cursor to bounding box center and double-click.",
         "parameters": {
             "type": "object",
             "properties": {
-                "x": {"type": "integer", "description": "X coordinate (0-1470)"},
-                "y": {"type": "integer", "description": "Y coordinate (0-956)"},
+                "box_2d": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "[ymin, xmin, ymax, xmax] (0-1000 scale)"
+                },
                 "description": {"type": "string", "description": "What you are double-clicking on"}
             },
-            "required": ["x", "y", "description"]
+            "required": ["box_2d", "description"]
         }
     },
     {
         "name": "cursor_right_click",
-        "description": "Move cursor to coordinates and right-click to open context menu.",
+        "description": "Move cursor to bounding box center and right-click to open context menu.",
         "parameters": {
             "type": "object",
             "properties": {
-                "x": {"type": "integer", "description": "X coordinate (0-1470)"},
-                "y": {"type": "integer", "description": "Y coordinate (0-956)"},
+                "box_2d": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "[ymin, xmin, ymax, xmax] (0-1000 scale)"
+                },
                 "description": {"type": "string", "description": "What you are right-clicking on"}
             },
-            "required": ["x", "y", "description"]
+            "required": ["box_2d", "description"]
         }
     },
     {
         "name": "cursor_scroll",
-        "description": "Scroll up or down at specific coordinates.",
+        "description": "Scroll up or down at a specific bounding box center.",
         "parameters": {
             "type": "object",
             "properties": {
-                "x": {"type": "integer", "description": "X coordinate to scroll at"},
-                "y": {"type": "integer", "description": "Y coordinate to scroll at"},
+                "box_2d": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "[ymin, xmin, ymax, xmax] (0-1000 scale)"
+                },
                 "clicks": {
                     "type": "integer",
                     "description": "Number of scroll clicks. Positive = up, negative = down. Use 3-5 for normal scroll."
                 }
             },
-            "required": ["x", "y", "clicks"]
+            "required": ["box_2d", "clicks"]
         }
     },
     {
@@ -189,7 +205,7 @@ SCREEN_TOOL_DECLARATIONS = [
     },
     {
         "name": "keyboard_type_sensitive",
-        "description": "Type sensitive text like passwords or API keys. Requires biometric authentication (RED tier). Clipboard is cleared immediately after.",
+        "description": "Type sensitive text like passwords or API keys. Clipboard is cleared immediately after.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -197,8 +213,118 @@ SCREEN_TOOL_DECLARATIONS = [
             },
             "required": ["text"]
         }
+    },
+    {
+        "name": "cursor_nudge",
+        "description": "Move the cursor relative to its current position by exact pixels. Useful for fine-grained correction.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "offset_x": {"type": "integer", "description": "Pixel adjustment on X axis (positive=right, negative=left)"},
+                "offset_y": {"type": "integer", "description": "Pixel adjustment on Y axis (positive=down, negative=up)"}
+            },
+            "required": ["offset_x", "offset_y"]
+        }
+    },
+    {
+        "name": "screen_crop",
+        "description": "Request a high-resolution crop of a specific Region of Interest (ROI). Use this to get a clearer view of a small area before clicking.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "box_2d": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "[ymin, xmin, ymax, xmax] (0-1000 scale) of the region to crop"
+                }
+            },
+            "required": ["box_2d"]
+        }
+    },
+    {
+        "name": "cursor_target",
+        "description": "Show a red target overlay at the specified bounding box and return a Verification Snapshot. Use this to verify accuracy BEFORE clicking. Follow up with cursor_confirm_click or cursor_nudge.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "box_2d": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "[ymin, xmin, ymax, xmax] (0-1000 scale) to target"
+                }
+            },
+            "required": ["box_2d"]
+        }
+    },
+    {
+        "name": "cursor_confirm_click",
+        "description": "Click exactly where the red target overlay was last placed.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
     }
 ]
+
+
+class WindowContext:
+    def __init__(self):
+        self.crop_origin_x = 0
+        self.crop_origin_y = 0
+        self.crop_width = None
+        self.crop_height = None
+        self.last_target_x = None
+        self.last_target_y = None
+
+window_state = WindowContext()
+
+def reset_view():
+    window_state.crop_origin_x = 0
+    window_state.crop_origin_y = 0
+    window_state.crop_width = None
+    window_state.crop_height = None
+
+def get_current_view():
+    """Returns a full screenshot, or a zoomed-in crop if screen_crop is active."""
+    if window_state.crop_width is not None and window_state.crop_height is not None:
+        from .screen.capture import capture_region
+        px = int(window_state.crop_origin_x)
+        py = int(window_state.crop_origin_y)
+        pw = int(window_state.crop_width)
+        ph = int(window_state.crop_height)
+        return capture_region(px, py, pw, ph)
+    else:
+        from .screen.capture import capture_screen
+        return capture_screen()
+
+def get_noisy_center(box):
+    """Calculate center of [ymin, xmin, ymax, xmax] with random noise."""
+    import pyautogui
+    ymin, xmin, ymax, xmax = box
+    # 1. Normalized center
+    cx = (xmin + xmax) / 2
+    cy = (ymin + ymax) / 2
+    # 2. Add noise (+- 5 normalized units)
+    cx += random.uniform(-5, 5)
+    cy += random.uniform(-5, 5)
+    # 3. Clamp to 0-1000
+    cx = max(0, min(1000, cx))
+    cy = max(0, min(1000, cy))
+    
+    # 4. Handle Foveated Vision (Crop offset mapping)
+    if window_state.crop_width is not None and window_state.crop_height is not None:
+        logical_x = window_state.crop_origin_x + (cx / 1000) * window_state.crop_width
+        logical_y = window_state.crop_origin_y + (cy / 1000) * window_state.crop_height
+    else:
+        screen_w, screen_h = pyautogui.size()
+        logical_x = (cx / 1000) * screen_w
+        logical_y = (cy / 1000) * screen_h
+    
+    target_x = int(logical_x)
+    target_y = int(logical_y)
+    
+    return target_x, target_y
 
 
 # ─────────────────────────────────────────────
@@ -213,7 +339,8 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
 
     try:
         if tool_name == "screen_capture":
-            shot = capture_screen()
+            reset_view()
+            shot = get_current_view()
             return {
                 "success": True,
                 "action": "screen_capture",
@@ -224,7 +351,8 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
 
         elif tool_name == "screen_read":
             question = args.get("question", "Describe everything you see on screen.")
-            shot = capture_screen()
+            reset_view()
+            shot = get_current_view()
 
             # Ask Gemini to describe the screen
             try:
@@ -247,35 +375,114 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
                 logger.error(f"Error in screen_read: {e}")
                 return {"success": False, "error": f"Gemini analysis failed: {str(e)}"}
 
+        elif tool_name == "screen_crop":
+            if "box_2d" not in args:
+                return {"success": False, "error": "Missing required argument: box_2d"}
+            
+            box = args["box_2d"]
+            ymin, xmin, ymax, xmax = box
+            
+            if window_state.crop_width is not None and window_state.crop_height is not None:
+                base_x = window_state.crop_origin_x
+                base_y = window_state.crop_origin_y
+                base_w = window_state.crop_width
+                base_h = window_state.crop_height
+            else:
+                import pyautogui
+                base_x = 0
+                base_y = 0
+                base_w, base_h = pyautogui.size()
+                
+            x = base_x + (xmin / 1000) * base_w
+            y = base_y + (ymin / 1000) * base_h
+            w = ((xmax - xmin) / 1000) * base_w
+            h = ((ymax - ymin) / 1000) * base_h
+            
+            # Store logical location for future global-to-local mapping
+            window_state.crop_origin_x = x
+            window_state.crop_origin_y = y
+            window_state.crop_width = w
+            window_state.crop_height = h
+            
+            return {
+                "success": True,
+                "action": "screen_crop",
+                "message": "Crop captured successfully. Use this high-res context for precision actions."
+            }
+
+        elif tool_name == "cursor_target":
+            if "box_2d" not in args:
+                return {"success": False, "error": "Missing required argument: box_2d"}
+            
+            px, py = get_noisy_center(args["box_2d"])
+            
+            # AppKit overlay inherently accepts logical coordinates
+            import subprocess, sys, os
+            script_path = os.path.join(os.path.dirname(__file__), "screen", "overlay.py")
+            subprocess.Popen([sys.executable, script_path, str(int(px)), str(int(py)), "30", "1500"])
+            
+            # Allow time for window to appear
+            await asyncio.sleep(0.15)
+            
+            # Set a 200x200 crop around the target for the verification snapshot
+            window_state.crop_origin_x = max(0, px - 100)
+            window_state.crop_origin_y = max(0, py - 100)
+            window_state.crop_width = 200
+            window_state.crop_height = 200
+            
+            window_state.last_target_x = px
+            window_state.last_target_y = py
+            
+            return {
+                "success": True,
+                "action": "cursor_target",
+                "message": "Red target drawn. A verification thumbnail will be returned in the next turn. If perfectly centered, use cursor_confirm_click."
+            }
+
+        elif tool_name == "cursor_confirm_click":
+            if window_state.last_target_x is None or window_state.last_target_y is None:
+                return {"success": False, "error": "No target set. Use cursor_target first."}
+            return click(int(window_state.last_target_x), int(window_state.last_target_y))
+
         elif tool_name == "cursor_move":
-            if "x" not in args or "y" not in args:
-                return {"success": False, "error": "Missing required arguments: x, y"}
-            return move(args["x"], args["y"])
+            if "box_2d" not in args:
+                return {"success": False, "error": "Missing required argument: box_2d"}
+            cx, cy = get_noisy_center(args["box_2d"])
+            return move(int(cx), int(cy))
 
         elif tool_name == "cursor_click":
-            if "x" not in args or "y" not in args:
-                return {"success": False, "error": "Missing required arguments: x, y"}
-            return click(args["x"], args["y"])
+            if "box_2d" not in args:
+                return {"success": False, "error": "Missing required argument: box_2d"}
+            cx, cy = get_noisy_center(args["box_2d"])
+            return click(int(cx), int(cy))
 
         elif tool_name == "cursor_double_click":
-            if "x" not in args or "y" not in args:
-                return {"success": False, "error": "Missing required arguments: x, y"}
-            return double_click(args["x"], args["y"])
+            if "box_2d" not in args:
+                return {"success": False, "error": "Missing required argument: box_2d"}
+            cx, cy = get_noisy_center(args["box_2d"])
+            return double_click(int(cx), int(cy))
 
         elif tool_name == "cursor_right_click":
-            if "x" not in args or "y" not in args:
-                return {"success": False, "error": "Missing required arguments: x, y"}
-            return right_click(args["x"], args["y"])
+            if "box_2d" not in args:
+                return {"success": False, "error": "Missing required argument: box_2d"}
+            cx, cy = get_noisy_center(args["box_2d"])
+            return right_click(int(cx), int(cy))
 
         elif tool_name == "cursor_scroll":
-            if "x" not in args or "y" not in args or "clicks" not in args:
-                return {"success": False, "error": "Missing required arguments: x, y, clicks"}
-            return scroll(args["x"], args["y"], args["clicks"])
+            if "box_2d" not in args or "clicks" not in args:
+                return {"success": False, "error": "Missing required arguments: box_2d, clicks"}
+            cx, cy = get_noisy_center(args["box_2d"])
+            return scroll(int(cx), int(cy), args["clicks"])
 
         elif tool_name == "cursor_drag":
             if any(k not in args for k in ["x1", "y1", "x2", "y2"]):
                 return {"success": False, "error": "Missing required arguments: x1, y1, x2, y2"}
             return drag(args["x1"], args["y1"], args["x2"], args["y2"])
+
+        elif tool_name == "cursor_nudge":
+            if "offset_x" not in args or "offset_y" not in args:
+                return {"success": False, "error": "Missing required arguments: offset_x, offset_y"}
+            return nudge(args["offset_x"], args["offset_y"])
 
         elif tool_name == "keyboard_type":
             if "text" not in args:

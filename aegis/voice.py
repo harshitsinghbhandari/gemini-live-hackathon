@@ -20,10 +20,10 @@ from . import config
 from .context import AegisContext, SessionState
 from .gate import gate_action
 import os
-from .screen_executor import is_screen_tool, SCREEN_TOOL_DECLARATIONS
+from .screen_executor import is_screen_tool, SCREEN_TOOL_DECLARATIONS, get_current_view
 from .screen.capture import capture_screen
 from . import ws_server
-from .tool_manager import get_schemas_for, get_tool_names_prompt
+from .tool_manager import get_schemas_for
 from .computer_use import handle_computer_use
 
 logger = logging.getLogger("aegis.voice")
@@ -33,15 +33,23 @@ You are Aegis, a trusted AI agent controlling this Mac.
 You have vision (screenshots) and tools.
 
 CORE TOOLS:
-1. computer_use (click, type, navigate, etc.)
-2. gmail (read/send emails)
-3. get_tool_schema (fetch schemas for other tools like Calendar, GitHub, etc.)
+1. screen_capture (take a full screenshot)
+2. screen_crop (take a high-res crop of a Region of Interest)
+3. screen_read (describe the screen)
+4. cursor_target (place a red target and get a verification thumbnail)
+5. cursor_confirm_click, cursor_nudge (precision click/move)
+6. cursor_* (other mouse actions)
+7. keyboard_* (keyboard actions: type, press, hotkey, type_sensitive)
 
-TOOL CATALOG (Call `get_tool_schema` for these):
-{tool_list}
+PRECISION PILOT WORKFLOW:
+1. Use `screen_capture` to see the whole screen.
+2. If the target is small/ambiguous, use `screen_crop` to zoom in.
+3. Use `cursor_target` to place a red circle on the element.
+4. You will receive a verification thumbnail. Look at the red circle.
+5. If it is perfectly centered on the target, use `cursor_confirm_click`.
+6. If it is slightly off, use `cursor_nudge`.
 
-If you need a tool not in CORE, call `get_tool_schema(["tool_name"])` first.
-SCREEN RESOLUTION: 1470x956. Use these exact coordinates for all cursor tools.
+SCREEN RESOLUTION: 1470x956.
 Be concise. Tell the user what you are doing.
 """
 
@@ -95,7 +103,7 @@ class AegisVoiceAgent:
 
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
-            system_instruction=SYSTEM_PROMPT.format(tool_list=get_tool_names_prompt()),
+            system_instruction=SYSTEM_PROMPT,
             media_resolution=types.MediaResolution.MEDIA_RESOLUTION_MEDIUM,
             context_window_compression=types.ContextWindowCompressionConfig(
                 trigger_tokens=100000,
@@ -119,13 +127,8 @@ class AegisVoiceAgent:
             ),
             thinking_config=ThinkingConfig(include_thoughts=True),
             tools=[
-                Tool(
-                    computer_use=ComputerUse(
-                        environment=Environment.ENVIRONMENT_BROWSER,
-                    )
-                ),
                 {
-                    "function_declarations": core_function_declarations
+                    "function_declarations": SCREEN_TOOL_DECLARATIONS
                 }
             ]
         )
@@ -209,12 +212,12 @@ class AegisVoiceAgent:
                     async with self.send_lock:
                         await session.send(input=types.LiveClientToolResponse(function_responses=item["data"]))
                     logger.info("Tool response sent")
+                    logger.info("Tool response sent")
                         # Re-add: Send accompanying media (screenshots) if present
-                        # if "media" in item and item["media"]:
-                        #     for blob in item["media"]:
-                        #         await session.send(input=types.LiveClientContent(
-                        #             turns=[types.Content(role="user", parts=[types.Part(inline_data=blob)])]
-                        #         ))
+                    if "media" in item and item["media"]:
+                        for blob in item["media"]:
+                            # Send via realtime input to avoid 1008 policy violation with LiveClientContent
+                            await session.send_realtime_input(video=blob)
 
                 self.bridge.queue.task_done()
             except asyncio.TimeoutError:
@@ -281,7 +284,7 @@ class AegisVoiceAgent:
                         logger.info("Updating status to executing...")
                         self._update_status("executing")
 
-                    logger.info(f"🤖 Response: {response}")
+                    # logger.info(f"🤖 Response: {response}")
                     if not self.alive:
                         logger.info("Not alive, breaking...")
                         break
@@ -294,7 +297,7 @@ class AegisVoiceAgent:
                             logger.info("Captured resumption handle")
 
                     if response.server_content:
-                        logger.info(f"🤖 Server content: {response.server_content}")
+                        # logger.info(f"🤖 Server content: {response.server_content}")
                         self.context.state = SessionState.BUSY
                         
                         if response.server_content.interrupted:
@@ -312,7 +315,7 @@ class AegisVoiceAgent:
                             ws_server.broadcast("turn_complete")
 
                         if response.server_content.model_turn:
-                            logger.info(f"🤖 Model turn: {response.server_content.model_turn}")
+                            # logger.info(f"🤖 Model turn: {response.server_content.model_turn}")
                             for part in response.server_content.model_turn.parts:
                                 if getattr(part, "thought", False):
                                     ws_server.broadcast("thought", value=part.text)
@@ -333,21 +336,8 @@ class AegisVoiceAgent:
                                 for fn in response.tool_call.function_calls:
                                     logger.info(f"🛠️ Tool Requested: {fn.name} (ID: {fn.id})")
 
-                                    if fn.name == "get_tool_schema":
-                                        requested = fn.args.get("tool_names", [])
-                                        schemas = get_schemas_for(requested, self.context)
-                                        f_resp = types.FunctionResponse(
-                                            id=fn.id, name=fn.name, response={"result": schemas}
-                                        )
-                                        logger.info(f"📤 Sending {len(schemas)} tool schemas to Gemini...")
-                                        shot = None
-                                    elif fn.name in ["open_web_browser", "navigate", "click_at", "double_click_at", "right_click_at", "drag_and_drop", "scroll", "type_text_at", "key_combination", "wait"]:
-                                        res = await handle_computer_use(fn, self.context, lambda: self._update_status("auth"))
-                                        if res:
-                                            f_resp, shot = res
-                                        else:
-                                            f_resp = types.FunctionResponse(id=fn.id, name=fn.name, response={"error": "Handler failed"})
-                                            shot = None
+                                    if False:
+                                        pass
                                     else:
                                         arguments = dict(fn.args) if fn.args else {}
                                         result = await gate_action(
@@ -372,7 +362,7 @@ class AegisVoiceAgent:
                                         
                                         # Settling Delay: Let the UI finish animating
                                         await asyncio.sleep(0.3)
-                                        shot = capture_screen() # Fresh screenshot after tool
+                                        shot = get_current_view() # Fresh screenshot (full or cropped) after tool
 
                                     function_responses.append(f_resp)
                                     if shot:
@@ -407,7 +397,7 @@ class AegisVoiceAgent:
 
         try:
             while self.alive:
-                shot = capture_screen(scale_to=(512, 512), quality=40)
+                shot = capture_screen(quality=40)
                 current_hash = hashlib.md5(shot["base64"].encode()).hexdigest()
                 
                 state_transitioned_to_thinking = (self.context.state == SessionState.THINKING and last_state != SessionState.THINKING)
@@ -510,14 +500,8 @@ class AegisVoiceAgent:
             if self.alive: logger.warning(f"Remote stop check failed: {e}")
 
 async def run_aegis(status_callback=None, on_agent_ready=None):
-    from .config import USER_ID, COMPOSIO_API_KEY
-    from composio import Composio
-    composio_client = None
-    try:
-        composio_client = Composio(api_key=COMPOSIO_API_KEY)
-    except Exception as e:
-        logger.error(f"Composio init failed: {e}")
-    context = AegisContext(user_id=USER_ID, composio=composio_client)
+    from .config import USER_ID
+    context = AegisContext(user_id=USER_ID)
     agent = AegisVoiceAgent(context, status_callback=status_callback)
     if on_agent_ready: on_agent_ready(agent)
     await agent.run()
