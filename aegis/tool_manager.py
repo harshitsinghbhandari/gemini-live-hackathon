@@ -31,10 +31,10 @@ def get_schemas_for(tool_names: list, context=None) -> dict:
     logger.info(f"🔍 Fetching schemas for: {tool_names}")
     for name in tool_names:
         if name in TOOLS:
-            logger.debug(f"   Found {name} in local tools.json")
+            logger.info(f"   Found {name} in local tools.json")
             result[name] = TOOLS[name]
         elif name in screen_map:
-            logger.debug(f"   Found {name} in screen tools")
+            logger.info(f"   Found {name} in screen tools")
             result[name] = screen_map[name]
         elif context and context.composio:
             try:

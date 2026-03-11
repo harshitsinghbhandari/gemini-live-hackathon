@@ -131,6 +131,7 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
         speak = classification.get("speak", "I need to check something before I do that.")
 
         logger.info(f"🎯 Tier: {tier} | Reason: {classification.get('reason')} | Pre-confirmed: {pre_confirmed}")
+        logger.debug(f"🔧 Classification detailed: {json.dumps(classification)}")
         logger.debug(f"🔧 Tool: {tool} | Args: {arguments}")
 
         result = {
@@ -251,8 +252,8 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
         "tier": tier,
         "tool": tool or "unknown",
         "toolkit": tool.split("_")[0].lower() if tool else "unknown",
-        "reason": classification["reason"],
-        "upgraded": classification["upgraded"],
+        "reason": classification.get("reason", ""),
+        "upgraded": classification.get("upgraded", False),
         "speak": speak,
         "auth_used": result["auth_used"],
         "blocked": result["blocked"],

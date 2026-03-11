@@ -9,9 +9,9 @@ from . import config
 logger = logging.getLogger("aegis.classifier")
 
 TIER_RULES_SUMMARY = """
-- GREEN: Read-only, listing, searching. (e.g. screen_read, GMAIL_FETCH_EMAILS)
-- YELLOW: Creating, modifying, replying, moving. (e.g. cursor_click, GMAIL_CREATE_EMAIL_DRAFT)
-- RED: Deleting, sending emails, transactions, sensitive data. (e.g. keyboard_type_sensitive, GMAIL_SEND_EMAIL)
+- GREEN: Read-only, listing, searching, moving, clicking, double clicking, right clicking, scrolling, dragging, typing, pressing keys/hotkeys. (e.g. screen_read, cursor_move, GMAIL_FETCH_EMAILS)
+- YELLOW: Creating new content, modifying existing data, replying to messages. (e.g. GMAIL_CREATE_EMAIL_DRAFT, GOOGLEDOCS_CREATE_DOCUMENT)
+- RED: Deleting, sending emails/messages, transactions, sensitive data. (e.g. GMAIL_SEND_EMAIL, GITHUB_DELETE_A_REPOSITORY)
 """
 
 RISK_PROMPT = """
@@ -41,9 +41,9 @@ Tier rules:
   listing anything. No writing, no creating, no sending.
 
 TIER RULES FOR NEW TOOLKITS:
-- GREEN (read-only): listing tasks, reading docs, viewing sheets, getting presentations, listing GitHub issues/PRs, screen_capture, screen_read, cursor_move
-- YELLOW (creates/modifies): creating docs, adding rows to sheets, creating presentations, adding tasks, creating GitHub issues, cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_hotkey, keyboard_press
-- RED (irreversible): deleting docs, clearing sheets, deleting tasks, merging PRs, deleting repositories, keyboard_type_sensitive
+- GREEN (read-only): listing tasks, reading docs, viewing sheets, getting presentations, listing GitHub issues/PRs, screen_capture, screen_read, cursor_move, cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_hotkey, keyboard_press, keyboard_type_sensitive
+- YELLOW (creates/modifies): creating docs, adding rows to sheets, creating presentations, adding tasks, creating GitHub issues, 
+- RED (irreversible): deleting docs, clearing sheets, deleting tasks, merging PRs, deleting repositories,
 
 TOOLKIT REFERENCE — use these exact tool names:
 
@@ -83,9 +83,7 @@ YELLOW: GITHUB_CREATE_AN_ISSUE, GITHUB_ADD_ASSIGNEES_TO_AN_ISSUE, GITHUB_ADD_LAB
 RED: GITHUB_DELETE_A_REPOSITORY, GITHUB_MERGE_A_PULL_REQUEST
 
 === SCREEN CONTROL (Native) ===
-GREEN: screen_capture, screen_read, cursor_move
-YELLOW: cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_hotkey, keyboard_press
-RED: keyboard_type_sensitive
+GREEN: screen_capture, screen_read, cursor_move, cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_hotkey, keyboard_press, keyboard_type_sensitive
 
 EXAMPLES:
 "create a doc about meeting notes" → GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN, YELLOW
@@ -152,6 +150,7 @@ async def classify_action(proposed_action: str, tool_hint: str = None) -> Dict[s
             {{
               "tier": "RED" | "YELLOW" | "GREEN",
               "reason": "one sentence explanation why this tool+intent matches this tier",
+              "upgraded": true | false,
               "speak": "what to say to the user before acting",
               "tool": "{tool_hint}",
               "arguments": {{}} 

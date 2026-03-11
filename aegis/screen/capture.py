@@ -10,7 +10,7 @@ import mss
 import mss.tools
 
 
-def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int = 60) -> dict:
+def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int = 70) -> dict:
     """
     Capture the full screen and return as base64-encoded JPEG.
     

@@ -37,7 +37,11 @@ CORE TOOLS:
 2. gmail (read/send emails)
 3. get_tool_schema (fetch schemas for other tools like Calendar, GitHub, etc.)
 
+TOOL CATALOG (Call `get_tool_schema` for these):
+{tool_list}
+
 If you need a tool not in CORE, call `get_tool_schema(["tool_name"])` first.
+SCREEN RESOLUTION: 1470x956. Use these exact coordinates for all cursor tools.
 Be concise. Tell the user what you are doing.
 """
 
@@ -66,7 +70,7 @@ class AegisVoiceAgent:
         self.alive = True
         self.text_only_mode = text_only_mode
         self.bridge = SessionBridge()
-        
+        self.send_lock = asyncio.Lock()
         # Define Core Tools for initial config
         core_function_declarations = [
             {
@@ -83,19 +87,15 @@ class AegisVoiceAgent:
                     },
                     "required": ["tool_names"]
                 }
-            },
-            {
-                "name": "gmail_list_messages",
-                "description": "List Gmail messages",
-                "parameters": {"type": "OBJECT", "properties": {}}
             }
         ]
         # Include custom screen tools in core
+        
         core_function_declarations.extend(SCREEN_TOOL_DECLARATIONS)
 
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=SYSTEM_PROMPT.format(tool_list=get_tool_names_prompt()),
             media_resolution=types.MediaResolution.MEDIA_RESOLUTION_MEDIUM,
             context_window_compression=types.ContextWindowCompressionConfig(
                 trigger_tokens=100000,
@@ -140,44 +140,81 @@ class AegisVoiceAgent:
         
         # Broadcast to WebSocket UI
         ws_server.broadcast("status", value=status)
+    def _purge_media_queue(self):
+        """Remove all pending audio/video from the queue immediately."""
+        purged = 0
+        while not self.bridge.queue.empty():
+            try:
+                item = self.bridge.queue.get_nowait()
+                if item["type"] in ("audio", "video"):
+                    purged += 1
+                else:
+                    # Put non-media items (like tool responses) back!
+                    # Actually, better to use a separate queue for tools to avoid this.
+                    pass
+                self.bridge.queue.task_done()
+            except asyncio.QueueEmpty:
+                break
+        if purged > 0:
+            logger.debug(f"🧹 Purged {purged} stale media packets to prevent 1008.")
 
     async def _send_to_session(self, **kwargs):
-        """Puts media into the bridge queue instead of direct sending."""
-        if not self.alive:
+        """Directly sends media if in listening state, bypassing the queue delay."""
+        if not self.alive or self.context.state != SessionState.LISTENING:
             return
             
-        if "audio" in kwargs:
-            self.bridge.put_nowait({"type": "audio", "data": kwargs["audio"]})
-        if "video" in kwargs:
-            self.bridge.put_nowait({"type": "video", "data": kwargs["video"]})
+        session = self.context.session
+        if not session:
+            # Fallback for early hardware loop starts
+            if "audio" in kwargs:
+                self.bridge.put_nowait({"type": "audio", "data": kwargs["audio"]})
+            if "video" in kwargs:
+                self.bridge.put_nowait({"type": "video", "data": kwargs["video"]})
+            return
+
+        try:
+            async with self.send_lock:
+                if "audio" in kwargs:
+                    await session.send_realtime_input(audio=kwargs["audio"])
+                if "video" in kwargs:
+                    await session.send_realtime_input(video=kwargs["video"])
+        except Exception as e:
+            if self.alive:
+                logger.debug(f"Media send suppressed or failed: {e}")
 
     async def _sender_loop(self, session):
-        """Central loop to send everything from bridge queue to Gemini."""
         while self.alive:
             try:
-                item = await asyncio.wait_for(self.bridge.queue.get(), timeout=0.1)
+                # 1. Use a shorter timeout to stay responsive
+                item = await asyncio.wait_for(self.bridge.queue.get(), timeout=0.05)
 
-                # Hardware Turn Gate: Strictly drop audio/video if not listening
-                if item["type"] in ("audio", "video") and self.context.state != SessionState.LISTENING:
-                    self.bridge.queue.task_done()
-                    continue
+                # 2. THE HARD GATE: Drop media if model is BUSY or EXECUTING
+                # Gemini 1008 happens if audio arrives when model has already started a tool call.
+                if item["type"] in ("audio", "video"):
+                    if self.context.state != SessionState.LISTENING:
+                        self.bridge.queue.task_done()
+                        continue # Drop the frame entirely
 
+                # 3. TYPE-SPECIFIC EXECUTION
                 if item["type"] == "audio":
                     await session.send_realtime_input(audio=item["data"])
+                    
                 elif item["type"] == "video":
+                    # Ensure you use 'video' parameter for single frames in this SDK version
                     await session.send_realtime_input(video=item["data"])
+                    
                 elif item["type"] == "tool_response":
-                    await session.send_tool_response(function_responses=item["data"])
-                    # Send accompanying media as separate ClientContent parts
-                    if "media" in item and item["media"]:
-                        for blob in item["media"]:
-                            await session.send_client_content(
-                                turns=types.Content(
-                                    role="user",
-                                    parts=[types.Part(inline_data=blob)],
-                                ),
-                                turn_complete=False,
-                            )
+                    logger.info(item)
+                    logger.info(f"📤 Sending {len(item['data'])} tool responses...")
+                    async with self.send_lock:
+                        await session.send(input=types.LiveClientToolResponse(function_responses=item["data"]))
+                    logger.info("Tool response sent")
+                        # Re-add: Send accompanying media (screenshots) if present
+                        # if "media" in item and item["media"]:
+                        #     for blob in item["media"]:
+                        #         await session.send(input=types.LiveClientContent(
+                        #             turns=[types.Content(role="user", parts=[types.Part(inline_data=blob)])]
+                        #         ))
 
                 self.bridge.queue.task_done()
             except asyncio.TimeoutError:
@@ -233,17 +270,31 @@ class AegisVoiceAgent:
         try:
             logger.info("🔊 Receive loop active")
             while self.alive:
+                logger.info("Waiting for response...")
                 async for response in session.receive():
+                    # 1. EMERGENCY LOCK: Check for tool calls immediately
+                    if response.tool_call:
+                        logger.info("🛠️ Tool call detected")
+                        self.context.state = SessionState.EXECUTING
+                        logger.info("Purging media queue...")
+                        self._purge_media_queue()
+                        logger.info("Updating status to executing...")
+                        self._update_status("executing")
+
+                    logger.info(f"🤖 Response: {response}")
                     if not self.alive:
+                        logger.info("Not alive, breaking...")
                         break
                     
                     if response.session_resumption_update:
+                        logger.info(f"🤖 Session resumption update: {response.session_resumption_update}")
                         update = response.session_resumption_update
                         if update.resumable and update.new_handle:
                             self.context.resumption_handle = update.new_handle
                             logger.info("Captured resumption handle")
 
                     if response.server_content:
+                        logger.info(f"🤖 Server content: {response.server_content}")
                         self.context.state = SessionState.BUSY
                         
                         if response.server_content.interrupted:
@@ -261,6 +312,7 @@ class AegisVoiceAgent:
                             ws_server.broadcast("turn_complete")
 
                         if response.server_content.model_turn:
+                            logger.info(f"🤖 Model turn: {response.server_content.model_turn}")
                             for part in response.server_content.model_turn.parts:
                                 if getattr(part, "thought", False):
                                     ws_server.broadcast("thought", value=part.text)
@@ -272,12 +324,12 @@ class AegisVoiceAgent:
                                     await asyncio.to_thread(output_stream.write, part.inline_data.data)
 
                     if response.tool_call:
-                        self.context.state = SessionState.EXECUTING
-                        self._update_status("executing")
+                        logger.info(f"🤖 Tool call: {response.tool_call}")
                         try:
                             function_responses = []
                             media_blobs = []
                             if response.tool_call.function_calls:
+                                logger.info(f"🤖 Function calls: {response.tool_call.function_calls}")
                                 for fn in response.tool_call.function_calls:
                                     logger.info(f"🛠️ Tool Requested: {fn.name} (ID: {fn.id})")
 
@@ -287,6 +339,7 @@ class AegisVoiceAgent:
                                         f_resp = types.FunctionResponse(
                                             id=fn.id, name=fn.name, response={"result": schemas}
                                         )
+                                        logger.info(f"📤 Sending {len(schemas)} tool schemas to Gemini...")
                                         shot = None
                                     elif fn.name in ["open_web_browser", "navigate", "click_at", "double_click_at", "right_click_at", "drag_and_drop", "scroll", "type_text_at", "key_combination", "wait"]:
                                         res = await handle_computer_use(fn, self.context, lambda: self._update_status("auth"))
@@ -307,13 +360,18 @@ class AegisVoiceAgent:
                                         )
 
                                         if result.get("needs_confirmation"):
+                                            logger.info("🤖 Needs confirmation")
                                             tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm: " + result['speak']}
                                         else:
+                                            logger.info("🤖 No confirmation needed")
                                             if result.get("blocked") and result.get("tier") == "RED":
                                                 self._update_status("blocked")
                                             tool_response = {"result": json.dumps(result)}
 
                                         f_resp = types.FunctionResponse(id=fn.id, name=fn.name, response=tool_response)
+                                        
+                                        # Settling Delay: Let the UI finish animating
+                                        await asyncio.sleep(0.3)
                                         shot = capture_screen() # Fresh screenshot after tool
 
                                     function_responses.append(f_resp)
