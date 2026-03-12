@@ -1,0 +1,156 @@
+import logging
+from typing import Any, Dict
+from google import genai
+from google.genai import types
+import base64
+
+from .base import BaseTool, registry
+from .context import get_current_view, reset_view, window_state
+from .. import config
+from .. import prompt
+
+logger = logging.getLogger("aegis.tools.screen")
+
+class ScreenCaptureTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "screen_capture"
+
+    @property
+    def declaration(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": "Take a screenshot of the current screen. Use this first before any click or type action to understand what is on screen and get accurate coordinates.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+
+    async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        reset_view()
+        shot = get_current_view()
+        return {
+            "success": True,
+            "action": self.name,
+            "width": shot["width"],
+            "height": shot["height"],
+            "note": "Screenshot captured and available for Gemini analysis"
+        }
+
+class ScreenReadTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "screen_read"
+
+    @property
+    def declaration(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": "Take a screenshot and describe what is currently visible on screen — apps, windows, text, buttons, and UI elements.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "Optional specific question about the screen, e.g. 'Where is the search bar?' or 'Is Chrome open?'"
+                    }
+                },
+                "required": []
+            }
+        }
+
+    async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Takes a screenshot and asks Gemini to describe it.
+        This tool requires a Gemini API call internally.
+        """
+        question = args.get("question", prompt.SCREEN_READ_DEFAULT_QUESTION)
+        reset_view()
+        shot = get_current_view()
+
+        client = genai.Client(api_key=config.GOOGLE_API_KEY)
+        try:
+            response = await client.aio.models.generate_content(
+                model=config.GEMINI_MODEL,
+                contents=[
+                    types.Part.from_bytes(
+                        data=base64.b64decode(shot["base64"]),
+                        mime_type=shot["mime_type"]
+                    ),
+                    question
+                ]
+            )
+            return {
+                "success": True,
+                "action": self.name,
+                "description": response.text
+            }
+        except Exception as e:
+            logger.error(f"Error in {self.name}: {e}")
+            return {"success": False, "error": f"Gemini analysis failed: {str(e)}"}
+
+class ScreenCropTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "screen_crop"
+
+    @property
+    def declaration(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": "Request a high-resolution crop of a specific Region of Interest (ROI). Use this to get a clearer view of a small area before clicking.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "box_2d": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "[ymin, xmin, ymax, xmax] (0-1000 scale) of the region to crop"
+                    }
+                },
+                "required": ["box_2d"]
+            }
+        }
+
+    async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        if "box_2d" not in args:
+            return {"success": False, "error": "Missing required argument: box_2d"}
+        
+        box = args["box_2d"]
+        ymin, xmin, ymax, xmax = box
+        
+        if window_state.crop_width is not None and window_state.crop_height is not None:
+            base_x = window_state.crop_origin_x
+            base_y = window_state.crop_origin_y
+            base_w = window_state.crop_width
+            base_h = window_state.crop_height
+        else:
+            import pyautogui
+            base_x = 0
+            base_y = 0
+            base_w, base_h = pyautogui.size()
+            
+        x = base_x + (xmin / 1000) * base_w
+        y = base_y + (ymin / 1000) * base_h
+        w = ((xmax - xmin) / 1000) * base_w
+        h = ((ymax - ymin) / 1000) * base_h
+        
+        # Store logical location for future global-to-local mapping
+        window_state.crop_origin_x = x
+        window_state.crop_origin_y = y
+        window_state.crop_width = w
+        window_state.crop_height = h
+        
+        return {
+            "success": True,
+            "action": self.name,
+            "message": "Crop captured successfully. Use this high-res context for precision actions."
+        }
+
+
+# Register all tools in this module
+registry.register(ScreenCaptureTool())
+registry.register(ScreenReadTool())
+registry.register(ScreenCropTool())

@@ -7,7 +7,8 @@ import uuid
 from typing import Dict, Any
 from .classifier import classify_action
 from .auth import request_touch_id
-from .screen_executor import is_screen_tool, execute_screen_action
+from .screen_executor import execute_screen_action
+from .tools.declarations import get_screen_tool_declarations
 from .context import AegisContext
 from . import config
 from . import ws_server
@@ -197,7 +198,8 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
 
         # Execute via correct executor if not blocked
         if not result["blocked"] and tool:
-            if is_screen_tool(tool):
+            SCREEN_TOOL_NAMES = [t["name"] for t in get_screen_tool_declarations()]
+            if tool in SCREEN_TOOL_NAMES:
                 logger.info(f"🖥️  Native Screen Executor: {tool}")
                 exec_result = await execute_screen_action(tool, arguments)
             else:

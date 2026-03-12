@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from .screen_executor import SCREEN_TOOL_DECLARATIONS
+from .tools.declarations import get_screen_tool_declarations
 
 logger = logging.getLogger("aegis.tool_manager")
 

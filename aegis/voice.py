@@ -20,7 +20,8 @@ from . import config
 from .context import AegisContext, SessionState
 from .gate import gate_action
 import os
-from .screen_executor import is_screen_tool, SCREEN_TOOL_DECLARATIONS, get_current_view
+from .screen_executor import is_screen_tool, get_current_view
+from .tools.declarations import get_screen_tool_declarations
 from .screen.capture import capture_screen
 from . import ws_server
 from .tool_manager import get_schemas_for
@@ -76,6 +77,7 @@ class AegisVoiceAgent:
             }
         ]
         # Include custom screen tools in core
+        SCREEN_TOOL_DECLARATIONS = get_screen_tool_declarations()
         
         core_function_declarations.extend(SCREEN_TOOL_DECLARATIONS)
 

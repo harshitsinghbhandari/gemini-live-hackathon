@@ -2,12 +2,19 @@ import json
 import os
 import sys
 
-# Add project root to path BEFORE other local imports
+import os
+import sys
+from dotenv import load_dotenv
+
 sys.path.append(os.getcwd())
 
-from aegis.config import COMPOSIO_API_KEY, COMPOSIO_USER_ID
+load_dotenv()
+
+COMPOSIO_API_KEY = os.environ.get("COMPOSIO_API_KEY")
+COMPOSIO_USER_ID = os.environ.get("COMPOSIO_USER_ID", "harshitbhandari0318")
+
 from composio import Composio
-from aegis.screen_executor import SCREEN_TOOL_DECLARATIONS
+from aegis.tools.declarations import get_screen_tool_declarations
 
 def generate_tools_json():
     print("🚀 Fetching tools from Composio...")
@@ -36,7 +43,7 @@ def generate_tools_json():
             # Composio v1 tool dictionary has 'function' key
             tools_data[name] = tool['function']
 
-    for tool in SCREEN_TOOL_DECLARATIONS:
+    for tool in get_screen_tool_declarations():
         name = tool.get("name")
         if name:
             tools_data[name] = tool
