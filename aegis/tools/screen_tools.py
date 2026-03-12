@@ -1,4 +1,6 @@
 import logging
+import asyncio
+import time
 from typing import Any, Dict
 from google import genai
 from google.genai import types
@@ -150,7 +152,128 @@ class ScreenCropTool(BaseTool):
         }
 
 
+class GetScreenElementsTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "get_screen_elements"
+
+    @property
+    def declaration(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": (
+                "Returns OCR-detected text elements on screen with their IDs and positions. "
+                "Use this BEFORE calling cursor_click to find the label_id of what you want to click. "
+                "Filter by region to reduce tokens. Available regions: top_bar, bottom_bar, "
+                "left_sidebar, right_sidebar, main_content. "
+                "If you need the screenshot image alongside, set image=true."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "region": {
+                        "type": "string",
+                        "enum": ["top_bar", "bottom_bar", "left_sidebar", "right_sidebar", "main_content", "all"],
+                        "description": "Which screen region to return elements for. Use 'all' only if unsure."
+                    },
+                    "image": {
+                        "type": "boolean",
+                        "description": "If true, also returns a base64 screenshot alongside the JSON. Default false."
+                    },
+                    "use_cache": {
+                        "type": "boolean",
+                        "description": "If true, returns from cache if fresh (<5s). Default true."
+                    }
+                },
+                "required": ["region"]
+            }
+        }
+
+    async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from .context import window_state as context # Use window_state as proxy for ocr_cache
+        from aegis.screen.capture import capture_screen
+
+        use_cache = args.get("use_cache", True)
+        ocr_cache = getattr(context, 'ocr_cache', None)
+
+        # Trigger on-demand OCR if cache stale or requested
+        if not use_cache or ocr_cache is None or (time.time() - ocr_cache["timestamp"] > 5):
+            from aegis.screen.ocr import _process_frame
+            # We don't have the global context easily here, so we pass None or a dummy
+            # ocr_background_loop usually handles the context.
+            # For on-demand, we just want the result.
+            new_result = await asyncio.to_thread(_process_frame, None)
+            if new_result:
+                ocr_cache = new_result
+                setattr(context, 'ocr_cache', new_result)
+
+        # Handle empty cache gracefully
+        if ocr_cache is None:
+            return {
+                "success": False,
+                "error": "OCR cache is not ready yet. Wait a moment and try again."
+            }
+
+        region = args.get("region", "all")
+        include_image = args.get("image", False)
+
+        # Build response elements
+        if region == "all":
+            result_elements = ocr_cache["regions"]
+        else:
+            result_elements = {region: ocr_cache["regions"].get(region, [])}
+
+        response = {
+            "success": True,
+            "elements": result_elements,
+            "total_count": ocr_cache["count"],
+            "cache_age_seconds": round(time.time() - ocr_cache["timestamp"], 1),
+            "screen_w": ocr_cache["screen_w"],
+            "screen_h": ocr_cache["screen_h"],
+        }
+
+        if include_image:
+            screenshot = await asyncio.to_thread(capture_screen)
+            response["image"] = screenshot.get("base64", None)
+
+        return response
+
+
+class GetAnnotatedElementsTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "get_annotated_elements"
+
+    @property
+    def declaration(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": "Returns a list of screen elements with sequential numeric labels (1-N) for easy selection. Always check this first for label_id clicking.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+
+    async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from .context import window_state as context
+        ocr_cache = getattr(context, 'ocr_cache', None)
+
+        if ocr_cache is None:
+            return {"success": False, "error": "OCR cache not ready."}
+
+        return {
+            "success": True,
+            "annotated_elements": ocr_cache.get("annotated_json", []),
+            "total_count": ocr_cache["count"],
+            "cache_age_seconds": round(time.time() - ocr_cache["timestamp"], 1)
+        }
+
+
 # Register all tools in this module
 registry.register(ScreenCaptureTool())
 registry.register(ScreenReadTool())
 registry.register(ScreenCropTool())
+registry.register(GetScreenElementsTool())
+registry.register(GetAnnotatedElementsTool())

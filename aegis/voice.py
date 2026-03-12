@@ -23,6 +23,7 @@ import os
 from .screen_executor import is_screen_tool, get_current_view
 from .tools.declarations import get_screen_tool_declarations
 from .screen.capture import capture_screen
+from .screen.ocr import ocr_background_loop
 from . import ws_server
 from .tool_manager import get_schemas_for
 from .computer_use import handle_computer_use
@@ -493,6 +494,9 @@ class AegisVoiceAgent:
         asyncio.create_task(self._check_remote_stop())
         server = ws_server.get_server()
         asyncio.create_task(server.start())
+
+        # Start OCR background loop
+        asyncio.create_task(ocr_background_loop(self.context), name="OCRBackgroundLoop")
 
         try:
             mic_info = self.pya.get_default_input_device_info()
