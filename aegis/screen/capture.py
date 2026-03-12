@@ -8,6 +8,9 @@ import io
 from PIL import Image
 import mss
 import mss.tools
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int = 70) -> dict:
@@ -26,6 +29,7 @@ def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int
             - width: actual capture width
             - height: actual capture height
     """
+    logger.info(f"Capturing screen (monitor={monitor}, scale={scale_to}, quality={quality})")
     with mss.mss() as sct:
         mon = sct.monitors[monitor]
         screenshot = sct.grab(mon)
@@ -77,6 +81,67 @@ def capture_region(x: int, y: int, width: int, height: int) -> dict:
             "width": img.width,
             "height": img.height,
         }
+
+
+def capture_active_window(padding: int = 50, quality: int = 70) -> dict:
+    """
+    Capture only the active (frontmost) window plus a padding buffer.
+    Falls back to full-screen capture if window detection fails.
+
+    Args:
+        padding: Pixels to expand around the window bounds for anchoring context.
+        quality: JPEG compression quality.
+
+    Returns:
+        dict with keys: base64, mime_type, width, height, origin_x, origin_y
+        origin_x/origin_y are the top-left of the captured region in screen coords,
+        needed for coordinate re-mapping.
+    """
+    try:
+        from .window import get_active_window_bounds
+
+        bounds = get_active_window_bounds()
+        if bounds is None:
+            logger.info("Active window detection failed, falling back to full screen.")
+            shot = capture_screen(quality=quality)
+            shot["origin_x"] = 0
+            shot["origin_y"] = 0
+            return shot
+
+        # Get screen dimensions for clamping
+        with mss.mss() as sct:
+            mon = sct.monitors[1]
+            screen_w = mon["width"]
+            screen_h = mon["height"]
+
+        # Expand bounds by padding, clamped to screen edges
+        x = max(0, bounds["x"] - padding)
+        y = max(0, bounds["y"] - padding)
+        x2 = min(screen_w, bounds["x"] + bounds["width"] + padding)
+        y2 = min(screen_h, bounds["y"] + bounds["height"] + padding)
+        w = x2 - x
+        h = y2 - y
+
+        if w <= 0 or h <= 0:
+            logger.warning("Invalid active window dimensions after padding, falling back.")
+            shot = capture_screen(quality=quality)
+            shot["origin_x"] = 0
+            shot["origin_y"] = 0
+            return shot
+
+        logger.info(f"Capturing active window: {bounds['app_name']} at ({x},{y}) {w}x{h}")
+
+        region_shot = capture_region(x, y, w, h)
+        region_shot["origin_x"] = x
+        region_shot["origin_y"] = y
+        return region_shot
+
+    except Exception as e:
+        logger.error(f"Error in capture_active_window: {e}, falling back to full screen.")
+        shot = capture_screen(quality=quality)
+        shot["origin_x"] = 0
+        shot["origin_y"] = 0
+        return shot
 
 
 def capture_as_gemini_part(monitor: int = 1) -> dict:

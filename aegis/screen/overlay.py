@@ -1,8 +1,12 @@
 import sys
 import time
 import AppKit
+import logging
+
+logger = logging.getLogger(__name__)
 
 def draw_red_circle(x, y, radius, duration_ms):
+    logger.info(f"Drawing red circle at ({x}, {y}) with radius {radius} for {duration_ms}ms")
     screen_rect = AppKit.NSScreen.mainScreen().frame()
     screen_h = screen_rect.size.height
     

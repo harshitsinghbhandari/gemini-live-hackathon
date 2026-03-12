@@ -28,10 +28,21 @@ SETTLING_DELAY = 0.2  # Seconds between multi-tool actions
 TOUCH_ID_TIMEOUT = 30
 YELLOW_CONFIRM_TIMEOUT = 15
 
+# Foveated Vision Config
+VISION_PADDING = 50  # Pixels to expand around active window crop
+VISION_FALLBACK_TO_FULLSCREEN = True  # Fall back to full screen if window detection fails
+
 # Backend Config
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://apiaegis.projectalpha.in")
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "https://aegisdashboard.projectalpha.in")
 DEVICE_ID = os.environ.get("DEVICE_ID", "harshit-macbook")
+
+class LevelFilter(logging.Filter):
+    """Filters logs to be exactly of a certain level (exclusive)."""
+    def __init__(self, level):
+        self.level = level
+    def filter(self, record):
+        return record.levelno == self.level
 
 def setup_logging():
     log_format = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
@@ -49,11 +60,29 @@ def setup_logging():
         console_handler.setLevel(logging.INFO)
         logger.addHandler(console_handler)
 
-        # Rotating File Handler
-        file_handler = RotatingFileHandler("aegis.log", maxBytes=10*1024*1024, backupCount=5)
-        file_handler.setFormatter(formatter)
-        file_handler.setLevel(logging.DEBUG)
-        logger.addHandler(file_handler)
+        # 1. Debug File (Exclusive)
+        debug_handler = RotatingFileHandler("aegis.debug.log", maxBytes=10*1024*1024, backupCount=5)
+        debug_handler.setFormatter(formatter)
+        debug_handler.addFilter(LevelFilter(logging.DEBUG))
+        logger.addHandler(debug_handler)
+
+        # 2. Info File (Exclusive)
+        info_handler = RotatingFileHandler("aegis.info.log", maxBytes=10*1024*1024, backupCount=5)
+        info_handler.setFormatter(formatter)
+        info_handler.addFilter(LevelFilter(logging.INFO))
+        logger.addHandler(info_handler)
+
+        # 3. Warning File (Exclusive)
+        warn_handler = RotatingFileHandler("aegis.warning.log", maxBytes=10*1024*1024, backupCount=5)
+        warn_handler.setFormatter(formatter)
+        warn_handler.addFilter(LevelFilter(logging.WARNING))
+        logger.addHandler(warn_handler)
+
+        # 4. Error/Critical File (Inclusive)
+        error_handler = RotatingFileHandler("aegis.error.log", maxBytes=10*1024*1024, backupCount=5)
+        error_handler.setFormatter(formatter)
+        error_handler.setLevel(logging.ERROR)
+        logger.addHandler(error_handler)
 
     # Audit JSONL Logger
     audit_logger = logging.getLogger("aegis_audit")
@@ -64,5 +93,16 @@ def setup_logging():
         audit_handler = RotatingFileHandler("aegis_audit.jsonl", maxBytes=10*1024*1024, backupCount=5)
         audit_handler.setFormatter(logging.Formatter("%(message)s"))
         audit_logger.addHandler(audit_handler)
+
+    # Screen Logger
+    screen_logger = logging.getLogger("aegis.screen")
+    screen_logger.setLevel(logging.DEBUG)
+    screen_logger.propagate = False # Keep screen logs exclusive to their own file
+    
+    if not screen_logger.handlers:
+        screen_handler = RotatingFileHandler("aegis.screen.log", maxBytes=10*1024*1024, backupCount=5)
+        screen_handler.setFormatter(formatter)
+        screen_handler.setLevel(logging.DEBUG)
+        screen_logger.addHandler(screen_handler)
 
     return logger

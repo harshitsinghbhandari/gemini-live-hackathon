@@ -25,39 +25,11 @@ from .screen.capture import capture_screen
 from . import ws_server
 from .tool_manager import get_schemas_for
 from .computer_use import handle_computer_use
+from . import prompt
 
 logger = logging.getLogger("aegis.voice")
 
-SYSTEM_PROMPT = """
-You are Aegis, a trusted AI agent controlling this Mac.
-You have vision (screenshots) and tools.
-
-CORE TOOLS:
-1. screen_capture (take a full screenshot)
-2. screen_crop (take a high-res crop of a Region of Interest)
-3. screen_read (describe the screen)
-4. cursor_target (place a red target and get a verification thumbnail)
-5. cursor_confirm_click, cursor_nudge (precision click/move)
-6. cursor_* (other mouse actions)
-7. keyboard_* (keyboard actions: type, press, hotkey, type_sensitive)
-
-PRECISION PILOT WORKFLOW:
-1. Use `screen_capture` to see the whole screen.
-2. If the target is small/ambiguous, use `screen_crop` to zoom in.
-3. Use `cursor_target` to place a red circle on the element.
-4. You will receive a verification thumbnail. Look at the red circle.
-5. If it is perfectly centered on the target, use `cursor_confirm_click`.
-6. If it is slightly off, use `cursor_nudge`.
-
-SMART PLANNING (Strategist + Operator):
-1. For complex, multi-step tasks (e.g. "Message Harshit on WhatsApp"), ALWAYS call `smart_plan` first.
-2. The AI Architect (Strategist) will return a JSON Execution Plan.
-3. Follow the steps precisely. Use `verify_ui_state` between steps to confirm you are on the right screen.
-4. If you get stuck or the screen doesn't match the plan, call `smart_plan` again with a fresh screenshot to get a "Plan Correction".
-
-SCREEN RESOLUTION: 1470x956.
-Be concise. Tell the user what you are doing.
-"""
+# SYSTEM_PROMPT moved to prompt.py
 
 class SessionBridge:
     """Bridge for communication between hardware loops and Gemini Live session."""
@@ -109,7 +81,7 @@ class AegisVoiceAgent:
 
         self.config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=prompt.VOICE_SYSTEM_PROMPT,
             media_resolution=types.MediaResolution.MEDIA_RESOLUTION_MEDIUM,
             context_window_compression=types.ContextWindowCompressionConfig(
                 trigger_tokens=100000,
@@ -362,23 +334,76 @@ class AegisVoiceAgent:
                                             logger.info("🤖 No confirmation needed")
                                             if result.get("blocked") and result.get("tier") == "RED":
                                                 self._update_status("blocked")
-                                            
+
                                         # Update Context with Smart Plan
                                         if fn.name == "smart_plan" and result.get("success"):
                                             plan = result.get("plan")
                                             if isinstance(plan, list):
                                                 self.context.execution_plan = plan
                                                 self.context.plan_index = 0
+                                                self.context.plan_halted = False
+                                                self.context.verification_passed = False
                                                 logger.info(f"📋 Plan captured: {len(self.context.execution_plan)} steps")
                                             else:
                                                 logger.warning(f"⚠️  Smart Plan returned invalid plan format: {type(plan)}")
-                                        
+
                                         if fn.name == "plan_complete":
                                             self.context.execution_plan = None
                                             self.context.plan_index = 0
+                                            self.context.verification_passed = False
                                             logger.info("🏁 Plan completed and cleared.")
-                                        
-                                        tool_response = {"result": json.dumps(result)}
+
+                                        # ─── Phase 3: Automated Verification Gate ───
+                                        # If we are executing a plan step (and it's not the smart_plan/verify
+                                        # tools themselves), and the step has a "verify" criterion, run it.
+                                        plan_verify_criteria = None
+                                        if (
+                                            self.context.execution_plan
+                                            and not self.context.plan_halted
+                                            and fn.name not in ("smart_plan", "verify_ui_state", "plan_complete", "screen_capture", "screen_read")
+                                            and result.get("success")
+                                        ):
+                                            current_step_idx = self.context.plan_index
+                                            plan = self.context.execution_plan
+                                            if current_step_idx < len(plan):
+                                                current_step = plan[current_step_idx]
+                                                plan_verify_criteria = current_step.get("verify")
+
+                                        if plan_verify_criteria:
+                                            logger.info(f"🔍 Auto-verifying step {self.context.plan_index + 1}: '{plan_verify_criteria}'")
+                                            verify_result = await gate_action(
+                                                f"Verify UI state: {plan_verify_criteria}",
+                                                self.context,
+                                                tool_name="verify_ui_state",
+                                                tool_args={"expected": plan_verify_criteria},
+                                                call_id=f"auto_verify_{fn.id}"
+                                            )
+                                            verified = verify_result.get("output", {})
+                                            # verify_ui_state returns {"verified": bool, ...} nested in output
+                                            if isinstance(verified, dict):
+                                                is_success = verified.get("verified", False)
+                                            else:
+                                                # Parse from raw result string
+                                                is_success = "true" in str(verify_result.get("output", "")).lower() or verify_result.get("success", False)
+
+                                            if is_success:
+                                                logger.info(f"✅ Verification passed for step {self.context.plan_index + 1}")
+                                                self.context.verification_passed = True
+                                                self.context.plan_index += 1
+                                                tool_response = {"result": json.dumps(result) + f'\n[SYSTEM: Verification PASSED for step {self.context.plan_index}. Criterion met: "{plan_verify_criteria}". Proceed to the next step.]'}
+                                            else:
+                                                reason = verify_result.get("output", {})
+                                                if isinstance(reason, dict):
+                                                    reason = reason.get("reason", "Unknown")
+                                                logger.warning(f"❌ Verification FAILED for step {self.context.plan_index + 1}: {reason}")
+                                                self.context.plan_halted = True
+                                                self.context.plan_halt_reason = str(reason)
+                                                self.context.execution_plan = None
+                                                self.context.verification_passed = False
+                                                ws_server.broadcast("plan_halted", data={"step": self.context.plan_index + 1, "criterion": plan_verify_criteria, "reason": str(reason)})
+                                                tool_response = {"result": f'[SYSTEM: VERIFICATION FAILED. The screen does NOT show: "{plan_verify_criteria}". Reason: {reason}. HALT the plan. Tell the user EXACTLY what step failed and what you saw. Do NOT say Done, Finished, or Complete. Ask the user how to proceed.]'}
+                                        else:
+                                            tool_response = {"result": json.dumps(result)}
 
                                     f_resp = types.FunctionResponse(id=fn.id, name=fn.name, response=tool_response)
                                     
@@ -412,16 +437,37 @@ class AegisVoiceAgent:
             output_stream.close()
 
     async def _visual_stream_loop(self):
-        """Sends screenshots only on change or state transition to THINKING."""
-        logger.info("🎬 Starting delta-based visual stream loop...")
+        """Sends foveated (active window) screenshots only on change or state transition to THINKING."""
+        from .screen.capture import capture_active_window
+        from .screen_executor import window_state as screen_window_state
+        logger.info("🎬 Starting foveated delta-based visual stream loop...")
         last_hash = None
         last_state = self.context.state
 
         try:
             while self.alive:
-                shot = capture_screen(quality=40)
+                # Use active-window foveated capture; falls back to full screen automatically
+                shot = capture_active_window(padding=config.VISION_PADDING, quality=40)
+
+                # Sync the crop origin into screen_executor's window_state so
+                # get_noisy_center can remap Gemini's 0-1000 coords correctly.
+                origin_x = shot.get("origin_x", 0)
+                origin_y = shot.get("origin_y", 0)
+                is_cropped = origin_x != 0 or origin_y != 0
+                if is_cropped:
+                    screen_window_state.crop_origin_x = origin_x
+                    screen_window_state.crop_origin_y = origin_y
+                    screen_window_state.crop_width = shot["width"]
+                    screen_window_state.crop_height = shot["height"]
+                else:
+                    # Full screen — reset any lingering crop state
+                    screen_window_state.crop_origin_x = 0
+                    screen_window_state.crop_origin_y = 0
+                    screen_window_state.crop_width = None
+                    screen_window_state.crop_height = None
+
                 current_hash = hashlib.md5(shot["base64"].encode()).hexdigest()
-                
+
                 state_transitioned_to_thinking = (self.context.state == SessionState.THINKING and last_state != SessionState.THINKING)
 
                 if current_hash != last_hash or state_transitioned_to_thinking:
@@ -432,7 +478,7 @@ class AegisVoiceAgent:
                         )
                     )
                     last_hash = current_hash
-                
+
                 last_state = self.context.state
                 await asyncio.sleep(1.0)
         except Exception as e:

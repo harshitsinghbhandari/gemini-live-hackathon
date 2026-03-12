@@ -6,6 +6,9 @@ All actions are intentionally explicit — no magic, no retries.
 
 import time
 import pyautogui
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Safety: pyautogui will raise an exception if mouse hits screen corner
 # This is a good failsafe — keeps the user in control
@@ -30,10 +33,12 @@ def nudge(offset_x: int, offset_y: int, duration: float = 0.2) -> dict:
     GREEN/YELLOW tier - useful for precision nudging without recalculating entirely.
     """
     try:
+        logger.debug(f"Nudging cursor by ({offset_x}, {offset_y})")
         pyautogui.moveRel(offset_x, offset_y, duration=duration)
         pos = pyautogui.position()
         return {"success": True, "action": "nudge", "x": pos.x, "y": pos.y}
     except pyautogui.FailSafeException:
+        logger.warning("Failsafe triggered during nudge")
         return {"success": False, "error": "Failsafe triggered — mouse hit screen corner"}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -50,9 +55,11 @@ def move(x: int, y: int, duration: float = 0.0) -> dict:
         dict: {success, x, y}
     """
     try:
+        logger.info(f"Moving cursor to ({x}, {y}) with duration {duration}")
         pyautogui.moveTo(x, y, duration=duration,tween=pyautogui.easeOutElastic)
         return {"success": True, "x": x, "y": y}
     except pyautogui.FailSafeException:
+        logger.warning("Failsafe triggered during move")
         return {"success": False, "error": "Failsafe triggered — mouse hit screen corner"}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -64,6 +71,7 @@ def click(x: int, y: int, duration: float = 0.2) -> dict:
     YELLOW tier — requires voice confirmation before calling.
     """
     try:
+        logger.info(f"Clicking at ({x}, {y}) with duration {duration}")
         pyautogui.moveTo(x, y, duration=duration)
         time.sleep(0.05)
         pyautogui.click()
@@ -80,6 +88,7 @@ def double_click(x: int, y: int, duration: float = 0.2) -> dict:
     YELLOW tier.
     """
     try:
+        logger.info(f"Double clicking at ({x}, {y}) with duration {duration}")
         pyautogui.moveTo(x, y, duration=duration)
         time.sleep(0.05)
         pyautogui.doubleClick()
@@ -96,6 +105,7 @@ def right_click(x: int, y: int, duration: float = 0.2) -> dict:
     YELLOW tier.
     """
     try:
+        logger.info(f"Right clicking at ({x}, {y}) with duration {duration}")
         pyautogui.moveTo(x, y, duration=duration)
         time.sleep(0.05)
         pyautogui.rightClick()
@@ -116,6 +126,7 @@ def scroll(x: int, y: int, clicks: int, duration: float = 0.2) -> dict:
     YELLOW tier.
     """
     try:
+        logger.info(f"Scrolling at ({x}, {y}) with duration {duration}")
         pyautogui.moveTo(x, y, duration=duration)
         time.sleep(0.05)
         pyautogui.scroll(clicks)
@@ -133,6 +144,7 @@ def drag(x1: int, y1: int, x2: int, y2: int, duration: float = 0.5) -> dict:
     YELLOW tier.
     """
     try:
+        logger.info(f"Dragging from ({x1}, {y1}) to ({x2}, {y2}) with duration {duration}")
         pyautogui.moveTo(x1, y1, duration=0.2)
         time.sleep(0.05)
         pyautogui.dragTo(x2, y2, duration=duration, button="left")
@@ -148,6 +160,7 @@ def position() -> dict:
     Get current cursor position. GREEN tier — read only.
     """
     pos = pyautogui.position()
+    logger.info(f"Current cursor position: ({pos.x}, {pos.y})")
     return {"x": pos.x, "y": pos.y}
 
 

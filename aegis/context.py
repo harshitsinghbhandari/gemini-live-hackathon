@@ -16,8 +16,13 @@ class AegisContext:
     resumption_handle: Optional[Any] = None
     
     # Smart Planning
-    execution_plan: list = None # List of dicts [{"action": "...", ...}]
+    execution_plan: list = None  # List of dicts [{"action": "...", "verify": "...", ...}]
     plan_index: int = 0
+
+    # Verification Gate (Phase 3)
+    plan_halted: bool = False      # Set True when a verification step fails
+    plan_halt_reason: str = ""     # Human-readable explanation for the halt
+    verification_passed: bool = False  # Set True when verify_ui_state returns SUCCESS
 
     @property
     def is_executing_tool(self) -> bool:

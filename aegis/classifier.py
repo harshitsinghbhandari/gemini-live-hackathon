@@ -5,44 +5,14 @@ import re
 from typing import Dict, Any, Optional
 from google import genai
 from . import config
+from . import prompt
 
 logger = logging.getLogger("aegis.classifier")
 
-# TIER_RULES_SUMMARY = """
-# - GREEN: Read-only, listing, searching, screen_read, cursor_move.
-# - YELLOW: cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_press, keyboard_hotkey.
-# - RED: keyboard_type_sensitive.
-# """
-TIER_RULES_SUMMARY = """
-- GREEN: ALL TOOLS (Overridden for testing)
-"""
+# TIER_RULES_SUMMARY_PRODUCTION moved to prompt.py
+# TIER_RULES_SUMMARY_TESTING moved to prompt.py
 
-# RISK_PROMPT = """
-# You are a security classifier for an AI agent controlling a Mac computer.
-# ... (original RISK_PROMPT lines)
-# """
-
-RISK_PROMPT = """
-You are a testing security classifier for an Aegis. 
-OVERRIDE: Classify EVERYTHING as GREEN tier.
-
-Respond ONLY with valid JSON:
-{
-  "tier": "GREEN",
-  "reason": "Testing override enabled",
-  "upgraded": false,
-  "speak": "I'm performing the requested action.",
-  "tool": "tool_name",
-  "arguments": {
-    "box_2d": [ymin, xmin, ymax, xmax],
-    "description": "optional description"
-  }
-}
-
-EXAMPLES:
-"click the chrome icon" → {"tier": "GREEN", "tool": "cursor_click", "arguments": {"box_2d": [900, 450, 950, 500], "description": "chrome icon"}}
-"move to the top right corner" → {"tier": "GREEN", "tool": "cursor_move", "arguments": {"box_2d": [0, 900, 50, 1000]}}
-"""
+# RISK_PROMPT_TESTING moved to prompt.py
 
 def parse_response(text: str) -> Optional[Dict[str, Any]]:
     """Robustly parse JSON from Gemini's text response."""
@@ -90,33 +60,19 @@ async def classify_action(proposed_action: str, tool_hint: str = None) -> Dict[s
 #         client = genai.Client(api_key=config.GOOGLE_API_KEY)
 #
 #         if tool_hint:
-#             system_instruction = f"""
-#             You are a security classifier for an AI agent controlling a Mac.
-#             
-#             The agent has already selected the tool: {{tool_hint}}
-#             The user's intent is: {{proposed_action}}
-#             
-#             Determine the security tier (GREEN, YELLOW, RED) based on these rules:
-#             {{TIER_RULES_SUMMARY}}
-#             
-#             Respond ONLY with valid JSON:
-#             {{
-#               "tier": "RED" | "YELLOW" | "GREEN",
-#               "reason": "one sentence explanation why this tool+intent matches this tier",
-#               "upgraded": true | false,
-#               "speak": "what to say to the user before acting",
-#               "tool": "{{tool_hint}}",
-#               "arguments": {{}} 
-#             }}
-#             """
-#             prompt = "Determine the security tier for this action."
+#             system_instruction = prompt.CLASSIFY_WITH_HINT_PROMPT_TEMPLATE.format(
+#                 tool_hint=tool_hint,
+#                 proposed_action=proposed_action,
+#                 tier_rules_summary=prompt.TIER_RULES_SUMMARY_PRODUCTION
+#             )
+#             prompt_text = "Determine the security tier for this action."
 #         else:
-#             system_instruction = RISK_PROMPT
-#             prompt = f"Proposed action: {{proposed_action}}"
+#             system_instruction = prompt.RISK_PROMPT_TESTING
+#             prompt_text = f"Proposed action: {proposed_action}"
 #
 #         response = await client.aio.models.generate_content(
 #             model=config.GEMINI_MODEL,
-#             contents=[prompt],
+#             contents=[prompt_text],
 #             config=types.GenerateContentConfig(
 #                 system_instruction=system_instruction
 #             )

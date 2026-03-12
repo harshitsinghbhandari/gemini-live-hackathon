@@ -26,6 +26,7 @@ from google import genai
 from google.genai import types
 
 from . import config
+from . import prompt
 from .screen.capture import capture_screen
 from .screen.cursor import (
     move, click, double_click, right_click, scroll, drag, position, nudge, get_retina_scale
@@ -295,6 +296,15 @@ SCREEN_TOOL_DECLARATIONS = [
             "properties": {},
             "required": []
         }
+    },
+    {
+        "name": "get_environment_context",
+        "description": "Get current desktop environment context: the frontmost app name, visible window titles, and cursor position. Call this when you are disoriented or unsure which app or window is in focus before taking an action.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
     }
 ]
 
@@ -385,7 +395,7 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
             }
 
         elif tool_name == "screen_read":
-            question = args.get("question", "Describe everything you see on screen.")
+            question = args.get("question", prompt.SCREEN_READ_DEFAULT_QUESTION)
             reset_view()
             shot = get_current_view()
 
@@ -486,23 +496,7 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
             
             shot = get_current_view()
             
-            prompt = f"""
-            You are the Strategist Architect. Break down the user's goal into a precise step-by-step Execution Plan.
-            
-            Goal: {goal}
-            
-            Current Screen Resolution: 1470x956.
-            
-            Output a JSON list of actions. Each action should have a 'step' number, 'action' type, and 'description'.
-            Example:
-            [
-              {{"step": 1, "action": "open_app", "description": "Open WhatsApp"}},
-              {{"step": 2, "action": "search", "description": "Search for Harshit"}},
-              {{"step": 3, "action": "message", "description": "Type 'Hello' and press enter"}}
-            ]
-            
-            Return ONLY the raw JSON list.
-            """
+            query_prompt = prompt.SMART_PLAN_PROMPT_TEMPLATE.format(goal=goal)
             
             try:
                 # Use Gemini Pro for complex reasoning
@@ -514,7 +508,7 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
                             data=base64.b64decode(shot["base64"]),
                             mime_type=shot["mime_type"]
                         ),
-                        prompt
+                        query_prompt
                     ],
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json"
@@ -538,7 +532,7 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
                 return {"success": False, "error": "Missing required argument: expected"}
             
             shot = get_current_view()
-            prompt = f"Does the current screen show: {expected}? Respond with 'YES' or 'NO' and a brief reason."
+            query_prompt = prompt.VERIFY_UI_STATE_PROMPT_TEMPLATE.format(expected=expected)
             
             try:
                 response = await client.aio.models.generate_content(
@@ -548,7 +542,7 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
                             data=base64.b64decode(shot["base64"]),
                             mime_type=shot["mime_type"]
                         ),
-                        prompt
+                        query_prompt
                     ]
                 )
                 verified = "YES" in response.text.upper()
@@ -632,6 +626,25 @@ async def _dispatch(tool_name: str, args: dict) -> dict:
                 return {"success": False, "error": "Missing required argument: text"}
             return type_sensitive(args["text"])
 
+        elif tool_name == "get_environment_context":
+            from .screen.window import get_active_window_bounds, get_all_visible_windows
+            active = get_active_window_bounds()
+            all_windows = get_all_visible_windows()
+            cursor_pos = position()
+            return {
+                "success": True,
+                "action": "get_environment_context",
+                "app_name": active.get("app_name", "Unknown") if active else "Unknown",
+                "window_title": active.get("title", "") if active else "",
+                "window_bounds": active if active else {},
+                "all_visible_windows": [
+                    {"app": w["app_name"], "title": w["title"]}
+                    for w in all_windows
+                ],
+                "cursor_x": cursor_pos.get("x"),
+                "cursor_y": cursor_pos.get("y"),
+            }
+
         else:
             return {"success": False, "error": f"Unknown screen tool: {tool_name}"}
             
@@ -665,7 +678,7 @@ def is_screen_tool(tool_name: str) -> bool:
     Returns True if the tool name belongs to the screen executor.
     Used by gate.py to route to the correct executor.
     """
-    return tool_name.startswith(("screen_", "cursor_", "keyboard_")) or tool_name in ["smart_plan", "verify_ui_state", "plan_complete"]
+    return tool_name.startswith(("screen_", "cursor_", "keyboard_")) or tool_name in ["smart_plan", "verify_ui_state", "plan_complete", "get_environment_context"]
 
 
 # ─────────────────────────────────────────────
@@ -703,18 +716,7 @@ async def run_screen_agent(user_command: str, max_steps: int = 10) -> dict:
                     mime_type=shot["mime_type"]
                 ),
                 types.Part.from_text(
-                    text=f"""You are Aegis, an AI agent controlling a Mac.
-                    
-Your task: {user_command}
-
-Screen dimensions: 1470x956
-You can see the current state of the screen above.
-
-Use the available tools to complete the task step by step.
-- Always use screen_capture before clicking to verify current state
-- After each action, capture the screen again to verify it worked
-- When the task is complete, respond with text only (no tool call) saying "Task complete: [what was done]"
-"""
+                    text=prompt.SCREEN_AGENT_SYSTEM_PROMPT_TEMPLATE.format(user_command=user_command)
                 )
             ]
         )

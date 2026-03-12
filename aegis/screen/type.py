@@ -9,6 +9,9 @@ Tier classification:
 
 import time
 import pyautogui
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Mapping of common spoken key names to pyautogui key strings
@@ -63,11 +66,13 @@ def type_text(text: str, interval: float = 0.04) -> dict:
         process.communicate(text.encode("utf-8"))
 
         # Paste with Cmd+V
+        logger.info(f"Typing text (clipboard method): {text[:20]}...")
         pyautogui.hotkey("command", "v")
         time.sleep(0.1)
 
         return {"success": True, "action": "type", "text": text}
     except Exception as e:
+        logger.error(f"Failed to type text: {e}")
         return {"success": False, "error": str(e)}
 
 
@@ -114,9 +119,11 @@ def hotkey(*keys: str) -> dict:
     """
     try:
         normalized = [KEY_ALIASES.get(k.lower().strip(), k.lower().strip()) for k in keys]
+        logger.info(f"Pressing hotkey: {'+'.join(normalized)}")
         pyautogui.hotkey(*normalized)
         return {"success": True, "action": "hotkey", "keys": normalized}
     except Exception as e:
+        logger.error(f"Failed to press hotkey: {e}")
         return {"success": False, "error": str(e)}
 
 
