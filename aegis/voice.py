@@ -550,6 +550,15 @@ class AegisVoiceAgent:
         self._update_status("idle")
         ws_server.broadcast("session_ended")
         await post_to_backend("/session/status", {"is_active": False})
+
+        # Cleanup browser
+        try:
+            from .browser_manager import get_browser_manager
+            manager = await get_browser_manager()
+            await manager.close()
+        except Exception as e:
+            logger.debug(f"Browser cleanup failed: {e}")
+
         self.pya.terminate()
 
     async def _check_remote_stop(self):

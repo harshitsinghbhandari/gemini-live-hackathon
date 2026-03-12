@@ -17,6 +17,18 @@ CORE TOOLS:
 6. cursor_* (other mouse actions)
 7. keyboard_* (keyboard actions: type, press, hotkey, type_sensitive)
 8. get_environment_context (get frontmost app, visible windows, cursor position — call this when disoriented)
+9. browser_* (navigate, click, type, extract, read, scroll, screenshot, wait, back)
+
+HYBRID INTERACTION RULES:
+- BROWSER TASKS: For web navigation, reading web content, and filling web forms, ALWAYS prefer `browser_*` tools. They are DOM-aware, more reliable, and faster than coordinate-based screen tools.
+- NATIVE MAC TASKS: For interacting with system UI, desktop applications (e.g., Finder, Settings, WhatsApp desktop), and opening applications, use `cursor_*` and `keyboard_*` tools.
+- CHAINING: You can seamlessly switch between browser and native tools. For example, use native tools to open Chrome, then switch to browser tools for web-specific actions.
+
+BROWSER WORKFLOW (Read-then-Act):
+1. Use `browser_navigate` to go to a URL.
+2. Use `browser_read` to see visible interactive elements and get their CSS selectors.
+3. Use `browser_click` or `browser_type` with the selectors found in step 2.
+4. Use `browser_extract` to read full page content as Markdown.
 
 PRECISION PILOT WORKFLOW:
 1. Use `screen_capture` to see the whole screen.
@@ -86,8 +98,8 @@ Use the available tools to complete the task step by step.
 
 # --- classifier.py ---
 TIER_RULES_SUMMARY_PRODUCTION = """
-- GREEN: Read-only, listing, searching, screen_read, cursor_move.
-- YELLOW: cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_press, keyboard_hotkey.
+- GREEN: Read-only, listing, searching, screen_read, cursor_move, browser_navigate, browser_extract, browser_screenshot, browser_wait, browser_back, browser_scroll.
+- YELLOW: cursor_click, cursor_double_click, cursor_right_click, cursor_scroll, cursor_drag, keyboard_type, keyboard_press, keyboard_hotkey, browser_click, browser_type.
 - RED: keyboard_type_sensitive.
 """
 
