@@ -83,6 +83,17 @@ class CursorClickTool(BaseTool):
 
             element = ocr_cache["elements"].get(label_id)
             if element is None:
+                # Try lookup by label_num
+                try:
+                    target_num = int(label_id)
+                    element = next((el for el in ocr_cache["elements"].values() if el.get("label_num") == target_num), None)
+                except (ValueError, TypeError):
+                    pass
+
+            if element is None:
+                return {
+                    "success": False,
+                    "error": f"label_id '{label_id}' not found in OCR cache. Cache may have refreshed. Call get_annotated_elements again."
                 return {
                     "success": False,
                     "error": f"label_id '{label_id}' not found in OCR cache. Cache may have refreshed. Call get_screen_elements again."

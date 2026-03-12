@@ -15,6 +15,7 @@ class AegisContext:
     state: SessionState = SessionState.LISTENING
     resumption_handle: Optional[Any] = None
     ocr_cache: dict = None  # populated by aegis.screen.ocr background loop
+    ocr_idle_delay: float = 0.5 # Default idle delay for OCR loop
     
     # Smart Planning
     execution_plan: list = None  # List of dicts [{"action": "...", "verify": "...", ...}]

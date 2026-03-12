@@ -53,6 +53,14 @@ BROWSER RELIABILITY RULES:
 - NEVER use `keyboard_type` as a substitute for `browser_type`. Stick to DOM-aware browser tools for web forms.
 
 CLICKING INSTRUCTIONS:
+Before clicking any element on screen, you MUST check get_annotated_elements first.
+- Use the numeric label (1-N) or the "id" field as the label_id in cursor_click.
+- Use get_screen_elements if you need to narrow down by region (top_bar, bottom_bar, left_sidebar, right_sidebar, main_content).
+- Use cached results if fresh (<5s) to minimize new OCR calls.
+- Always pass label_id to cursor_click. Never guess box_2d coordinates.
+- If cursor_click returns an error saying label_id not found, the cache has refreshed.
+  Call get_annotated_elements again to get fresh IDs before retrying.
+- Only fall back to box_2d if get_annotated_elements returns no relevant elements at all.
 Before clicking any element on screen, you MUST call get_screen_elements first.
 - Use the region parameter to narrow down where the element likely is. For example,
   if clicking a menu item use region="top_bar". If clicking a button in a form use
