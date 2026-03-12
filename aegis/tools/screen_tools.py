@@ -207,6 +207,8 @@ class GetScreenElementsTool(BaseTool):
                 ocr_cache = new_result
                 setattr(context, 'ocr_cache', new_result)
 
+        ocr_cache = getattr(context, 'ocr_cache', None)
+
         # Handle empty cache gracefully
         if ocr_cache is None:
             return {

@@ -94,6 +94,9 @@ class CursorClickTool(BaseTool):
                 return {
                     "success": False,
                     "error": f"label_id '{label_id}' not found in OCR cache. Cache may have refreshed. Call get_annotated_elements again."
+                return {
+                    "success": False,
+                    "error": f"label_id '{label_id}' not found in OCR cache. Cache may have refreshed. Call get_screen_elements again."
                 }
 
             # Override box_2d with coordinates from cache
