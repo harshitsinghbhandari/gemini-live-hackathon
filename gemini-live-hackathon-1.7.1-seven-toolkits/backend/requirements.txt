@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+google-cloud-firestore
+firebase-admin
+pydantic
+sse-starlette
+python-dotenv
+webauthn
