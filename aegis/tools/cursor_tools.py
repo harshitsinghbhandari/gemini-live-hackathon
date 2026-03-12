@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import logging
 from typing import Any, Dict
 
 from .base import BaseTool, registry
@@ -56,15 +57,52 @@ class CursorClickTool(BaseTool):
                         "items": {"type": "integer"},
                         "description": "[ymin, xmin, ymax, xmax] (0-1000 scale)"
                     },
+                    "label_id": {
+                        "type": "string",
+                        "description": (
+                            "The ID of the element to click, obtained from get_screen_elements. "
+                            "If provided, coordinates are looked up automatically — do not also provide box_2d."
+                        )
+                    },
                     "description": {"type": "string", "description": "What you are clicking on, e.g. 'Submit button', 'Chrome icon'"}
                 },
-                "required": ["box_2d", "description"]
+                "required": ["description"]
             }
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from .context import window_state as context  # import global context instance
+
+        # If label_id is provided, look up coordinates from OCR cache
+        if "label_id" in args:
+            label_id = args["label_id"]
+            ocr_cache = getattr(context, 'ocr_cache', None)
+
+            if ocr_cache is None:
+                return {"success": False, "error": "OCR cache not ready. Try again in a moment."}
+
+            element = ocr_cache["elements"].get(label_id)
+            if element is None:
+                return {
+                    "success": False,
+                    "error": f"label_id '{label_id}' not found in OCR cache. Cache may have refreshed. Call get_screen_elements again."
+                }
+
+            # Override box_2d with coordinates from cache
+            # Convert to 0-1000 scale to match existing get_noisy_center logic
+            screen_w = ocr_cache["screen_w"]
+            screen_h = ocr_cache["screen_h"]
+            args["box_2d"] = [
+                int(element["ymin"] / screen_h * 1000),
+                int(element["xmin"] / screen_w * 1000),
+                int(element["ymax"] / screen_h * 1000),
+                int(element["xmax"] / screen_w * 1000),
+            ]
+            logger = logging.getLogger("aegis.tools.cursor")
+            logger.debug(f"label_id '{label_id}' resolved to '{element['text']}' at box_2d {args['box_2d']}")
+
         if "box_2d" not in args:
-            return {"success": False, "error": "Missing required argument: box_2d"}
+            return {"success": False, "error": "Missing required argument: box_2d or label_id"}
         cx, cy = get_noisy_center(args["box_2d"])
         
         # OBSERVE: Capture pixel hash of target region before click

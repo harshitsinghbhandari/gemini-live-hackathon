@@ -52,6 +52,18 @@ BROWSER RELIABILITY RULES:
 - If a browser tool fails (e.g., selector not found), ALWAYS retry it once with `browser_wait` first to allow dynamic content to load.
 - NEVER use `keyboard_type` as a substitute for `browser_type`. Stick to DOM-aware browser tools for web forms.
 
+CLICKING INSTRUCTIONS:
+Before clicking any element on screen, you MUST call get_screen_elements first.
+- Use the region parameter to narrow down where the element likely is. For example,
+  if clicking a menu item use region="top_bar". If clicking a button in a form use
+  region="main_content". Use region="all" only if you are unsure.
+- From the returned elements list, find the element whose text matches what you want
+  to click. Use its "id" field as the label_id in cursor_click.
+- Always pass label_id to cursor_click. Never guess box_2d coordinates.
+- If cursor_click returns an error saying label_id not found, the cache has refreshed.
+  Call get_screen_elements again to get fresh IDs before retrying.
+- Only fall back to box_2d if get_screen_elements returns no relevant elements at all.
+
 Screen resolution: 1470x956. Be concise. Narrate what you're doing.
 """
 

@@ -1,4 +1,6 @@
 import logging
+import asyncio
+import time
 from typing import Any, Dict
 from google import genai
 from google.genai import types
@@ -150,7 +152,79 @@ class ScreenCropTool(BaseTool):
         }
 
 
+class GetScreenElementsTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "get_screen_elements"
+
+    @property
+    def declaration(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": (
+                "Returns OCR-detected text elements on screen with their IDs and positions. "
+                "Use this BEFORE calling cursor_click to find the label_id of what you want to click. "
+                "Filter by region to reduce tokens. Available regions: top_bar, bottom_bar, "
+                "left_sidebar, right_sidebar, main_content. "
+                "If you need the screenshot image alongside, set image=true."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "region": {
+                        "type": "string",
+                        "enum": ["top_bar", "bottom_bar", "left_sidebar", "right_sidebar", "main_content", "all"],
+                        "description": "Which screen region to return elements for. Use 'all' only if unsure."
+                    },
+                    "image": {
+                        "type": "boolean",
+                        "description": "If true, also returns a base64 screenshot alongside the JSON. Default false."
+                    }
+                },
+                "required": ["region"]
+            }
+        }
+
+    async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from .context import window_state as context # Use window_state as proxy for ocr_cache
+        from aegis.screen.capture import capture_screen
+
+        ocr_cache = getattr(context, 'ocr_cache', None)
+
+        # Handle empty cache gracefully
+        if ocr_cache is None:
+            return {
+                "success": False,
+                "error": "OCR cache is not ready yet. Wait a moment and try again."
+            }
+
+        region = args.get("region", "all")
+        include_image = args.get("image", False)
+
+        # Build response elements
+        if region == "all":
+            result_elements = ocr_cache["regions"]
+        else:
+            result_elements = {region: ocr_cache["regions"].get(region, [])}
+
+        response = {
+            "success": True,
+            "elements": result_elements,
+            "total_count": ocr_cache["count"],
+            "cache_age_seconds": round(time.time() - ocr_cache["timestamp"], 1),
+            "screen_w": ocr_cache["screen_w"],
+            "screen_h": ocr_cache["screen_h"],
+        }
+
+        if include_image:
+            screenshot = await asyncio.to_thread(capture_screen)
+            response["image"] = screenshot.get("base64", None)
+
+        return response
+
+
 # Register all tools in this module
 registry.register(ScreenCaptureTool())
 registry.register(ScreenReadTool())
 registry.register(ScreenCropTool())
+registry.register(GetScreenElementsTool())
