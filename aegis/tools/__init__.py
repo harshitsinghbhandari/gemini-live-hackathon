@@ -4,5 +4,6 @@ from . import screen_tools
 from . import cursor_tools
 from . import keyboard_tools
 from . import navigation_tools
+from . import browser_tools
 
 __all__ = ["registry"]

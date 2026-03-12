@@ -4,4 +4,6 @@ from .base import registry
 # But for now, we will use it to export SCREEN_TOOL_DECLARATIONS for backwards compatibility.
 
 def get_screen_tool_declarations():
-    return registry.get_all_declarations()
+    all_decls = registry.get_all_declarations()
+    # Explicitly include all registered tools in the schema
+    return all_decls
