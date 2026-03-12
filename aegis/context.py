@@ -14,6 +14,7 @@ class AegisContext:
     user_id: str = "default_user"
     state: SessionState = SessionState.LISTENING
     resumption_handle: Optional[Any] = None
+    ocr_cache: dict = None  # populated by aegis.screen.ocr background loop
     
     # Smart Planning
     execution_plan: list = None  # List of dicts [{"action": "...", "verify": "...", ...}]
