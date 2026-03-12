@@ -45,12 +45,28 @@ async def post_to_backend(endpoint: str, data: dict, await_response: bool = Fals
 async def request_remote_auth(proposed_action: str, classification: dict) -> bool:
     """
     Requests remote auth from backend and polls for result.
+    Includes a visual screenshot crop for the mobile app to display.
     Fallbacks to local Touch ID on timeout or error.
     """
     try:
+        # Capture visual context for the auth request
+        visual_context = {}
+        try:
+            from .screen.capture import capture_screen
+            shot = capture_screen(quality=50, scale_to=(800, 520))
+            visual_context = {
+                "base64_image": shot["base64"],
+                "mime_type": shot["mime_type"],
+                "action_description": proposed_action,
+                "element_label": classification.get("tool", "system_action")
+            }
+            logger.info("Visual context captured for auth request.")
+        except Exception as vc_err:
+            logger.warning(f"Could not capture visual context: {vc_err}")
+
         headers = {"X-User-ID": config.USER_ID}
         async with aiohttp.ClientSession(headers=headers) as session:
-            # 1. Request Auth
+            # 1. Request Auth with visual context
             auth_data = {
                 "action": proposed_action,
                 "tier": classification["tier"],
@@ -58,7 +74,8 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
                 "speak": classification["speak"],
                 "tool": classification.get("tool", ""),
                 "arguments": classification.get("arguments", {}),
-                "device": config.DEVICE_ID
+                "device": config.DEVICE_ID,
+                "visual_context": visual_context
             }
             logger.info('posting: %s', auth_data)
             async with session.post(f"{config.BACKEND_URL}/auth/request", json=auth_data, timeout=5) as resp:

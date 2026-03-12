@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import hashlib
 import logging
 import json
 from typing import Any, Dict, Optional, List
@@ -53,8 +54,8 @@ class BrowserNavigateTool(BrowserBaseTool):
 
         try:
             page = await self.get_page()
-            await page.goto(url, wait_until="load")
-            await page.wait_for_load_state("networkidle", timeout=5000)
+            await page.goto(url, wait_until="load", timeout=30000)
+            await page.wait_for_load_state("networkidle", timeout=15000)
             result = {"success": True, "output": f"Navigated to {url}"}
             self.broadcast_action(self.name, args, result)
             return result
@@ -151,16 +152,46 @@ class BrowserClickTool(BrowserBaseTool):
         wait_after = args.get("wait_after", True)
         try:
             page = await self.get_page()
+            # Wait for DOM to be ready
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+            
+            # Ensure selector exists and is visible
+            await page.wait_for_selector(selector, state="visible", timeout=5000)
+            
+            # OBSERVE: Capture state before action
+            state_before = hashlib.md5((await page.content()).encode()).hexdigest()
+            
             locator = page.locator(selector).first
             await locator.click(timeout=5000)
             if wait_after:
                 await page.wait_for_load_state("load", timeout=10000)
                 await page.wait_for_load_state("networkidle", timeout=5000)
-            result = {"success": True, "output": f"Clicked {selector}"}
+            
+            # VERIFY: Check if state actually changed
+            await asyncio.sleep(0.3)
+            state_after = hashlib.md5((await page.content()).encode()).hexdigest()
+            diff_detected = state_before != state_after
+            
+            # Auto-retry once if nothing changed
+            if not diff_detected:
+                logger.warning(f"No DOM change after clicking {selector}, retrying...")
+                await asyncio.sleep(0.5)
+                await locator.click(timeout=5000)
+                await asyncio.sleep(0.5)
+                state_retry = hashlib.md5((await page.content()).encode()).hexdigest()
+                diff_detected = state_before != state_retry
+            
+            result = {
+                "success": True,
+                "output": f"Clicked {selector}",
+                "diff_detected": diff_detected,
+                "state_before": state_before[:8],
+                "state_after": state_after[:8]
+            }
             self.broadcast_action(self.name, args, result)
             return result
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": str(e), "diff_detected": False}
 
 class BrowserTypeTool(BrowserBaseTool):
     @property
@@ -189,16 +220,37 @@ class BrowserTypeTool(BrowserBaseTool):
         press_enter = args.get("press_enter", False)
         try:
             page = await self.get_page()
+            # Wait for DOM
+            await page.wait_for_load_state("domcontentloaded", timeout=5000)
+            
+            # Ensure selector exists
+            await page.wait_for_selector(selector, state="visible", timeout=5000)
+            
+            # OBSERVE: Capture state before action
+            state_before = hashlib.md5((await page.content()).encode()).hexdigest()
+            
             await page.fill(selector, text, timeout=5000)
             if press_enter:
                 await page.keyboard.press("Enter")
                 await page.wait_for_load_state("load", timeout=10000)
                 await page.wait_for_load_state("networkidle", timeout=5000)
-            result = {"success": True, "output": f"Typed text into {selector}"}
+            
+            # VERIFY: Check if state changed
+            await asyncio.sleep(0.3)
+            state_after = hashlib.md5((await page.content()).encode()).hexdigest()
+            diff_detected = state_before != state_after
+            
+            result = {
+                "success": True,
+                "output": f"Typed text into {selector}",
+                "diff_detected": diff_detected,
+                "state_before": state_before[:8],
+                "state_after": state_after[:8]
+            }
             self.broadcast_action(self.name, args, result)
             return result
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": str(e), "diff_detected": False}
 
 class BrowserExtractTool(BrowserBaseTool):
     @property

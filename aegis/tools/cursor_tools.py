@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from typing import Any, Dict
 
 from .base import BaseTool, registry
@@ -6,6 +7,7 @@ from .context import get_noisy_center, window_state
 from ..screen.cursor import (
     move, click, double_click, right_click, scroll, drag, position, nudge
 )
+from ..screen.capture import capture_region
 
 class CursorMoveTool(BaseTool):
     @property
@@ -64,7 +66,29 @@ class CursorClickTool(BaseTool):
         if "box_2d" not in args:
             return {"success": False, "error": "Missing required argument: box_2d"}
         cx, cy = get_noisy_center(args["box_2d"])
-        return click(int(cx), int(cy))
+        
+        # OBSERVE: Capture pixel hash of target region before click
+        try:
+            region_before = capture_region(max(0, int(cx) - 75), max(0, int(cy) - 75), 150, 150)
+            hash_before = hashlib.md5(region_before["base64"].encode()).hexdigest()
+        except Exception:
+            hash_before = None
+        
+        result = click(int(cx), int(cy))
+        
+        # VERIFY: Re-capture after 300ms and compare
+        if hash_before:
+            await asyncio.sleep(0.3)
+            try:
+                region_after = capture_region(max(0, int(cx) - 75), max(0, int(cy) - 75), 150, 150)
+                hash_after = hashlib.md5(region_after["base64"].encode()).hexdigest()
+                result["diff_detected"] = hash_before != hash_after
+                result["state_before"] = hash_before[:8]
+                result["state_after"] = hash_after[:8]
+            except Exception:
+                result["diff_detected"] = None
+        
+        return result
 
 class CursorDoubleClickTool(BaseTool):
     @property

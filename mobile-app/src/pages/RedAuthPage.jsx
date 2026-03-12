@@ -71,17 +71,30 @@ export function RedAuthPage({ request, onResolve }) {
                         </h1>
                     </div>
 
-                    {/* Visual Element */}
-                    <div className="w-full aspect-video rounded-lg overflow-hidden relative group bg-slate-800/50 flex items-center justify-center">
+                    {/* Visual Context — shows what the agent sees */}
+                    <div className="w-full aspect-video rounded-lg overflow-hidden relative group bg-slate-800/50 flex items-center justify-center border-2 border-danger/30">
                         <div className="absolute inset-0 bg-gradient-to-br from-danger/10 to-transparent mix-blend-overlay"></div>
-                        <img
-                            className="w-full h-full object-cover opacity-60"
-                            alt="Security Context"
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4GmpBd3LHtpS-TJL2SZIH4pVUtA030fgVYpxnQ5U9qEitZo3iPKceU8jcwRQtOqG9-vmamcGDISWxXn9i9rVEFDD9uX3N2knRl1wQp0qpcwb0QqNzFPpSATxpKpXrQqWNJ3FXdjjbThehRJgkhC8r4pv2qYrv5I8HVjCDx_Mk9DyOsvgtzTVbRW0qdQk7ySuzRm2Mlcvo_-FlD2adiUuzuCwW7h9lQygHMDZ3yNGfFlVFnDlQPtxlbzfJTvg2n4gm-s431DLGmyZ-"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-4xl text-danger/50 animate-pulse">lock</span>
+                        {request.visual_context?.base64_image ? (
+                            <img
+                                className="w-full h-full object-contain"
+                                alt="What Aegis sees right now"
+                                src={`data:${request.visual_context.mime_type || 'image/jpeg'};base64,${request.visual_context.base64_image}`}
+                            />
+                        ) : (
+                            <img
+                                className="w-full h-full object-cover opacity-60"
+                                alt="Security Context"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4GmpBd3LHtpS-TJL2SZIH4pVUtA030fgVYpxnQ5U9qEitZo3iPKceU8jcwRQtOqG9-vmamcGDISWxXn9i9rVEFDD9uX3N2knRl1wQp0qpcwb0QqNzFPpSATxpKpXrQqWNJ3FXdjjbThehRJgkhC8r4pv2qYrv5I8HVjCDx_Mk9DyOsvgtzTVbRW0qdQk7ySuzRm2Mlcvo_-FlD2adiUuzuCwW7h9lQygHMDZ3yNGfFlVFnDlQPtxlbzfJTvg2n4gm-s431DLGmyZ-"
+                            />
+                        )}
+                        <div className="absolute top-2 left-2 bg-danger/80 text-white text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded">
+                            {request.visual_context?.base64_image ? 'LIVE AGENT VIEW' : 'NO VISUAL'}
                         </div>
+                        {!request.visual_context?.base64_image && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-4xl text-danger/50 animate-pulse">lock</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Timer Section */}

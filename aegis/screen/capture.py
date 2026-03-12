@@ -13,35 +13,104 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int = 70) -> dict:
+def get_native_som_elements() -> list[dict]:
+    """
+    Extract interactive elements from the frontmost application using macOS Accessibility API.
+    """
+    try:
+        from AppKit import NSWorkspace
+        from Quartz import (
+            AXUIElementCreateApplication,
+            AXUIElementCopyAttributeValue,
+            kAXChildrenAttribute,
+            kAXRoleAttribute,
+            kAXPositionAttribute,
+            kAXSizeAttribute,
+            kAXTitleAttribute,
+            kAXRoleDescriptionAttribute,
+            kAXEnabledAttribute
+        )
+        import objc
+
+        active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+        if not active_app:
+            return []
+
+        app_ref = AXUIElementCreateApplication(active_app.processIdentifier())
+        
+        elements = []
+        id_counter = 1
+
+        def traverse(el, depth=0):
+            nonlocal id_counter
+            if depth > 5 or len(elements) > 50:
+                return
+
+            # Get Role
+            err, role = AXUIElementCopyAttributeValue(el, kAXRoleAttribute, None)
+            if err == 0 and role in ["AXButton", "AXTextField", "AXCheckBox", "AXMenuItem", "AXRadioButton", "AXComboBox"]:
+                # Get Position and Size
+                err_p, pos = AXUIElementCopyAttributeValue(el, kAXPositionAttribute, None)
+                err_s, size = AXUIElementCopyAttributeValue(el, kAXSizeAttribute, None)
+                
+                if err_p == 0 and err_s == 0:
+                    # pos and size are opaque C types, we need to extract x, y, w, h
+                    # Quartz provides helper functions or we can use objc bridge
+                    try:
+                        # Simple heuristic for bounding box
+                        x = pos.x if hasattr(pos, 'x') else 0
+                        y = pos.y if hasattr(pos, 'y') else 0
+                        w = size.width if hasattr(size, 'width') else 0
+                        h = size.height if hasattr(size, 'height') else 0
+                        
+                        if w > 5 and h > 5:
+                            elements.append({
+                                "id": id_counter,
+                                "type": "native",
+                                "role": role,
+                                "bbox": {"x": x, "y": y, "w": w, "h": h},
+                                "ref": el
+                            })
+                            id_counter += 1
+                    except Exception:
+                        pass
+
+            # Recurse children
+            err, children = AXUIElementCopyAttributeValue(el, kAXChildrenAttribute, None)
+            if err == 0 and children:
+                for child in children:
+                    traverse(child, depth + 1)
+
+        traverse(app_ref)
+        return elements
+
+    except Exception as e:
+        logger.error(f"Native SoM extraction failed: {e}")
+        return []
+
+def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int = 70, som: bool = False) -> dict:
     """
     Capture the full screen and return as base64-encoded JPEG.
-    
-    Args:
-        monitor: Monitor index (1 = primary)
-        scale_to: Resize to this resolution before encoding (saves tokens)
-        quality: JPEG compression quality (1-100)
-    
-    Returns:
-        dict with keys:
-            - base64: base64 string (no data URI prefix)
-            - mime_type: "image/jpeg"
-            - width: actual capture width
-            - height: actual capture height
     """
-    logger.info(f"Capturing screen (monitor={monitor}, scale={scale_to}, quality={quality})")
+    logger.info(f"Capturing screen (monitor={monitor}, scale={scale_to}, quality={quality}, som={som})")
     with mss.mss() as sct:
         mon = sct.monitors[monitor]
         screenshot = sct.grab(mon)
 
         # Convert to PIL Image
         img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+        
+        native_elements = []
+        if som:
+            from .som import draw_som_labels
+            native_elements = get_native_som_elements()
+            img = draw_som_labels(img, native_elements)
 
-        # Scale down if needed (reduces tokens sent to Gemini)
+        # Scale down if needed
         if scale_to and img.size != scale_to:
             img = img.resize(scale_to, Image.BILINEAR)
 
-        # Encode as JPEG (much smaller than PNG, good enough for UI understanding)
+        # Encode as JPEG
         buffer = io.BytesIO()
         img.save(buffer, format="JPEG", quality=quality)
         buffer.seek(0)
@@ -53,6 +122,7 @@ def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int
             "mime_type": "image/jpeg",
             "width": img.width,
             "height": img.height,
+            "som_elements": native_elements if som else []
         }
 
 
