@@ -140,8 +140,10 @@ composio/
 composio-utils/
 hackathon-rules.metadata
 hackathon-compliance-report.md
+analyze_repo.py
 # =========================
 # Other
 # =========================
 *.json
 *.jsonl
+aegis_audit.jsonl
