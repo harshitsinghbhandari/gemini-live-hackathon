@@ -3,7 +3,7 @@ import json
 import logging
 import pyautogui
 from google.genai import types
-from aegis.gate import gate_action
+from aegis.agent.gate import gate_action
 from aegis.perception.screen.capture import capture_screen
 
 logger = logging.getLogger("aegis.computer_use")

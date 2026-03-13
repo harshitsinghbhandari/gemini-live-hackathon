@@ -7,9 +7,9 @@ sys.path.insert(0, str(BASE_DIR))
 import asyncio
 import logging
 import argparse
-from aegis.config import setup_logging, USER_ID
-from aegis.context import AegisContext
-from aegis.voice import AegisVoiceAgent
+from configs.agent.config import setup_logging, USER_ID
+from aegis.runtime.context import AegisContext
+from aegis.interfaces.voice import AegisVoiceAgent
 
 def main():
     parser = argparse.ArgumentParser(description="Aegis Voice Agent")

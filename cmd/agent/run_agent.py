@@ -22,9 +22,9 @@ HELPER_URL = "http://localhost:8766"
 
 def start_helper_server():
     """Start helper server as background process"""
-    repo_root = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     process = subprocess.Popen(
-        [sys.executable, os.path.join(repo_root, "aegis", "helper_server.py")],
+        [sys.executable, "-m", "packages.aegis.interfaces.helper_server"],
         cwd=repo_root
     )
     # Wait for helper to be ready (up to 5 seconds)

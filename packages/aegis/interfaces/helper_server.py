@@ -63,10 +63,11 @@ async def start_agent():
     if agent_process and agent_process.poll() is None:
         return {"started": False, "reason": "already running", "pid": agent_process.pid}
 
-    # Start main.py from repo root (one level above aegis/)
-    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Start run_agent_main.py from repo root
+    # File is at packages/aegis/interfaces/helper_server.py, so root is 4 levels up
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     agent_process = subprocess.Popen(
-        [sys.executable, os.path.join(repo_root, "main.py")],
+        [sys.executable, os.path.join(repo_root, "cmd/agent/run_agent_main.py")],
         cwd=repo_root,
         env=os.environ.copy()
     )

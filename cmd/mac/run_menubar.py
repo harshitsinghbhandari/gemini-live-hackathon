@@ -9,8 +9,8 @@ import asyncio
 import threading
 import webbrowser
 import logging
-from aegis.voice import run_aegis
-from aegis.config import DASHBOARD_URL, setup_logging
+from aegis.interfaces.voice import run_aegis
+from configs.agent.config import DASHBOARD_URL, setup_logging
 
 setup_logging()
 logger = logging.getLogger("aegis.menubar")
