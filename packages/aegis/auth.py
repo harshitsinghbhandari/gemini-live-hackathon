@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import threading
-from . import config
+from configs.agent import config
 
 logger = logging.getLogger("aegis.auth")
 

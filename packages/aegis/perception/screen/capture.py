@@ -102,7 +102,7 @@ def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int
         
         native_elements = []
         if som:
-            from .som import draw_som_labels
+            from aegis.perception.screen.som import draw_som_labels
             native_elements = get_native_som_elements()
             img = draw_som_labels(img, native_elements)
 
@@ -168,7 +168,7 @@ def capture_active_window(padding: int = 50, quality: int = 70) -> dict:
         needed for coordinate re-mapping.
     """
     try:
-        from .window import get_active_window_bounds
+        from aegis.perception.window import get_active_window_bounds
 
         bounds = get_active_window_bounds()
         if bounds is None:

@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths:
-      - 'mobile-app/**'
+      - 'apps/mobile-app/**'
   create:
     tags:
       - 'v*'
@@ -42,7 +42,7 @@ jobs:
       - name: Build & Push Docker Image
         run: |
           IMAGE="us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-mobile-app"
-          docker build -t $IMAGE ./mobile-app
+          docker build -t $IMAGE ./apps/mobile-app
           docker push $IMAGE
 
       - name: Deploy to Cloud Run

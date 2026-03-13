@@ -3,12 +3,12 @@ import hashlib
 import logging
 from typing import Any, Dict
 
-from .base import BaseTool, registry
-from .context import get_noisy_center, window_state
-from ..screen.cursor import (
+from aegis.tools.base import BaseTool, registry
+from aegis.tools.context import get_noisy_center, window_state
+from aegis.perception.cursor import (
     move, click, double_click, right_click, scroll, drag, position, nudge
 )
-from ..screen.capture import capture_region
+from aegis.perception.screen.capture import capture_region
 
 class CursorMoveTool(BaseTool):
     @property
@@ -71,7 +71,7 @@ class CursorClickTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        from .context import window_state as context  # import global context instance
+        from aegis.tools.context import window_state as context  # import global context instance
 
         # If label_id is provided, look up coordinates from OCR cache
         if "label_id" in args:
@@ -91,9 +91,6 @@ class CursorClickTool(BaseTool):
                     pass
 
             if element is None:
-                return {
-                    "success": False,
-                    "error": f"label_id '{label_id}' not found in OCR cache. Cache may have refreshed. Call get_annotated_elements again."
                 return {
                     "success": False,
                     "error": f"label_id '{label_id}' not found in OCR cache. Cache may have refreshed. Call get_screen_elements again."
@@ -315,7 +312,7 @@ class CursorTargetTool(BaseTool):
         
         # AppKit overlay inherently accepts logical coordinates
         import subprocess, sys, os
-        from ..screen_executor import __file__ as screen_executor_file
+        from aegis.perception.screen_executor import __file__ as screen_executor_file
         script_path = os.path.join(os.path.dirname(screen_executor_file), "screen", "overlay.py")
         subprocess.Popen([sys.executable, script_path, str(int(px)), str(int(py)), "30", "1500"])
         

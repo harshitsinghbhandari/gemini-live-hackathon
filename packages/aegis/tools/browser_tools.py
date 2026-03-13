@@ -6,10 +6,10 @@ import json
 from typing import Any, Dict, Optional, List
 from markdownify import markdownify as md
 
-from .base import BaseTool, registry
-from ..browser_manager import get_browser_manager
-from .. import ws_server
-from .. import config
+from aegis.tools.base import BaseTool, registry
+from aegis.browser_manager import get_browser_manager
+from aegis.interfaces import ws_server
+from configs.agent import config
 
 logger = logging.getLogger("aegis.tools.browser")
 

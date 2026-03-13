@@ -20,11 +20,11 @@ fi
 
 # Define services list (Space separated: SERVICE_NAME:DIR)
 SERVICES=(
-  "guardian-landing:./landing"
-  "guardian-backend:./backend"
-  "guardian-dashboard:./dashboard"
-  "guardian-mac-app:./mac-app"
-  "guardian-mobile-app:./mobile-app"
+  "guardian-landing:apps/landing"
+  "guardian-backend:services/backend"
+  "guardian-dashboard:apps/dashboard"
+  "guardian-mac-app:apps/mac-app"
+  "guardian-mobile-app:apps/mobile-app"
 )
 
 echo "🚀 Starting deployments for project $PROJECT_ID in $REGION..."

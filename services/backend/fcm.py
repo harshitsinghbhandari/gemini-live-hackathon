@@ -1,6 +1,6 @@
 import firebase_admin
 from firebase_admin import messaging
-from config import PROJECT_ID
+from configs.backend.config import PROJECT_ID
 import logging
 import asyncio
 

@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(BASE_DIR / 'packages'))
+sys.path.insert(0, str(BASE_DIR))
+sys.path.insert(0, str(BASE_DIR / 'services' / 'backend'))
+
 import asyncio
 import json
 import logging
@@ -10,16 +17,16 @@ from sse_starlette.sse import EventSourceResponse
 from typing import List, Optional
 import datetime
 
-from models import (
+from services.backend.models import (
     ActionLog, AuthRequest, AuthApproval, AuthStatus,
     DeviceRegistration, SessionUpdate
 )
-from firestore import (
+from services.backend.firestore import (
     save_action_log, create_auth_request, get_auth_request,
     update_auth_status, get_audit_logs, listen_to_audit_log,
     register_device, update_session_status
 )
-from fcm import send_auth_push
+from services.backend.fcm import send_auth_push
 from webauthn import (
     generate_registration_options,
     verify_registration_response,
@@ -34,7 +41,7 @@ from webauthn.helpers.structs import (
     PublicKeyCredentialDescriptor,
     PublicKeyCredentialType
 )
-from firestore import db
+from services.backend.firestore import db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -189,7 +196,7 @@ async def post_device_register(registration: DeviceRegistration, user_id: str = 
 
 @app.get("/session/status")
 async def get_session_status(user_id: str = Depends(get_user_id)):
-    from firestore import db
+    from services.backend.firestore import db
     doc = await db.collection("users").document(user_id).collection("app_state").document("session").get()
     if doc.exists:
         return doc.to_dict()
@@ -346,7 +353,7 @@ async def webauthn_auth_verify(request: Request, user_id: str = Depends(get_user
 
         # Approve the auth request in Firestore
         if request_id:
-            from firestore import firestore as fs_lib
+            from services.backend.firestore import firestore as fs_lib
             await db.collection("users").document(user_id).collection("auth_requests").document(request_id).update({
                 "status": "approved",
                 "resolved_at": fs_lib.SERVER_TIMESTAMP

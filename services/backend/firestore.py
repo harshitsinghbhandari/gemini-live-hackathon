@@ -1,5 +1,5 @@
 from google.cloud import firestore
-from config import PROJECT_ID
+from configs.backend.config import PROJECT_ID
 import datetime
 import logging
 

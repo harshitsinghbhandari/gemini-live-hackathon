@@ -1,8 +1,8 @@
 import logging
 import random
 import pyautogui
-from .. import config
-from ..screen.capture import capture_screen, capture_region
+from configs.agent import config
+from aegis.perception.screen.capture import capture_screen, capture_region
 
 logger = logging.getLogger("aegis.tools.context")
 

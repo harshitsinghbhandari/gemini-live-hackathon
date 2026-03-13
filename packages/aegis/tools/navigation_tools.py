@@ -5,12 +5,12 @@ from google import genai
 from google.genai import types
 import base64
 
-from .base import BaseTool, registry
-from .context import get_current_view
-from .. import config
-from .. import prompt
-from ..screen.window import get_active_window_bounds, get_all_visible_windows
-from ..screen.cursor import position
+from aegis.tools.base import BaseTool, registry
+from aegis.tools.context import get_current_view
+from configs.agent import config
+from configs.agent.config import prompt
+from aegis.perception.window import get_active_window_bounds, get_all_visible_windows
+from aegis.perception.cursor import position
 
 logger = logging.getLogger("aegis.tools.navigation")
 

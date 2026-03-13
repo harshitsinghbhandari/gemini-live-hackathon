@@ -16,18 +16,18 @@ from google.genai.types import (
     VoiceConfig,
     PrebuiltVoiceConfig,
 )
-from . import config
-from .context import AegisContext, SessionState
-from .gate import gate_action
+from configs.agent import config
+from aegis.runtime.context import AegisContext, SessionState
+from aegis.agent.gate import gate_action
 import os
-from .screen_executor import is_screen_tool, get_current_view
-from .tools.declarations import get_screen_tool_declarations
-from .screen.capture import capture_screen
-from .screen.ocr import ocr_background_loop
-from . import ws_server
-from .tool_manager import get_schemas_for
-from .computer_use import handle_computer_use
-from . import prompt
+from aegis.runtime.screen_executor import is_screen_tool, get_current_view
+from aegis.tools.declarations import get_screen_tool_declarations
+from aegis.perception.screen.capture import capture_screen
+from aegis.perception.screen.ocr import ocr_background_loop
+from aegis.interfaces import ws_server
+from aegis.runtime.tool_manager import get_schemas_for
+from aegis.computer_use import handle_computer_use
+from configs.agent.config import prompt
 
 logger = logging.getLogger("aegis.voice")
 
@@ -441,8 +441,8 @@ class AegisVoiceAgent:
 
     async def _visual_stream_loop(self):
         """Sends foveated (active window) screenshots only on change or state transition to THINKING."""
-        from .screen.capture import capture_active_window
-        from .screen_executor import window_state as screen_window_state
+        from aegis.perception.screen.capture import capture_active_window
+        from aegis.tools.context import window_state as screen_window_state
         logger.info("🎬 Starting foveated delta-based visual stream loop...")
         last_hash = None
         last_state = self.context.state
@@ -489,7 +489,7 @@ class AegisVoiceAgent:
                 logger.error(f"Error in visual_stream_loop: {e}")
 
     async def run(self):
-        from .gate import post_to_backend
+        from aegis.agent.gate import post_to_backend
         await post_to_backend("/session/status", {"is_active": True}, await_response=True)
         asyncio.create_task(self._check_remote_stop())
         server = ws_server.get_server()
@@ -557,7 +557,7 @@ class AegisVoiceAgent:
 
         # Cleanup browser
         try:
-            from .browser_manager import get_browser_manager
+            from aegis.browser_manager import get_browser_manager
             manager = await get_browser_manager()
             await manager.close()
         except Exception as e:
@@ -583,7 +583,7 @@ class AegisVoiceAgent:
             if self.alive: logger.warning(f"Remote stop check failed: {e}")
 
 async def run_aegis(status_callback=None, on_agent_ready=None):
-    from .config import USER_ID
+    from configs.agent.config import USER_ID
     context = AegisContext(user_id=USER_ID)
     agent = AegisVoiceAgent(context, status_callback=status_callback)
     if on_agent_ready: on_agent_ready(agent)

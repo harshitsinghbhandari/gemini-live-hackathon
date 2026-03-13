@@ -70,11 +70,11 @@ pip install -r requirements.txt
 echo "🚀 Starting Aegis Agent..."
 # Start the agent and helper server
 # Kill existing agent/helper if running
-pkill -f "python3 main.py" || true
-pkill -f "python3 -m aegis.helper_server" || true
+pkill -f "python3 cmd/agent/run_agent_main.py" || true
+pkill -f "python3 cmd/agent/run_agent.py" || true
 
-nohup python3 -m aegis.helper_server > helper.log 2>&1 &
-nohup python3 main.py > aegis.log 2>&1 &
+nohup python3 cmd/agent/run_agent.py > helper.log 2>&1 &
+nohup python3 cmd/agent/run_agent_main.py > aegis.log 2>&1 &
 echo "✅ Agent and Helper Server are running in the background."
 
 echo "🌐 Opening Aegis Dashboard..."
