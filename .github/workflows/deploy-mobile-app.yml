@@ -42,7 +42,7 @@ jobs:
       - name: Build & Push Docker Image
         run: |
           IMAGE="us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-mobile-app"
-          docker build -t $IMAGE -f ./apps/mobile-app/Dockerfile .
+          docker build -t $IMAGE ./apps/mobile-app
           docker push $IMAGE
 
       - name: Deploy to Cloud Run

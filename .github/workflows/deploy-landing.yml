@@ -42,7 +42,7 @@ jobs:
       - name: Build & Push Docker Image
         run: |
           IMAGE="us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-landing"
-          docker build -t $IMAGE -f ./apps/landing/Dockerfile .
+          docker build -t $IMAGE ./apps/landing
           docker push $IMAGE
 
       - name: Deploy to Cloud Run
