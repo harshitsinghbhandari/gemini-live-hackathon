@@ -3,6 +3,12 @@ Aegis Launcher
 Starts the helper server and opens the macOS PWA in browser app mode.
 This is the single entry point for non-technical users.
 """
+import sys
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(BASE_DIR / 'packages'))
+sys.path.insert(0, str(BASE_DIR))
+
 import subprocess
 import sys
 import time

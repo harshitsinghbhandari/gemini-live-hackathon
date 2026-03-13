@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import httpx
 import logging
-from . import config
+from configs.agent import config
 
 app = FastAPI(title="Aegis Helper Server", version="1.0.0")
 

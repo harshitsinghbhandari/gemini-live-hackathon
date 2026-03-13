@@ -1,6 +1,6 @@
 from typing import Any, Dict
-from .base import BaseTool, registry
-from ..screen.type import (
+from aegis.tools.base import BaseTool, registry
+from aegis.perception.screen.type import (
     type_text, press_key, hotkey, type_sensitive
 )
 

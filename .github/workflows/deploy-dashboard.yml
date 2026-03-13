@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths:
-      - 'dashboard/**'
+      - 'apps/dashboard/**'
   create:
     tags:
       - 'v*'
@@ -42,7 +42,7 @@ jobs:
       - name: Build & Push Docker Image
         run: |
           IMAGE="us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-dashboard"
-          docker build -t $IMAGE ./dashboard
+          docker build -t $IMAGE -f ./apps/dashboard/Dockerfile .
           docker push $IMAGE
 
       - name: Deploy to Cloud Run

@@ -8,7 +8,8 @@ on:
     branches:
       - main
     paths:
-      - 'backend/**'
+      - 'services/backend/**'
+      - 'packages/aegis/**'
   create:
     tags:
       - 'v*'
@@ -42,7 +43,7 @@ jobs:
       - name: Build & Push Docker Image
         run: |
           IMAGE="us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-backend"
-          docker build -t $IMAGE ./backend
+          docker build -t $IMAGE -f ./services/backend/Dockerfile .
           docker push $IMAGE
 
       - name: Deploy to Cloud Run

@@ -6,10 +6,10 @@ from google import genai
 from google.genai import types
 import base64
 
-from .base import BaseTool, registry
-from .context import get_current_view, reset_view, window_state
-from .. import config
-from .. import prompt
+from aegis.tools.base import BaseTool, registry
+from aegis.tools.context import get_current_view, reset_view, window_state
+from configs.agent import config
+from configs.agent.config import prompt
 
 logger = logging.getLogger("aegis.tools.screen")
 
@@ -190,15 +190,15 @@ class GetScreenElementsTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        from .context import window_state as context # Use window_state as proxy for ocr_cache
-        from aegis.screen.capture import capture_screen
+        from aegis.tools.context import window_state as context # Use window_state as proxy for ocr_cache
+        from aegis.perception.screen.capture import capture_screen
 
         use_cache = args.get("use_cache", True)
         ocr_cache = getattr(context, 'ocr_cache', None)
 
         # Trigger on-demand OCR if cache stale or requested
         if not use_cache or ocr_cache is None or (time.time() - ocr_cache["timestamp"] > 5):
-            from aegis.screen.ocr import _process_frame
+            from aegis.perception.screen.ocr import _process_frame
             # We don't have the global context easily here, so we pass None or a dummy
             # ocr_background_loop usually handles the context.
             # For on-demand, we just want the result.
@@ -259,7 +259,7 @@ class GetAnnotatedElementsTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        from .context import window_state as context
+        from aegis.tools.context import window_state as context
         ocr_cache = getattr(context, 'ocr_cache', None)
 
         if ocr_cache is None:

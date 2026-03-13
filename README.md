@@ -126,29 +126,10 @@ Aegis will:
 1. Visit [aegis.projectalpha.in/setup](https://aegis.projectalpha.in/setup)
 2. Enter your API keys and set your AEGIS_PIN.
 3. Run the install command.
-4. Start the local helper server: `python3 -m aegis.helper_server`
+4. Start the local helper server: `python cmd/agent/run_agent.py`
 5. Open [aegismac.projectalpha.in](https://aegismac.projectalpha.in) and start talking.
 
-## Project Structure
-
-```text
-gemini-live-hackathon/
-├── aegis/                 # Python agent core handling Gemini Live, Vision, and native Screen Control
-│   ├── screen/            # Low-level drivers for cursor, typing, and capture
-│   ├── classifier.py      # Risk tier analysis
-│   ├── gate.py            # Security gateway and auth routing
-│   ├── voice.py           # Real-time multimodal orchestration
-│   └── screen_executor.py # Native ComputerUse execution
-├── backend/               # FastAPI backend for audit logging, auth requests, and WebAuthn
-├── dashboard/             # Remote React web dashboard for real-time monitoring
-├── guides/                # Documentation for architecture and migration
-├── mac-app/               # Local React UI for macOS (Voice visualizer & status)
-├── mobile-app/            # Companion PWA for remote biometric verification
-├── aegis_menubar.py       # macOS native menu bar utility
-├── architecture.mermaid   # System architecture diagram
-├── install.sh             # Automated installation script
-└── main.py                # Agent entry point
-```
+See the **Monorepo structure after refactor** section below for the updated directory layout.
 
 ## Live Deployments
 
@@ -165,3 +146,15 @@ gemini-live-hackathon/
 Harshit Singh Bhandari
 
 Built for the Gemini Live Agent Challenge — March 2026
+
+## Monorepo structure after refactor
+Aegis has been refactored into a scalable monorepo structure utilizing absolute imports and centralized configs for better scalability.
+
+- `apps/` (dashboard, mac-app, mobile-app, landing)
+- `services/` (backend)
+- `packages/aegis/` (agent, perception, tools, runtime, interfaces)
+- `configs/` (agent, backend)
+- `cmd/` (entrypoints like run_agent.py, run_backend.py, run_menubar.py)
+- `docs/`
+- `scripts/`
+- `env/`

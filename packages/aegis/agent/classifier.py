@@ -4,8 +4,8 @@ import json
 import re
 from typing import Dict, Any, Optional
 from google import genai
-from . import config
-from . import prompt
+from configs.agent import config
+from configs.agent.config import prompt
 
 logger = logging.getLogger("aegis.classifier")
 

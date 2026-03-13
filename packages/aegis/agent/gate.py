@@ -5,13 +5,13 @@ import aiohttp
 import asyncio
 import uuid
 from typing import Dict, Any
-from .classifier import classify_action
-from .auth import request_touch_id
-from .screen_executor import execute_screen_action
-from .tools.declarations import get_screen_tool_declarations
-from .context import AegisContext
-from . import config
-from . import ws_server
+from aegis.agent.classifier import classify_action
+from aegis.auth import request_touch_id
+from aegis.runtime.screen_executor import execute_screen_action
+from aegis.tools.declarations import get_screen_tool_declarations
+from aegis.runtime.context import AegisContext
+from configs.agent import config
+from aegis.interfaces import ws_server
 
 logger = logging.getLogger("aegis.gate")
 audit_logger = logging.getLogger("aegis_audit")
@@ -52,7 +52,7 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
         # Capture visual context for the auth request
         visual_context = {}
         try:
-            from .screen.capture import capture_screen
+            from aegis.perception.screen.capture import capture_screen
             shot = capture_screen(quality=50, scale_to=(800, 520))
             visual_context = {
                 "base64_image": shot["base64"],

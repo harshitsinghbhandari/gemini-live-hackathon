@@ -25,12 +25,12 @@ import random
 from google import genai
 from google.genai import types
 
-from . import config
-from . import prompt
-from .screen.capture import capture_screen
-from .tools import registry
-from .tools.declarations import get_screen_tool_declarations
-from .tools.context import window_state, reset_view, get_current_view, get_noisy_center
+from configs.agent import config
+from configs.agent.config import prompt
+from aegis.perception.screen.capture import capture_screen
+from aegis.tools import registry
+from aegis.tools.declarations import get_screen_tool_declarations
+from aegis.tools.context import window_state, reset_view, get_current_view, get_noisy_center
 
 SCREEN_TOOL_DECLARATIONS = get_screen_tool_declarations()
 

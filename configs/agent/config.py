@@ -106,3 +106,17 @@ def setup_logging():
         screen_logger.addHandler(screen_handler)
 
     return logger
+
+
+# Dynamic loading of prompts.yaml
+import sys
+from pathlib import Path
+
+class PromptModule:
+    pass
+
+prompt = PromptModule()
+prompt_file = Path(__file__).parent / 'prompts.yaml'
+if prompt_file.exists():
+    with open(prompt_file, 'r') as f:
+        exec(f.read(), prompt.__dict__)
