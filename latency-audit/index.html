@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aegis — Latency Audit</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">⏱</div>
+    <span class="logo-text">Aegis</span>
+    <span class="logo-sub">/ latency audit</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-primary" onclick="fetchLog()">Refresh</button>
+    <button class="btn" style="background:var(--bg3)" onclick="clearAll()">Clear</button>
+    <button class="btn" style="background:var(--bg3)" onclick="document.getElementById('fileInput').click()">Upload log</button>
+    <input type="file" id="fileInput" accept=".log,.txt" multiple />
+  </div>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div>
+      <div class="sidebar-section-label">Import</div>
+      <div class="file-drop" id="fileDrop">
+        <svg class="file-drop-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 4v18M8 14l8-8 8 8M6 26h20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p><span>Click to upload</span> or drag & drop<br/>aegis.latency.log</p>
+      </div>
+      <div id="corsWarning" style="display:none;margin-top:12px;padding:12px;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);border-radius:8px">
+        <div style="font-size:11px;color:var(--amber);font-weight:600;margin-bottom:4px">CORS/Local File Limitation</div>
+        <p style="font-size:11px;color:var(--text3);line-height:1.4">Auto-fetch is blocked when opening via <code>file://</code>. Use manual upload or run:<br/><code>python3 -m http.server</code></p>
+      </div>
+    </div>
+
+    <!-- <div>
+      <div class="sidebar-section-label">Search</div>
+      <input type="text" class="filter-search" id="searchInput" placeholder="Filter by label..." oninput="applyFilters()" />
+    </div> -->
+
+    <div>
+      <div class="sidebar-section-label">Categories</div>
+      <div class="category-list" id="categoryList"></div>
+    </div>
+
+    <!-- <div>
+      <div class="sidebar-section-label">Latency filter</div>
+      <div class="filter-group">
+        <input type="range" id="minDelta" min="0" max="5000" value="0" step="10" oninput="updateRangeLabel(); applyFilters()" style="width:100%" />
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);font-family:var(--mono)">
+          <span>min <span id="minLabel">0ms</span></span>
+          <span id="maxDeltaLabel" style="color:var(--text3)">show all</span>
+        </div>
+        <input type="range" id="maxDelta" min="0" max="5000" value="5000" step="10" oninput="updateRangeLabel(); applyFilters()" style="width:100%" />
+      </div>
+    </div> -->
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main" id="mainPanel">
+
+    <!-- STATS -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-cell">
+        <div class="stat-label">Total events</div>
+        <div class="stat-value" id="statTotal">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Avg delta</div>
+        <div class="stat-value" id="statAvg">—<span class="stat-unit">ms</span></div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Max delta</div>
+        <div class="stat-value" id="statMax">—<span class="stat-unit">ms</span></div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Categories</div>
+        <div class="stat-value" id="statCats">—</div>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchView('table', this)">Table</button>
+        <button class="view-tab" onclick="switchView('timeline', this)">Timeline</button>
+        <button class="view-tab" onclick="switchView('logs', this)">Logs</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+        <option value="index">Sort: original order</option>
+        <option value="delta_desc">Sort: slowest first</option>
+        <option value="delta_asc">Sort: fastest first</option>
+        <option value="category">Sort: by category</option>
+      </select>
+    </div>
+
+    <!-- LOG CONTENT -->
+    <div class="log-container" id="logContainer">
+      <div class="empty-state" id="emptyState">
+        <svg class="empty-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2"/>
+          <path d="M24 14v10l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <p><strong>No log data yet</strong>Load an aegis.latency.log file to begin analysis</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detailPanel">
+  <button class="detail-close" onclick="closeDetail()">×</button>
+  <div class="detail-title" id="detailTitle"></div>
+  <div id="detailBody"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
