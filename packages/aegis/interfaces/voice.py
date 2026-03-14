@@ -31,8 +31,6 @@ from configs.agent.config import prompt
 
 logger = logging.getLogger("aegis.voice")
 
-# SYSTEM_PROMPT moved to prompt.py
-
 class SessionBridge:
     """Bridge for communication between hardware loops and Gemini Live session."""
     def __init__(self):
