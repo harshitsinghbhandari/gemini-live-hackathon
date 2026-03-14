@@ -74,6 +74,7 @@ def _run_ocr_on_tile(tile_img: np.ndarray, tile_info: Dict) -> List[Dict]:
     offset_x, offset_y = tile_info['bbox'][0], tile_info['bbox'][1]
 
     for bbox, text, conf in results:
+        conf = float(conf)
         if conf < OCR_CONFIDENCE_THRESHOLD: continue
         xmin = int(bbox[0][0] / TILE_RESIZE_FACTOR) + offset_x
         ymin = int(bbox[0][1] / TILE_RESIZE_FACTOR) + offset_y
