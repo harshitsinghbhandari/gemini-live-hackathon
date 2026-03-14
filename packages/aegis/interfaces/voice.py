@@ -483,7 +483,7 @@ class AegisVoiceAgent:
                     last_hash = current_hash
 
                 last_state = self.context.state
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(5.0)
         except Exception as e:
             if self.alive:
                 logger.error(f"Error in visual_stream_loop: {e}")

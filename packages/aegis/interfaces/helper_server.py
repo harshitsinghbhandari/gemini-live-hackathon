@@ -3,20 +3,93 @@ Aegis Helper Server
 A lightweight FastAPI server on http://localhost:8766 that lets the macOS PWA
 start and stop the Python Aegis agent without touching the terminal.
 """
-import subprocess
-import time
+
 import os
 import sys
+import time
+import asyncio
+import logging
+import subprocess
+from pathlib import Path
+from contextlib import asynccontextmanager
+
+import httpx
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-import httpx
-import logging
+
 from configs.agent import config
 
-app = FastAPI(title="Aegis Helper Server", version="1.0.0")
+# ------------------------------------------------------------------
+# Logging
+# ------------------------------------------------------------------
 
-# Allow PWA (browser) to call this local server
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+)
+
+logger = logging.getLogger("aegis-helper")
+
+# ------------------------------------------------------------------
+# Repo root resolution
+# ------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+AGENT_SCRIPT = REPO_ROOT / "cmd/agent/run_agent_main.py"
+
+assert AGENT_SCRIPT.exists(), f"Agent script not found at: {AGENT_SCRIPT}"
+
+# ------------------------------------------------------------------
+# Start lock (prevents race condition on concurrent /start calls)
+# ------------------------------------------------------------------
+
+_start_lock = asyncio.Lock()
+
+# ------------------------------------------------------------------
+# Lifespan
+# ------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    # runtime state
+    app.state.agent_process = None
+    app.state.agent_log_file = None
+    app.state.start_time = None
+    app.state.verification_status = "idle"
+    app.state.verification_task = None
+
+    logger.info("Aegis helper server started")
+
+    yield
+
+    # graceful shutdown
+    proc = app.state.agent_process
+    if proc and proc.poll() is None:
+        logger.info("Shutting down running agent")
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+    # close agent log file if open
+    if app.state.agent_log_file:
+        app.state.agent_log_file.close()
+
+    logger.info("Aegis helper server stopped")
+
+# ------------------------------------------------------------------
+# App
+# ------------------------------------------------------------------
+
+app = FastAPI(
+    title="Aegis Helper Server",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,32 +98,100 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Agent process state
-agent_process: subprocess.Popen = None
-start_time: float = None
+# ------------------------------------------------------------------
+# Utilities
+# ------------------------------------------------------------------
 
+async def stop_agent(app: FastAPI):
 
-@app.on_event("startup")
-async def startup_event():
-    """Register PIN with backend if configured."""
-    if config.AEGIS_PIN and config.USER_ID:
+    # cancel any in-flight verification task first
+    task = app.state.verification_task
+    if task and not task.done():
+        task.cancel()
         try:
-            async with httpx.AsyncClient() as client:
+            await task
+        except asyncio.CancelledError:
+            pass
+    app.state.verification_task = None
+
+    proc = app.state.agent_process
+    if proc and proc.poll() is None:
+        logger.warning("Stopping agent (pid=%s)", proc.pid)
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+    # close and reset log file
+    if app.state.agent_log_file:
+        app.state.agent_log_file.close()
+        app.state.agent_log_file = None
+
+    app.state.agent_process = None
+    app.state.start_time = None
+    app.state.verification_status = "idle"
+
+# ------------------------------------------------------------------
+# Background PIN verification
+# ------------------------------------------------------------------
+
+async def verify_pin_background(app: FastAPI):
+
+    app.state.verification_status = "verifying"
+
+    retries = 5
+    delay = 3
+
+    # single client for all retry attempts
+    async with httpx.AsyncClient() as client:
+
+        for attempt in range(retries):
+
+            try:
                 payload = {
                     "user_id": config.USER_ID,
-                    "pin": config.AEGIS_PIN
+                    "pin": config.AEGIS_PIN,
                 }
-                response = await client.post(
-                    f"{config.BACKEND_URL}/auth/register-pin",
+
+                r = await client.post(
+                    f"{config.BACKEND_URL}/auth/verify-pin",
                     json=payload,
-                    timeout=10.0
+                    timeout=10,
                 )
-                if response.status_code == 200:
-                    print(f"✅ PIN registered successfully for user {config.USER_ID}")
-                else:
-                    print(f"⚠️ PIN registration failed: {response.status_code} - {response.text}")
-        except Exception as e:
-            print(f"❌ Error registering PIN during startup: {e}")
+
+                if r.status_code == 200:
+                    logger.info("PIN verification successful")
+                    app.state.verification_status = "verified"
+                    return
+
+                if r.status_code in (401, 403):
+                    logger.error("PIN rejected by server (status=%s)", r.status_code)
+                    await stop_agent(app)
+                    app.state.verification_status = "rejected"
+                    return
+
+                logger.warning(
+                    "Unexpected verification response %s (attempt %s/%s)",
+                    r.status_code, attempt + 1, retries,
+                )
+
+            except asyncio.CancelledError:
+                logger.info("PIN verification task cancelled")
+                raise  # let the cancellation propagate cleanly
+
+            except Exception as e:
+                logger.warning("Verification attempt %s/%s failed: %s", attempt + 1, retries, e)
+
+            await asyncio.sleep(delay)
+
+    logger.error("PIN verification failed after %s retries", retries)
+    await stop_agent(app)
+    app.state.verification_status = "failed"
+
+# ------------------------------------------------------------------
+# Routes
+# ------------------------------------------------------------------
 
 @app.get("/health")
 async def health():
@@ -59,49 +200,94 @@ async def health():
 
 @app.post("/start")
 async def start_agent():
-    global agent_process, start_time
-    if agent_process and agent_process.poll() is None:
-        return {"started": False, "reason": "already running", "pid": agent_process.pid}
 
-    # Start run_agent_main.py from repo root
-    # File is at packages/aegis/interfaces/helper_server.py, so root is 4 levels up
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    agent_process = subprocess.Popen(
-        [sys.executable, os.path.join(repo_root, "cmd/agent/run_agent_main.py")],
-        cwd=repo_root,
-        env=os.environ.copy()
-    )
-    start_time = time.time()
-    return {"started": True, "pid": agent_process.pid}
+    async with _start_lock:
+
+        if app.state.agent_process and app.state.agent_process.poll() is None:
+            return {
+                "started": False,
+                "reason": "already running",
+                "pid": app.state.agent_process.pid,
+            }
+
+        # cancel any stale verification task from a previous run
+        old_task = app.state.verification_task
+        if old_task and not old_task.done():
+            old_task.cancel()
+            try:
+                await old_task
+            except asyncio.CancelledError:
+                pass
+        app.state.verification_task = None
+
+        # open a rotating-friendly log file for agent output
+        log_path = REPO_ROOT / "logs" / "agent.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_file = open(log_path, "a")
+
+        logger.info("Starting agent (script=%s)", AGENT_SCRIPT)
+
+        proc = subprocess.Popen(
+            [sys.executable, str(AGENT_SCRIPT)],
+            cwd=str(REPO_ROOT),
+            env=os.environ.copy(),
+            stdout=log_file,
+            stderr=log_file,
+        )
+
+        app.state.agent_process = proc
+        app.state.agent_log_file = log_file
+        app.state.start_time = time.time()
+        app.state.verification_status = "pending"
+
+        app.state.verification_task = asyncio.create_task(
+            verify_pin_background(app)
+        )
+
+        return {
+            "started": True,
+            "pid": proc.pid,
+            "log": str(log_path),
+            "verification": "running_in_background",
+        }
 
 
 @app.post("/stop")
-async def stop_agent():
-    global agent_process, start_time
-    if agent_process and agent_process.poll() is None:
-        agent_process.terminate()
-        try:
-            agent_process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            agent_process.kill()
-            agent_process.wait()
-        agent_process = None
-        start_time = None
-        return {"stopped": True}
-    return {"stopped": False, "reason": "not running"}
+async def stop():
+
+    if not app.state.agent_process:
+        return {"stopped": False, "reason": "not running"}
+
+    await stop_agent(app)
+
+    return {"stopped": True}
 
 
 @app.get("/status")
 async def status():
-    global agent_process, start_time
-    running = agent_process is not None and agent_process.poll() is None
-    uptime = int(time.time() - start_time) if running and start_time else 0
+
+    proc = app.state.agent_process
+    running = proc is not None and proc.poll() is None
+
+    uptime = 0
+    if running and app.state.start_time:
+        uptime = int(time.time() - app.state.start_time)
+
     return {
         "running": running,
-        "pid": agent_process.pid if running else None,
+        "pid": proc.pid if running else None,
         "uptime_seconds": uptime,
+        "verification": app.state.verification_status,
     }
 
+# ------------------------------------------------------------------
+# Entrypoint
+# ------------------------------------------------------------------
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8766, log_level="info")
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=8766,
+        log_level="info",
+    )

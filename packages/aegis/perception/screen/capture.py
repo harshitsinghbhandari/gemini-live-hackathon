@@ -92,7 +92,7 @@ def capture_screen(monitor: int = 1, scale_to: tuple = (1470, 956), quality: int
     """
     Capture the full screen and return as base64-encoded JPEG.
     """
-    logger.info(f"Capturing screen (monitor={monitor}, scale={scale_to}, quality={quality}, som={som})")
+    # logger.info(f"Capturing screen (monitor={monitor}, scale={scale_to}, quality={quality}, som={som})")
     with mss.mss() as sct:
         mon = sct.monitors[monitor]
         screenshot = sct.grab(mon)
@@ -199,7 +199,7 @@ def capture_active_window(padding: int = 50, quality: int = 70) -> dict:
             shot["origin_y"] = 0
             return shot
 
-        logger.info(f"Capturing active window: {bounds['app_name']} at ({x},{y}) {w}x{h}")
+        # logger.info(f"Capturing active window: {bounds['app_name']} at ({x},{y}) {w}x{h}")
 
         region_shot = capture_region(x, y, w, h)
         region_shot["origin_x"] = x

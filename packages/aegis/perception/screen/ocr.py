@@ -4,15 +4,16 @@ import string
 import time
 import logging
 import concurrent.futures
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict
 import numpy as np
 import cv2
 import mss
+
 from rapidocr_onnxruntime import RapidOCR
 
 logger = logging.getLogger("aegis.screen.ocr")
 
-# Initialize RapidOCR once at module level
+# Initialize RapidOCR once
 try:
     ocr_engine = RapidOCR()
     logger.info("RapidOCR engine initialized successfully")
@@ -20,12 +21,12 @@ except Exception as e:
     logger.error(f"Failed to initialize RapidOCR: {e}")
     ocr_engine = None
 
-OCR_CONFIDENCE_THRESHOLD = 0.4 # RapidOCR confidence can be lower but still accurate
+OCR_CONFIDENCE_THRESHOLD = 0.4  # RapidOCR confidence threshold
 IOU_THRESHOLD = 0.5
 TILE_RESIZE_FACTOR = 0.5
 MAX_THREADS = 6
 
-# Tile definition (initialized on first run)
+# Tile definitions
 tiles = []
 tile_cache = {}
 
@@ -33,7 +34,6 @@ def _generate_id(length: int = 4) -> str:
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 def calculate_iou(box1, box2):
-    """Calculates Intersection over Union for two boxes [ymin, xmin, ymax, xmax]."""
     y1_min, x1_min, y1_max, x1_max = box1
     y2_min, x2_min, y2_max, x2_max = box2
 
@@ -47,19 +47,16 @@ def calculate_iou(box1, box2):
     area2 = (y2_max - y2_min) * (x2_max - x2_min)
 
     union_area = area1 + area2 - inter_area
-    if union_area == 0: return 0
-    return inter_area / union_area
+    return inter_area / union_area if union_area != 0 else 0
 
 def _get_regions_for_element(ymin, xmin, h, w) -> List[str]:
     regions = []
     if ymin < h * 0.05: regions.append("top_bar")
     elif ymin > h * 0.95: regions.append("bottom_bar")
-
     if h * 0.05 <= ymin <= h * 0.95:
         if xmin < w * 0.15: regions.append("left_sidebar")
         elif xmin > w * 0.85: regions.append("right_sidebar")
         else: regions.append("main_content")
-
     if not regions: regions.append("main_content")
     return regions
 
@@ -67,26 +64,19 @@ def _run_ocr_on_tile(tile_img: np.ndarray, tile_info: Dict) -> List[Dict]:
     if ocr_engine is None: return []
 
     start_time = time.time()
-    # Resize for speed
     small_tile = cv2.resize(tile_img, None, fx=TILE_RESIZE_FACTOR, fy=TILE_RESIZE_FACTOR)
-
     results, _ = ocr_engine(small_tile)
     if not results: return []
 
     elements = []
     offset_x, offset_y = tile_info['bbox'][0], tile_info['bbox'][1]
 
-    for res in results:
-        bbox, text, conf = res
+    for bbox, text, conf in results:
         if conf < OCR_CONFIDENCE_THRESHOLD: continue
-
-        # bbox is [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] in resized coords
-        # Rescale back and add tile offset
         xmin = int(bbox[0][0] / TILE_RESIZE_FACTOR) + offset_x
         ymin = int(bbox[0][1] / TILE_RESIZE_FACTOR) + offset_y
         xmax = int(bbox[2][0] / TILE_RESIZE_FACTOR) + offset_x
         ymax = int(bbox[2][1] / TILE_RESIZE_FACTOR) + offset_y
-
         elements.append({
             "text": text,
             "ymin": ymin, "xmin": xmin, "ymax": ymax, "xmax": xmax,
@@ -98,7 +88,7 @@ def _run_ocr_on_tile(tile_img: np.ndarray, tile_info: Dict) -> List[Dict]:
 
 def _init_tiles(w, h):
     global tiles
-    # 2 rows, 3 columns = 6 tiles
+    tiles = []
     rows, cols = 2, 3
     tile_w, tile_h = w // cols, h // rows
     for r in range(rows):
@@ -120,12 +110,10 @@ def _process_frame(context):
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         screenshot = sct.grab(monitor)
-        img = np.array(screenshot)[:, :, :3] # BGRA to BGR
+        img = np.array(screenshot)[:, :, :3]
         h, w = img.shape[:2]
 
-    # Re-init tiles if resolution changes
     if not tiles or tiles[0]['screen_w'] != w or tiles[0]['screen_h'] != h:
-        tiles = []
         _init_tiles(w, h)
 
     changed_tiles = []
@@ -133,25 +121,22 @@ def _process_frame(context):
         xmin, ymin, xmax, ymax = tile['bbox']
         tile_img = img[ymin:ymax, xmin:xmax]
 
-        # Frame differencing
         prev_tile = tile_cache.get(tile['id'], {}).get('img')
         is_changed = True
         if prev_tile is not None and prev_tile.shape == tile_img.shape:
             diff = cv2.absdiff(prev_tile, tile_img)
             _, thresh = cv2.threshold(cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY), 25, 255, cv2.THRESH_BINARY)
-            if cv2.countNonZero(thresh) < 100: # Significant change threshold
+            if cv2.countNonZero(thresh) < 100:
                 is_changed = False
 
         if is_changed:
             changed_tiles.append((tile, tile_img))
-            # Keep existing elements until new ones are ready (Atomic update)
             existing = tile_cache.get(tile['id'], {}).get('elements', [])
             tile_cache[tile['id']] = {'img': tile_img, 'timestamp': time.time(), 'elements': existing}
 
     if not changed_tiles:
-        return None # No changes detected
+        return None
 
-    # Parallel OCR on changed tiles
     all_new_elements = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         futures = {executor.submit(_run_ocr_on_tile, img_data, info): info for info, img_data in changed_tiles}
@@ -161,25 +146,18 @@ def _process_frame(context):
             tile_cache[tile_id]['elements'] = elements
             all_new_elements.extend(elements)
 
-    # Merge all results from cache
     merged_elements = []
     for tile in tiles:
         merged_elements.extend(tile_cache.get(tile['id'], {}).get('elements', []))
 
-    # Deduplicate
     deduplicated = []
     merged_elements.sort(key=lambda x: x['confidence'], reverse=True)
     for el in merged_elements:
-        keep = True
-        for d_el in deduplicated:
-            if calculate_iou((el['ymin'], el['xmin'], el['ymax'], el['xmax']),
-                             (d_el['ymin'], d_el['xmin'], d_el['ymax'], d_el['xmax'])) > IOU_THRESHOLD:
-                keep = False
-                break
-        if keep:
+        if all(calculate_iou((el['ymin'], el['xmin'], el['ymax'], el['xmax']),
+                             (d_el['ymin'], d_el['xmin'], d_el['ymax'], d_el['xmax'])) <= IOU_THRESHOLD
+               for d_el in deduplicated):
             deduplicated.append(el)
 
-    # Assign IDs and format
     final_elements = {}
     annotated_json = []
     regions_map = {r: [] for r in ["top_bar", "bottom_bar", "left_sidebar", "right_sidebar", "main_content"]}
@@ -212,115 +190,11 @@ def _process_frame(context):
     }
 
 async def ocr_background_loop(context) -> None:
+    """Background OCR loop for RapidOCR."""
     logger.info("RapidOCR background loop started")
-from typing import Optional
-import numpy as np
-from PIL import ImageGrab
-import cv2
-import easyocr
-
-logger = logging.getLogger("aegis.screen.ocr")
-
-# Initialize once at module level — never initialize again
-reader = easyocr.Reader(['en'])
-logger.info("EasyOCR reader initialized")
-
-OCR_CONFIDENCE_THRESHOLD = 0.7
-OCR_LOOP_DELAY = 0.5  # seconds to wait after a run finishes before starting next
-
-SCREEN_REGIONS = {
-    "top_bar":      lambda y, x, h, w: y < h * 0.05,
-    "bottom_bar":   lambda y, x, h, w: y > h * 0.95,
-    "left_sidebar": lambda y, x, h, w: h * 0.05 <= y <= h * 0.95 and x < w * 0.15,
-    "right_sidebar":lambda y, x, h, w: h * 0.05 <= y <= h * 0.95 and x > w * 0.85,
-    "main_content": lambda y, x, h, w: True  # fallback
-}
-
-
-def _generate_id(length: int = 4) -> str:
-    """Generate a short alphanumeric ID like 'a3xj'."""
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
-
-
-def _get_region(ymin: int, xmin: int, screen_h: int, screen_w: int) -> str:
-    """Classify a coordinate into a screen region."""
-    for region_name, condition in SCREEN_REGIONS.items():
-        if condition(ymin, xmin, screen_h, screen_w):
-            return region_name
-    return "main_content"
-
-
-def _run_ocr_sync() -> dict:
-    """
-    Synchronous OCR run. Called via asyncio.to_thread to avoid blocking the event loop.
-    Returns a structured cache dict ready to store in AegisContext.
-    """
-    screenshot = ImageGrab.grab()
-    screen_w, screen_h = screenshot.size
-
-    img = np.array(screenshot)
-    img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
-    raw_results = reader.readtext(img_bgr)
-
-    # Filter by confidence
-    filtered = [r for r in raw_results if r[2] >= OCR_CONFIDENCE_THRESHOLD]
-
-    # Build element map and grouped regions
-    elements = {}   # id -> full element data (flat lookup for cursor_click)
-    regions = {     # region -> list of elements (for get_screen_elements)
-        "top_bar": [],
-        "bottom_bar": [],
-        "left_sidebar": [],
-        "right_sidebar": [],
-        "main_content": [],
-    }
-
-    for bbox, text, confidence in filtered:
-        # bbox is [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
-        xmin = int(bbox[0][0])
-        ymin = int(bbox[0][1])
-        xmax = int(bbox[2][0])
-        ymax = int(bbox[2][1])
-
-        element_id = _generate_id()
-        # Ensure uniqueness
-        while element_id in elements:
-            element_id = _generate_id()
-
-        element = {
-            "id": element_id,
-            "text": text,
-            "ymin": ymin,
-            "ymax": ymax,
-            "xmin": xmin,
-            "xmax": xmax,
-            "confidence": round(confidence, 3),
-        }
-
-        elements[element_id] = element
-        region = _get_region(ymin, xmin, screen_h, screen_w)
-        regions[region].append({"id": element_id, "text": text})
-
-    return {
-        "elements": elements,       # flat dict: id -> full element
-        "regions": regions,         # grouped: region_name -> [{id, text}]
-        "screen_w": screen_w,
-        "screen_h": screen_h,
-        "timestamp": time.time(),
-        "count": len(elements),
-    }
-
-
-async def ocr_background_loop(context) -> None:
-    """
-    Infinite background loop. Runs OCR, stores result in context.ocr_cache, waits, repeats.
-    Accepts the AegisContext instance as argument.
-    Start this with asyncio.create_task(ocr_background_loop(context)) at agent startup.
-    Never cancel this task unless the agent is shutting down.
-    """
-    logger.info("OCR background loop started")
     from aegis.tools.context import window_state
+
+    OCR_LOOP_DELAY = 10
 
     while True:
         try:
@@ -328,27 +202,13 @@ async def ocr_background_loop(context) -> None:
             result = await asyncio.to_thread(_process_frame, context)
 
             if result:
-                # Update caches
                 context.ocr_cache = result
                 setattr(window_state, 'ocr_cache', result)
-
                 duration = time.time() - loop_start
                 logger.info(f"OCR Pipeline latency: {duration:.3f}s | Detected: {result['count']}")
-
-            # Dynamic sleep
-            idle_delay = getattr(context, 'ocr_idle_delay', 0.5)
-            await asyncio.sleep(idle_delay)
 
         except Exception as e:
             logger.error(f"OCR loop error: {e}")
             await asyncio.sleep(1)
-            result = await asyncio.to_thread(_run_ocr_sync)
-            context.ocr_cache = result
-            # Also update window_state for tool access
-            setattr(window_state, 'ocr_cache', result)
-            logger.debug(f"OCR cache updated: {result['count']} elements detected")
-        except Exception as e:
-            logger.error(f"OCR loop error: {e}")
-            # Do not crash the loop on error, just wait and retry
 
         await asyncio.sleep(OCR_LOOP_DELAY)
