@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.dockerignore
+Dockerfile
+npm-debug.log
+__pycache__
+*.pyc
+.venv
+venv
+env
+*.egg-info
+.pytest_cache
+*.log

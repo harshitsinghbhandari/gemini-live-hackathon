@@ -1,5 +1,0 @@
-1. **Screen Capture Optimization:** Wrapped `get_current_view()` in `packages/aegis/tools/screen_tools.py` with `await asyncio.to_thread()` to prevent CPU-bound `mss` and PIL operations from blocking the asyncio event loop.
-2. **PyAutoGUI Async Fixes (Cursor):** Wrapped all `pyautogui` cursor actions (move, click, drag, scroll, nudge) in `packages/aegis/tools/cursor_tools.py` using `await asyncio.to_thread()` to free the event loop from blocking coordinate movements.
-3. **PyAutoGUI Async Fixes (Keyboard):** Wrapped all `pyautogui` keyboard actions (type_text, press_key, hotkey) in `packages/aegis/tools/keyboard_tools.py` using `await asyncio.to_thread()` to avoid event loop stalls during typing sequences.
-4. **Gemini Client Reuse (Classifier):** Hoisted the `genai.Client` instantiation in `packages/aegis/agent/classifier.py` to a module-level singleton to eliminate repeated setup overhead on every action classification step.
-5. **Gemini Client Reuse (Screen Tools):** Hoisted the `genai.Client` instantiation in `packages/aegis/tools/screen_tools.py` to a module-level singleton to prevent creating a new client every time the agent calls `screen_read`.
