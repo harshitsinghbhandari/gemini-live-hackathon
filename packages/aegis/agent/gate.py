@@ -1,3 +1,4 @@
+import os
 import logging
 import json
 import datetime
@@ -12,6 +13,20 @@ from aegis.tools.declarations import get_screen_tool_declarations
 from aegis.runtime.context import AegisContext
 from configs.agent import config
 from aegis.interfaces import ws_server
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        return json.dumps({
+            "severity": record.levelname,
+            "message": record.getMessage(),
+            "logger": record.name,
+            "timestamp": self.formatTime(record),
+        })
+
+handler = logging.StreamHandler()
+if os.getenv("LOG_FORMAT", "text") == "json":
+    handler.setFormatter(JSONFormatter())
+logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 logger = logging.getLogger("aegis.gate")
 audit_logger = logging.getLogger("aegis_audit")

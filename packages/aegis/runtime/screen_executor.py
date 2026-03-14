@@ -116,14 +116,17 @@ async def run_screen_agent(user_command: str, max_steps: int = 10) -> dict:
         )
     ]
 
+    import os
     steps = []
 
-    for step in range(max_steps):
+    MAX_STEPS = int(os.getenv("AGENT_MAX_STEPS", "50"))
+    for step in range(min(max_steps, MAX_STEPS)):
         response = await client.aio.models.generate_content(
             model=config.GEMINI_MODEL,
             contents=messages,
             config=types.GenerateContentConfig(
-                tools=[types.Tool(function_declarations=SCREEN_TOOL_DECLARATIONS)]
+                tools=[types.Tool(function_declarations=SCREEN_TOOL_DECLARATIONS)],
+                max_output_tokens=1024
             )
         )
         

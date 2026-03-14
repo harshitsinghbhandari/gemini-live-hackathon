@@ -55,7 +55,8 @@ class AegisWSServer:
                 await self.stop_event.wait()
             logger.info("📡 WebSocket server stopped.")
         except asyncio.CancelledError:
-            pass
+            logger.info("📡 WebSocket server task cancelled.")
+            raise
         except Exception as e:
             logger.error(f"⚠️ WebSocket server error: {e}")
 
