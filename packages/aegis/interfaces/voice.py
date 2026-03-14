@@ -18,8 +18,8 @@ from google.genai.types import (
 )
 from configs.agent import config
 from aegis.runtime.context import AegisContext, SessionState
+from aegis.utils.session_recorder import recorder
 from aegis.agent.gate import gate_action
-import os
 from aegis.runtime.screen_executor import is_screen_tool, get_current_view
 from aegis.tools.declarations import get_screen_tool_declarations
 from aegis.perception.screen.capture import capture_screen
@@ -157,8 +157,10 @@ class AegisVoiceAgent:
         try:
             async with self.send_lock:
                 if "audio" in kwargs:
+                    recorder.record_sent_audio(kwargs["audio"].data)
                     await session.send_realtime_input(audio=kwargs["audio"])
                 if "video" in kwargs:
+                    recorder.record_image(kwargs["video"].data)
                     await session.send_realtime_input(video=kwargs["video"])
         except Exception as e:
             if self.alive:
@@ -179,10 +181,11 @@ class AegisVoiceAgent:
 
                 # 3. TYPE-SPECIFIC EXECUTION
                 if item["type"] == "audio":
+                    recorder.record_sent_audio(item["data"].data)
                     await session.send_realtime_input(audio=item["data"])
                     
                 elif item["type"] == "video":
-                    # Ensure you use 'video' parameter for single frames in this SDK version
+                    recorder.record_image(item["data"].data)
                     await session.send_realtime_input(video=item["data"])
                     
                 elif item["type"] == "tool_response":
@@ -303,6 +306,7 @@ class AegisVoiceAgent:
                                     ws_server.broadcast("text", value=part.text)
                                     continue
                                 if part.inline_data:
+                                    recorder.record_received_audio(part.inline_data.data)
                                     await asyncio.to_thread(output_stream.write, part.inline_data.data)
 
                     if response.tool_call:
@@ -414,9 +418,11 @@ class AegisVoiceAgent:
 
                                     function_responses.append(f_resp)
                                     if shot:
-                                        media_blobs.append(types.Blob(
+                                        blob = types.Blob(
                                             data=base64.b64decode(shot["base64"]), mime_type=shot["mime_type"]
-                                        ))
+                                        )
+                                        recorder.record_image(blob.data)
+                                        media_blobs.append(blob)
 
                             if function_responses:
                                 self.bridge.put_nowait({

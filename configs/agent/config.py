@@ -17,7 +17,7 @@ GEMINI_LIVE_MODEL = "gemini-2.5-flash-native-audio-latest"
 # GEMINI_LIVE_MODEL = 'gemini-2.0-flash-exp'
 
 # Audio Config
-VOICE_NAME = "Aoede"
+VOICE_NAME = "Despina"
 SEND_SAMPLE_RATE = 16000
 RECEIVE_SAMPLE_RATE = 24000
 CHUNK_SIZE = 1024

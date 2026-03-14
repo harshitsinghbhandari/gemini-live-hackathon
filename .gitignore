@@ -147,3 +147,4 @@ analyze_repo.py
 *.json
 *.jsonl
 aegis_audit.jsonl
+data/

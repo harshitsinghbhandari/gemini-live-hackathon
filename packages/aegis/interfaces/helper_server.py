@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from configs.agent import config
@@ -278,6 +278,60 @@ async def status():
         "pid": proc.pid if running else None,
         "uptime_seconds": uptime,
         "verification": app.state.verification_status,
+    }
+
+@app.post("/combine")
+async def combine_audio():
+    """Stitches raw audio chunks into MP3 files."""
+    data_dir = REPO_ROOT / "data"
+    audio_dir = data_dir / "audio"
+    sent_dir = audio_dir / "sent"
+    received_dir = audio_dir / "received"
+
+    def stitch_folder(folder, sample_rate, output_name):
+        if not folder.exists(): return None
+        files = sorted(list(folder.glob("*.raw")))
+        if not files: return None
+        
+        # Simple Python join is most reliable for raw PCM chunks
+        temp_raw = folder / "joined_temp.raw"
+        try:
+            with open(temp_raw, "wb") as outfile:
+                for chunk_file in files:
+                    with open(chunk_file, "rb") as infile:
+                        outfile.write(infile.read())
+            
+            output_path = audio_dir / output_name
+            cmd = [
+                "ffmpeg", "-y",
+                "-f", "s16le",
+                "-ar", str(sample_rate),
+                "-ac", "1",
+                "-i", str(temp_raw),
+                "-codec:a", "libmp3lame",
+                "-qscale:a", "2",
+                str(output_path)
+            ]
+            
+            subprocess.run(cmd, check=True, capture_output=True)
+            return output_name
+        except Exception as e:
+            logger.error(f"Failed to stitch {folder.name}: {e}")
+            return None
+        finally:
+            if temp_raw.exists():
+                temp_raw.unlink()
+
+    sent_mp3 = stitch_folder(sent_dir, config.SEND_SAMPLE_RATE, f"sent_combined_{int(time.time())}.mp3")
+    recv_mp3 = stitch_folder(received_dir, config.RECEIVE_SAMPLE_RATE, f"received_combined_{int(time.time())}.mp3")
+
+    if not sent_mp3 and not recv_mp3:
+         return {"success": False, "error": "No audio chunks found to combine."}
+
+    return {
+        "success": True,
+        "sent": sent_mp3,
+        "received": recv_mp3
     }
 
 # ------------------------------------------------------------------
