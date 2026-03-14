@@ -50,7 +50,8 @@ async def classify_action(proposed_action: str, tool_hint: str = None) -> Dict[s
             model=config.GEMINI_MODEL,
             contents=[prompt_text],
             config=types.GenerateContentConfig(
-                system_instruction=system_instruction
+                system_instruction=system_instruction,
+                max_output_tokens=1024
             )
         )
 

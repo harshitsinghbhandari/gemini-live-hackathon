@@ -13,6 +13,8 @@ from rapidocr_onnxruntime import RapidOCR
 
 logger = logging.getLogger("aegis.screen.ocr")
 
+ocr_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+
 # Initialize RapidOCR once
 try:
     ocr_engine = RapidOCR()
@@ -199,7 +201,8 @@ async def ocr_background_loop(context) -> None:
     while True:
         try:
             loop_start = time.time()
-            result = await asyncio.to_thread(_process_frame, context)
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(ocr_executor, _process_frame, context)
 
             if result:
                 context.ocr_cache = result

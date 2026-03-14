@@ -44,11 +44,16 @@ async def send_auth_push(request_id: str, action: str, device_id: str):
         token=target_token,
         topic="admin_approvals" if not target_token else None
     )
+    from firebase_admin.exceptions import UnregisteredError
     try:
         # Wrap the blocking send in to_thread
         response = await asyncio.to_thread(messaging.send, message)
         logger.info(f"Successfully sent FCM message: {response}")
         return response
+    except UnregisteredError:
+        logger.warning(f"Stale FCM token for device {device_id} — removing.")
+        asyncio.create_task(db.collection("devices").document(device_id).delete())
+        return None
     except Exception as e:
         logger.error(f"Error sending FCM message: {e}")
         return None

@@ -12,6 +12,8 @@ import os
 import bcrypt
 from fastapi import FastAPI, HTTPException, Request, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+import uuid
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 from typing import List, Optional
@@ -43,10 +45,45 @@ from webauthn.helpers.structs import (
 )
 from services.backend.firestore import db
 
-logging.basicConfig(level=logging.INFO)
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        return json.dumps({
+            "severity": record.levelname,
+            "message": record.getMessage(),
+            "logger": record.name,
+            "timestamp": self.formatTime(record),
+        })
+
+handler = logging.StreamHandler()
+if os.getenv("LOG_FORMAT", "text") == "json":
+    handler.setFormatter(JSONFormatter())
+
+logging.basicConfig(level=logging.INFO, handlers=[handler])
 logger = logging.getLogger(__name__)
 
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 app = FastAPI(title="Aegis Backend")
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
 
 # CORS Configuration
 allowed_origins_env = os.environ.get("ALLOWED_ORIGINS")
@@ -63,6 +100,16 @@ else:
         "http://localhost:8080"
     ]
 
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+app.add_middleware(RequestIDMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -71,6 +118,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+
+from google.cloud.firestore import AsyncClient
+
+async def get_db() -> AsyncClient:
+    from services.backend.firestore import db
+    return db
 
 def get_user_id(
     x_user_id: Optional[str] = Header(None),
@@ -82,7 +136,15 @@ def get_user_id(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "timestamp": datetime.datetime.now().isoformat()}
+    return {
+        "status": "ok",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "dependencies": {
+            "gemini": "closed",
+            "firestore": "closed",
+            "composio": "closed"
+        }
+    }
 
 @app.post("/action")
 async def post_action(log: ActionLog, user_id: str = Depends(get_user_id)):
@@ -96,7 +158,7 @@ async def post_auth_request(request: AuthRequest, user_id: str = Depends(get_use
     return {"request_id": request_id}
 
 @app.get("/auth/pending")
-async def get_pending_auth(device: str = None, user_id: str = Depends(get_user_id)):
+async def get_pending_auth(device: str = None, user_id: str = Depends(get_user_id), db: AsyncClient = Depends(get_db)):
     try:
         # Fetch all pending — filter in Python to avoid composite index
         docs = db.collection("users").document(user_id).collection("auth_requests")\
@@ -171,10 +233,11 @@ async def audit_stream(request: Request, user_id: str = Depends(get_user_id)):
             while True:
                 if await request.is_disconnected():
                     break
-                data = await queue.get()
-                yield {
-                    "data": json.dumps(data, default=str)
-                }
+                try:
+                    data = await asyncio.wait_for(queue.get(), timeout=25.0)
+                    yield {"data": json.dumps(data, default=str)}
+                except asyncio.TimeoutError:
+                    yield {"comment": "keepalive"}
         finally:
             watch.unsubscribe()
 
@@ -248,7 +311,7 @@ async def webauthn_register_options(request: Request, user_id: str = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/webauthn/register/verify")
-async def webauthn_register_verify(request: Request, user_id: str = Depends(get_user_id)):
+async def webauthn_register_verify(request: Request, user_id: str = Depends(get_user_id), db: AsyncClient = Depends(get_db)):
     """Step 2 of registration — verify credential from iPhone"""
     body = await request.json()
     credential = body.get("credential")
@@ -277,7 +340,7 @@ async def webauthn_register_verify(request: Request, user_id: str = Depends(get_
         return {"verified": False, "error": str(e)}
 
 @app.post("/webauthn/auth/options")
-async def webauthn_auth_options(request: Request, user_id: str = Depends(get_user_id)):
+async def webauthn_auth_options(request: Request, user_id: str = Depends(get_user_id), db: AsyncClient = Depends(get_db)):
     try:
         body = await request.json()
 
@@ -320,7 +383,7 @@ async def webauthn_auth_options(request: Request, user_id: str = Depends(get_use
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/webauthn/auth/verify")
-async def webauthn_auth_verify(request: Request, user_id: str = Depends(get_user_id)):
+async def webauthn_auth_verify(request: Request, user_id: str = Depends(get_user_id), db: AsyncClient = Depends(get_db)):
     """Verify Face ID response and approve auth request"""
     body = await request.json()
     credential = body.get("credential")
@@ -346,6 +409,9 @@ async def webauthn_auth_verify(request: Request, user_id: str = Depends(get_user
             require_user_verification=True
         )
 
+        # Clear challenge immediately to prevent replay attacks
+        webauthn_challenges.pop(user_id, None)
+
         # Update sign count
         await db.collection("users").document(user_id).collection("webauthn_credentials").document(user_id).update({
             "sign_count": verification.new_sign_count
@@ -366,13 +432,13 @@ async def webauthn_auth_verify(request: Request, user_id: str = Depends(get_user
         return {"verified": False, "error": str(e)}
 
 @app.get("/webauthn/registered/{user_id_path}")
-async def check_registered(user_id_path: str, user_id: str = Depends(get_user_id)):
+async def check_registered(user_id_path: str, user_id: str = Depends(get_user_id), db: AsyncClient = Depends(get_db)):
     """Check if user has registered Face ID"""
     doc = await db.collection("users").document(user_id_path).collection("webauthn_credentials").document(user_id_path).get()
     return {"registered": doc.exists}
 
 @app.post("/auth/register-pin")
-async def register_pin(request: Request):
+async def register_pin(request: Request, db: AsyncClient = Depends(get_db)):
     """Register or update user PIN. No auth required for setup."""
     try:
         data = await request.json()
@@ -399,7 +465,8 @@ async def register_pin(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/auth/verify-pin")
-async def verify_pin(request: Request):
+@limiter.limit("5/minute")
+async def verify_pin(request: Request, db: AsyncClient = Depends(get_db)):
     """Verify user PIN. Returns success and user_id if valid."""
     try:
         data = await request.json()
