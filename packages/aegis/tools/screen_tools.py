@@ -284,9 +284,98 @@ class GetAnnotatedElementsTool(BaseTool):
         }
 
 
+class ClickByWordTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "click_by_word"
+
+    @property
+    def declaration(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": (
+                "Click an on-screen element by matching its text. Provide the text or description of the button/element "
+                "(e.g. 'Login', 'Submit form'). Uses latest annotated elements and fuzzy matching. "
+                "Faster and more reliable than coordinate guessing."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "The text or description to match"
+                    },
+                    "threshold": {
+                        "type": "number",
+                        "description": "Minimum fuzzy match score (0–100). Default 75.",
+                    }
+                },
+                "required": ["text"]
+            }
+        }
+
+    async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from aegis.tools.context import window_state as context
+        from rapidfuzz import process, fuzz
+
+        requested_text = args.get("text")
+        threshold = args.get("threshold", 75)
+
+        ocr_cache = getattr(context, 'ocr_cache', None)
+        if ocr_cache is None:
+            return {
+                "success": False,
+                "error": "No screen elements available. Call get_screen_elements first to populate the cache."
+            }
+
+        # Build choices: mapping label_id to text for all elements that have text
+        choices = {
+            label_id: el.get("text", "") 
+            for label_id, el in ocr_cache.get("elements", {}).items() 
+            if el.get("text")
+        }
+
+        if not choices:
+            return {
+                "success": False,
+                "error": "No text elements found on screen to match against."
+            }
+
+        # Fuzzy match using token_sort_ratio for robustness
+        best = process.extractOne(requested_text, choices, scorer=fuzz.token_sort_ratio)
+
+        if not best or best[1] < threshold:
+            best_score = best[1] if best else 0
+            return {
+                "success": False,
+                "message": f"No good match for '{requested_text}' (best score: {best_score:.1f})"
+            }
+
+        matched_text = best[0]
+        score = best[1]
+        matched_id = best[2]
+
+        logger.info(f"Fuzzy matched '{requested_text}' -> '{matched_text}' (id={matched_id}, score={score:.1f})")
+
+        # Reuse existing CursorClickTool logic by dispatching through the registry
+        click_result = await registry.dispatch("cursor_click", {
+            "label_id": matched_id,
+            "description": f"Fuzzy clicked element matching '{requested_text}' (found '{matched_text}')"
+        })
+
+        return {
+            "success": click_result.get("success", False),
+            "matched_text": matched_text,
+            "matched_id": matched_id,
+            "score": score,
+            "click_result": click_result
+        }
+
+
 # Register all tools in this module
 registry.register(ScreenCaptureTool())
 registry.register(ScreenReadTool())
 registry.register(ScreenCropTool())
 registry.register(GetScreenElementsTool())
 registry.register(GetAnnotatedElementsTool())
+registry.register(ClickByWordTool())

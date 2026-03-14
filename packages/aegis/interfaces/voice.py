@@ -20,6 +20,7 @@ from google.genai.types import (
 from configs.agent import config
 from aegis.runtime.context import AegisContext, SessionState
 from aegis.utils.latency import checkpoint, flush_summary
+from aegis.utils.session_recorder import recorder
 from aegis.agent.gate import gate_action
 import os
 from aegis.runtime.screen_executor import is_screen_tool, get_current_view
@@ -167,11 +168,13 @@ class AegisVoiceAgent:
         try:
             async with self.send_lock:
                 if "audio" in kwargs:
-                    checkpoint("audio", "direct_send_start")
+                    checkpoint("audio", f"direct_send_start_{kwargs['audio']}")
+                    recorder.record_sent_audio(kwargs["audio"].data)
                     await session.send_realtime_input(audio=kwargs["audio"])
                     checkpoint("audio", "direct_send_end")
                 if "video" in kwargs:
-                    checkpoint("video", "direct_send_start")
+                    checkpoint("video", f"direct_send_start_{kwargs['video']}")
+                    recorder.record_image(kwargs["video"].data)
                     await session.send_realtime_input(video=kwargs["video"])
                     checkpoint("video", "direct_send_end")
         except Exception as e:
@@ -199,12 +202,14 @@ class AegisVoiceAgent:
                 # 3. TYPE-SPECIFIC EXECUTION
                 if item["type"] == "audio":
                     checkpoint("audio", "queue_send_start")
+                    recorder.record_sent_audio(item["data"].data)
                     await session.send_realtime_input(audio=item["data"])
                     checkpoint("audio", "queue_send_end")
                     
                 elif item["type"] == "video":
                     # Ensure you use 'video' parameter for single frames in this SDK version
                     checkpoint("video", "queue_send_start")
+                    recorder.record_image(item["data"].data)
                     await session.send_realtime_input(video=item["data"])
                     checkpoint("video", "queue_send_end")
                     
@@ -342,6 +347,7 @@ class AegisVoiceAgent:
                                     continue
                                 if part.inline_data:
                                     checkpoint("audio", "pcm_pcm_packet")
+                                    recorder.record_received_audio(part.inline_data.data)
                                     await asyncio.to_thread(output_stream.write, part.inline_data.data)
                     if response.tool_call:
                         checkpoint("tool", "process_call_batch")
@@ -467,9 +473,11 @@ class AegisVoiceAgent:
                                     checkpoint("video", "response_capture_end")
                                     function_responses.append(f_resp)
                                     if shot:
-                                        media_blobs.append(types.Blob(
+                                        blob = types.Blob(
                                             data=base64.b64decode(shot["base64"]), mime_type=shot["mime_type"]
-                                        ))
+                                        )
+                                        recorder.record_image(blob.data)
+                                        media_blobs.append(blob)
                                     checkpoint("tool", f"exec_end_{fn.name}")
 
                             if function_responses:
@@ -654,6 +662,7 @@ class AegisVoiceAgent:
         
         # Flush the full latency report
         flush_summary(f"voice_agent_{int(time.time())}")
+        recorder.finalize()
 
     async def _check_remote_stop(self):
         import aiohttp
