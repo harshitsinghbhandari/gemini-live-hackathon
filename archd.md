@@ -8,11 +8,11 @@ flowchart TB
 
     subgraph AEGIS ["Aegis Agent"]
         direction TB
-        VI["Voice interface\nGemini Live API"]
-        GC["Gate / classifier\nGREEN · YELLOW · RED"]
-        SE["Screen executor\nPlaywright · pyautogui"]
-        DD["Delta detector\nOCR diff · mss capture"]
-        WS["WebSocket server\nState broadcasts"]
+        VI["Voice interface<br>Gemini Live API"]
+        GC["Gate / classifier<br>GREEN · YELLOW · RED"]
+        SE["Screen executor<br>Playwright · pyautogui"]
+        DD["Delta detector<br>OCR diff · mss capture"]
+        WS["WebSocket server<br>State broadcasts"]
 
         VI --> GC --> SE
         VI --> DD
@@ -24,8 +24,8 @@ flowchart TB
     DD -->|screen diff trigger| VI
 
     subgraph CLIENT ["Client"]
-        FE["React frontend\nWeb · Mac PWA"]
-        SCREEN["Device screen\nmacOS · browser"]
+        FE["React frontend<br>Web · Mac PWA"]
+        SCREEN["Device screen<br>macOS · browser"]
     end
 
     WS -->|live state| FE
@@ -47,17 +47,17 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    CAP["mss screen capture\nFull frame"]
-    DD["Delta detector\nOCR diff"]
+    CAP["mss screen capture<br>Full frame"]
+    DD["Delta detector<br>OCR diff"]
     CAP --> DD
 
     DD -- "No change → wait" --> CAP
 
     DD -- "Changed" --> GEMINI
 
-    AIN["Audio in\nuser voice"]
-    GEMINI["Gemini Live API\nFrame + audio → tool_call"]
-    AOUT["Audio out\nvoice response"]
+    AIN["Audio in<br>user voice"]
+    GEMINI["Gemini Live API<br>Frame + audio → tool_call"]
+    AOUT["Audio out<br>voice response"]
 
     AIN --> GEMINI
     GEMINI --> AOUT
@@ -65,17 +65,17 @@ flowchart TD
     GEMINI --> GATE
 
     subgraph GATE_BLOCK ["Gate / classifier"]
-        GATE["Gemini classifier call\nGREEN · YELLOW · RED"]
+        GATE["Gemini classifier call<br>GREEN · YELLOW · RED"]
         RED["Block + notify user"]
-        YELLOW["TouchID / WebAuthn\nremote auth via FCM"]
+        YELLOW["TouchID / WebAuthn<br>remote auth via FCM"]
         GATE -- "RED" --> RED
         GATE -- "YELLOW" --> YELLOW
     end
 
     GATE -- "GREEN" --> EXEC
 
-    EXEC["Screen executor\nPlaywright · pyautogui · shell"]
-    VERIFY["Verify UI state\nPixel hash diff · Gemini visual check"]
+    EXEC["Screen executor<br>Playwright · pyautogui · shell"]
+    VERIFY["Verify UI state<br>Pixel hash diff · Gemini visual check"]
 
     EXEC --> VERIFY
     VERIFY -- "next cycle" --> CAP
@@ -88,11 +88,11 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph GCP ["Google Cloud Platform"]
-        CR["Cloud Run\nAegis backend"]
-        FS["Firestore\nSession state · history"]
-        FCM["Firebase Cloud Messaging\nPush auth requests"]
-        WI["Workload Identity\nKeyless CI/CD auth"]
-        GHA["GitHub Actions\ndeploy-backend.yml"]
+        CR["Cloud Run<br>Aegis backend"]
+        FS["Firestore<br>Session state · history"]
+        FCM["Firebase Cloud Messaging<br>Push auth requests"]
+        WI["Workload Identity<br>Keyless CI/CD auth"]
+        GHA["GitHub Actions<br>deploy-backend.yml"]
 
         CR <--> FS
         CR --> FCM
@@ -100,9 +100,9 @@ flowchart LR
     end
 
     subgraph TIERS ["Security tiers"]
-        GREEN["🟢 GREEN\nExecute immediately"]
-        YELLOW["🟡 YELLOW\nTouchID · WebAuthn gate"]
-        RED["🔴 RED\nBlocked"]
+        GREEN["🟢 GREEN<br>Execute immediately"]
+        YELLOW["🟡 YELLOW<br>TouchID · WebAuthn gate"]
+        RED["🔴 RED<br>Blocked"]
     end
 
     subgraph CLIENT ["Client device"]
