@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Dict
 from aegis.tools.base import BaseTool, registry
 from aegis.perception.screen.type import (
@@ -26,7 +27,8 @@ class KeyboardTypeTool(BaseTool):
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
         if "text" not in args:
             return {"success": False, "error": "Missing required argument: text"}
-        return type_text(args["text"])
+        # ⚡ Bolt: Offload blocking pyautogui type_text call to thread pool to prevent event loop stall
+        return await asyncio.to_thread(type_text, args["text"])
 
 
 class KeyboardPressTool(BaseTool):
@@ -54,7 +56,8 @@ class KeyboardPressTool(BaseTool):
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
         if "key" not in args:
             return {"success": False, "error": "Missing required argument: key"}
-        return press_key(args["key"])
+        # ⚡ Bolt: Offload blocking pyautogui press_key call to thread pool to prevent event loop stall
+        return await asyncio.to_thread(press_key, args["key"])
 
 class KeyboardHotkeyTool(BaseTool):
     @property
@@ -83,7 +86,8 @@ class KeyboardHotkeyTool(BaseTool):
         keys = args.get("keys")
         if not keys:
             return {"success": False, "error": "Missing required argument: keys (list of strings)"}
-        return hotkey(*keys)
+        # ⚡ Bolt: Offload blocking pyautogui hotkey call to thread pool to prevent event loop stall
+        return await asyncio.to_thread(hotkey, *keys)
 
 class KeyboardTypeSensitiveTool(BaseTool):
     @property
@@ -107,7 +111,8 @@ class KeyboardTypeSensitiveTool(BaseTool):
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
         if "text" not in args:
             return {"success": False, "error": "Missing required argument: text"}
-        return type_sensitive(args["text"])
+        # ⚡ Bolt: Offload blocking pyautogui type_sensitive call to thread pool to prevent event loop stall
+        return await asyncio.to_thread(type_sensitive, args["text"])
 
 registry.register(KeyboardTypeTool())
 registry.register(KeyboardPressTool())

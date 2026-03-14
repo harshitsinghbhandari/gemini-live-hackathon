@@ -13,6 +13,14 @@ from configs.agent.config import prompt
 
 logger = logging.getLogger("aegis.tools.screen")
 
+_client = None
+
+def get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=config.GOOGLE_API_KEY)
+    return _client
+
 class ScreenCaptureTool(BaseTool):
     @property
     def name(self) -> str:
@@ -32,7 +40,8 @@ class ScreenCaptureTool(BaseTool):
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
         reset_view()
-        shot = get_current_view()
+        # ⚡ Bolt: Offload CPU-bound PIL/mss capture to thread pool
+        shot = await asyncio.to_thread(get_current_view)
         return {
             "success": True,
             "action": self.name,
@@ -70,9 +79,11 @@ class ScreenReadTool(BaseTool):
         """
         question = args.get("question", prompt.SCREEN_READ_DEFAULT_QUESTION)
         reset_view()
-        shot = get_current_view()
+        # ⚡ Bolt: Offload CPU-bound PIL/mss capture to thread pool
+        shot = await asyncio.to_thread(get_current_view)
 
-        client = genai.Client(api_key=config.GOOGLE_API_KEY)
+        # ⚡ Bolt: Use globally hoisted genai.Client to avoid instantiation overhead
+        client = get_client()
         try:
             response = await client.aio.models.generate_content(
                 model=config.GEMINI_MODEL,
