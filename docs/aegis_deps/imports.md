@@ -1,5 +1,6 @@
 ```mermaid
 graph TD
+
 "agent.gate" --> "aegis.agent.classifier"
 "agent.gate" --> "aegis.auth"
 "agent.gate" --> "aegis.interfaces"
