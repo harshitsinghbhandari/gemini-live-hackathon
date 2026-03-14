@@ -1,1 +1,3 @@
-No circular imports detected
+Circular dependencies:
+
+aegis.tools

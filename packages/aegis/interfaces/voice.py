@@ -449,6 +449,7 @@ class AegisVoiceAgent:
             while self.alive:
                 # Use active-window foveated capture; falls back to full screen automatically
                 shot = capture_active_window(padding=config.VISION_PADDING, quality=40)
+                
 
                 # Sync the crop origin into screen_executor's window_state so
                 # get_noisy_center can remap Gemini's 0-1000 coords correctly.
@@ -472,6 +473,10 @@ class AegisVoiceAgent:
                 state_transitioned_to_thinking = (self.context.state == SessionState.THINKING and last_state != SessionState.THINKING)
 
                 if current_hash != last_hash or state_transitioned_to_thinking:
+                    if current_hash != last_hash:
+                        logger.info("📸 Sending new screenshot, because of hash change")
+                    else:
+                        logger.info("📸 Sending new screenshot, because of state transition to thinking")
                     await self._send_to_session(
                         video=types.Blob(
                             data=base64.b64decode(shot["base64"]),
