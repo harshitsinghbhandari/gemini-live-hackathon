@@ -14,5 +14,5 @@ def get_secret(secret_id, project_id):
         # Fallback for local development if GCP not fully setup or missing perm
         return os.environ.get(secret_id)
 
-PROJECT_ID = os.environ.get("PROJECT_ID", "guardian-agent-160706")
+PROJECT_ID = os.environ.get("PROJECT_ID")
 FCM_KEY = get_secret("FCM_KEY", PROJECT_ID)

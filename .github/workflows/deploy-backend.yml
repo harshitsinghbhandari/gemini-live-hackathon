@@ -57,6 +57,7 @@ jobs:
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated \
+            --set-env-vars PROJECT_ID=guardian-agent-160706 \
             --quiet
 
       - name: Show URL

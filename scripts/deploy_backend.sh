@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-PROJECT_ID="guardian-agent-160706"
+PROJECT_ID=${PROJECT_ID:-"guardian-agent-160706"}
 REGION="us-central1"
 SERVICE_NAME="guardian-backend"
 IMAGE_URL="us-central1-docker.pkg.dev/$PROJECT_ID/guardian/$SERVICE_NAME"
@@ -28,6 +28,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --platform managed \
   --region "$REGION" \
   --allow-unauthenticated \
+  --set-env-vars PROJECT_ID="$PROJECT_ID" \
   --quiet
 
 # 4. Show Result

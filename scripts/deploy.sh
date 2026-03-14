@@ -4,7 +4,7 @@
 
 set -e # Exit on any error
 
-PROJECT_ID="guardian-agent-160706"
+PROJECT_ID=${PROJECT_ID:-"guardian-agent-160706"}
 REGION="us-central1"
 
 # Read .env file for environment variables if it exists (used only for backend)

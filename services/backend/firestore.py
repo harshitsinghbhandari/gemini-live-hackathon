@@ -1,15 +1,15 @@
 from google.cloud import firestore
-from configs.backend.config import PROJECT_ID
+import os
 import datetime
 import logging
 
 logger = logging.getLogger(__name__)
 
 # Async client for all async CRUD operations
-db = firestore.AsyncClient(project=PROJECT_ID)
+db = firestore.AsyncClient(project=os.environ.get("PROJECT_ID"))
 
 # Sync client only for on_snapshot listener (which is inherently thread-based)
-db_sync = firestore.Client(project=PROJECT_ID)
+db_sync = firestore.Client(project=os.environ.get("PROJECT_ID"))
 
 def get_user_collection_sync(user_id: str, collection: str):
     return db_sync.collection("users").document(user_id).collection(collection)
