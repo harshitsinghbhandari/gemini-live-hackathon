@@ -43,7 +43,7 @@ jobs:
       - name: Build & Push Docker Image
         run: |
           IMAGE="us-central1-docker.pkg.dev/guardian-agent-160706/guardian/guardian-backend"
-          docker build -t $IMAGE -f ./services/backend/Dockerfile .
+          docker build -t $IMAGE ./services/backend
           docker push $IMAGE
 
       - name: Deploy to Cloud Run

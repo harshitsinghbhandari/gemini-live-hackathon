@@ -42,7 +42,7 @@ from webauthn.helpers.structs import (
     PublicKeyCredentialDescriptor,
     PublicKeyCredentialType
 )
-from services.backend.firestore import db
+from firestore import db
 
 class JSONFormatter(logging.Formatter):
     def format(self, record):
