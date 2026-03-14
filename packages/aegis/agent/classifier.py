@@ -9,6 +9,14 @@ from configs.agent.config import prompt
 
 logger = logging.getLogger("aegis.classifier")
 
+_client = None
+
+def get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=config.GOOGLE_API_KEY)
+    return _client
+
 def parse_response(text: str) -> Optional[Dict[str, Any]]:
     
     """Robustly parse JSON from Gemini's text response."""
@@ -33,7 +41,8 @@ async def classify_action(proposed_action: str, tool_hint: str = None) -> Dict[s
     If tool_hint is provided, we skip tool selection and only determine the tier.
     """
     try:
-        client = genai.Client(api_key=config.GOOGLE_API_KEY)
+        # ⚡ Bolt: Use globally hoisted genai.Client to avoid instantiation overhead
+        client = get_client()
 
         if tool_hint:
             system_instruction = prompt.CLASSIFY_WITH_HINT_PROMPT_TEMPLATE.format(

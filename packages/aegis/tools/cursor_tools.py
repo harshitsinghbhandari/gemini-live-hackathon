@@ -37,7 +37,8 @@ class CursorMoveTool(BaseTool):
         if "box_2d" not in args:
             return {"success": False, "error": "Missing required argument: box_2d"}
         cx, cy = get_noisy_center(args["box_2d"])
-        return move(int(cx), int(cy))
+        # ⚡ Bolt: Offload blocking pyautogui move call to prevent event loop stall
+        return await asyncio.to_thread(move, int(cx), int(cy))
 
 class CursorClickTool(BaseTool):
     @property
@@ -115,18 +116,21 @@ class CursorClickTool(BaseTool):
         
         # OBSERVE: Capture pixel hash of target region before click
         try:
-            region_before = capture_region(max(0, int(cx) - 75), max(0, int(cy) - 75), 150, 150)
+            # ⚡ Bolt: Offload CPU-bound PIL/mss capture to thread pool
+            region_before = await asyncio.to_thread(capture_region, max(0, int(cx) - 75), max(0, int(cy) - 75), 150, 150)
             hash_before = hashlib.md5(region_before["base64"].encode()).hexdigest()
         except Exception:
             hash_before = None
         
-        result = click(int(cx), int(cy))
+        # ⚡ Bolt: Offload blocking pyautogui click call to prevent event loop stall
+        result = await asyncio.to_thread(click, int(cx), int(cy))
         
         # VERIFY: Re-capture after 300ms and compare
         if hash_before:
             await asyncio.sleep(0.3)
             try:
-                region_after = capture_region(max(0, int(cx) - 75), max(0, int(cy) - 75), 150, 150)
+                # ⚡ Bolt: Offload CPU-bound PIL/mss capture to thread pool
+                region_after = await asyncio.to_thread(capture_region, max(0, int(cx) - 75), max(0, int(cy) - 75), 150, 150)
                 hash_after = hashlib.md5(region_after["base64"].encode()).hexdigest()
                 result["diff_detected"] = hash_before != hash_after
                 result["state_before"] = hash_before[:8]
@@ -164,7 +168,8 @@ class CursorDoubleClickTool(BaseTool):
         if "box_2d" not in args:
             return {"success": False, "error": "Missing required argument: box_2d"}
         cx, cy = get_noisy_center(args["box_2d"])
-        return double_click(int(cx), int(cy))
+        # ⚡ Bolt: Offload blocking pyautogui double_click call
+        return await asyncio.to_thread(double_click, int(cx), int(cy))
 
 class CursorRightClickTool(BaseTool):
     @property
@@ -194,7 +199,8 @@ class CursorRightClickTool(BaseTool):
         if "box_2d" not in args:
             return {"success": False, "error": "Missing required argument: box_2d"}
         cx, cy = get_noisy_center(args["box_2d"])
-        return right_click(int(cx), int(cy))
+        # ⚡ Bolt: Offload blocking pyautogui right_click call
+        return await asyncio.to_thread(right_click, int(cx), int(cy))
 
 class CursorScrollTool(BaseTool):
     @property
@@ -227,7 +233,8 @@ class CursorScrollTool(BaseTool):
         if "box_2d" not in args or "clicks" not in args:
             return {"success": False, "error": "Missing required arguments: box_2d, clicks"}
         cx, cy = get_noisy_center(args["box_2d"])
-        return scroll(int(cx), int(cy), args["clicks"])
+        # ⚡ Bolt: Offload blocking pyautogui scroll call
+        return await asyncio.to_thread(scroll, int(cx), int(cy), args["clicks"])
 
 class CursorDragTool(BaseTool):
     @property
@@ -254,7 +261,8 @@ class CursorDragTool(BaseTool):
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
         if any(k not in args for k in ["x1", "y1", "x2", "y2"]):
             return {"success": False, "error": "Missing required arguments: x1, y1, x2, y2"}
-        return drag(args["x1"], args["y1"], args["x2"], args["y2"])
+        # ⚡ Bolt: Offload blocking pyautogui drag call
+        return await asyncio.to_thread(drag, args["x1"], args["y1"], args["x2"], args["y2"])
 
 class CursorNudgeTool(BaseTool):
     @property
@@ -279,7 +287,8 @@ class CursorNudgeTool(BaseTool):
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
         if "offset_x" not in args or "offset_y" not in args:
             return {"success": False, "error": "Missing required arguments: offset_x, offset_y"}
-        return nudge(args["offset_x"], args["offset_y"])
+        # ⚡ Bolt: Offload blocking pyautogui nudge call
+        return await asyncio.to_thread(nudge, args["offset_x"], args["offset_y"])
 
 class CursorTargetTool(BaseTool):
     @property
@@ -354,7 +363,8 @@ class CursorConfirmClickTool(BaseTool):
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
         if window_state.last_target_x is None or window_state.last_target_y is None:
             return {"success": False, "error": "No target set. Use cursor_target first."}
-        return click(int(window_state.last_target_x), int(window_state.last_target_y))
+        # ⚡ Bolt: Offload blocking pyautogui click call
+        return await asyncio.to_thread(click, int(window_state.last_target_x), int(window_state.last_target_y))
 
 # Register all tools
 registry.register(CursorMoveTool())
