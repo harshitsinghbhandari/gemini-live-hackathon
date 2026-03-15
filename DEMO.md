@@ -11,9 +11,9 @@ By following these steps, you will see how Aegis balances autonomy with safety.
 ## Prerequisites
 Before you begin the demo, please ensure the following:
 
-1.  **Local Helper Server Running:** The Python backend must be running on your Mac. You should see `ws://localhost:8765` active in your terminal logs.
-2.  **Mac PWA Open:** The primary interface should be open in a browser (`https://aegismac.projectalpha.in`) and the microphone should be active. The interface should show the "Listening" state.
-3.  **Mobile Companion App Installed:** You must have the Aegis Companion App installed as a PWA on your iPhone (`https://aegismobile.projectalpha.in`), and you must have completed the "Register Face ID" step. The app should be open or running in the background.
+1.  **Local Agent Running:** The Python agent and helper server must be running. You should see local ports `8765` and `8766` active in your terminal.
+2.  **Mac PWA Open:** The primary interface should be open in a browser (`https://aegismac.projectalpha.in`). The interface should show the **Listening** state.
+3.  **Mobile Companion App Installed:** You must have the Aegis Companion App installed as a PWA on your iPhone (`https://aegismobile.projectalpha.in`) and have completed the **Register Face ID** step.
 4.  **Dashboard Open:** Keep the Dashboard (`https://aegisdashboard.projectalpha.in`) open on a secondary monitor or split-screen to watch the real-time Server-Sent Events (SSE) audit log.
 
 ---
@@ -70,6 +70,5 @@ Red actions are irreversible, destructive, or highly sensitive (e.g., sending an
 
 While reviewing Aegis, please keep the following in mind:
 
-*   **Gmail / Google OAuth Restriction:** If you ask Aegis to read your Gmail, it will fail. This is **not a bug** in Aegis. Because Aegis is an unverified app in the Google Cloud Console, Google's strict OAuth policies block read-access to sensitive scopes (like `https://www.googleapis.com/auth/gmail.readonly`) for anyone other than the developer's test accounts. Aegis is aware of this and handles the rejection gracefully.
-*   **Local Screen Context:** Aegis uses the Gemini Live API for voice interaction but relies on `mss` (a fast, cross-platform screenshot library) and `pyautogui` for execution, rather than sending continuous, raw desktop streams to the cloud. This hybrid approach saves massive bandwidth but means Aegis sometimes needs to "look closely" (`screen_crop` or `get_annotated_elements`) to find exact clickable coordinates.
-*   **Composio Migration:** Earlier versions of Aegis relied on Composio toolkits for API integrations. We pivoted to a pure **Native ComputerUse** model (visual processing + native clicks/typing) because it is far more secure and realistic for a general-purpose agent. You may still see some legacy Composio documentation in the repository, but the current demo relies entirely on native screen control.
+*   **Local Screen Context:** Aegis uses the Gemini Live API for voice interaction but relies on `mss` (a fast, cross-platform screenshot library) and `pyautogui` for execution, rather than sending continuous, raw desktop streams to the cloud. This hybrid approach saves massive bandwidth but means Aegis sometimes needs to "look closely" (`screen_crop`) to find exact clickable coordinates.
+*   **Pure Native Control:** Aegis relies entirely on a **Native ComputerUse** model (visual processing + native clicks/typing). This is far more secure and realistic for a general-purpose agent than brittle third-party API integrations.

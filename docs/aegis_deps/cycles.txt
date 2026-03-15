@@ -1,3 +1,0 @@
-Circular dependencies:
-
-aegis.tools

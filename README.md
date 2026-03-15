@@ -2,9 +2,10 @@
 ### Trust infrastructure for the agentic era.
 
 [Live Demo](https://aegis.projectalpha.in) · 
+[GitHub](https://github.com/harshitsinghbhandari/gemini-live-hackathon) ·
 [Mac App](https://aegismac.projectalpha.in) · 
 [Dashboard](https://aegisdashboard.projectalpha.in) ·
-[Setup](https://aegis.projectalpha.in/setup)
+[Mobile](https://aegismobile.projectalpha.in)
 
 Built for the Gemini Live Agent Challenge
 
@@ -123,13 +124,21 @@ Aegis will:
 
 ## Quick Start (5 minutes)
 
-1. Visit [aegis.projectalpha.in/setup](https://aegis.projectalpha.in/setup)
-2. Enter your API keys and set your AEGIS_PIN.
-3. Run the install command.
-4. Start the local helper server: `python cmd/agent/run_agent.py`
-5. Open [aegismac.projectalpha.in](https://aegismac.projectalpha.in) and start talking.
+1. **Clone & Install:**
+   ```bash
+   git clone https://github.com/harshitsinghbhandari/gemini-live-hackathon.git
+   cd gemini-live-hackathon
+   ./apps/landing/public/install.sh
+   ```
+2. **Configure Variables:** Create a `.env` file with your `GOOGLE_API_KEY` and `USER_ID`.
+3. **Start the Agent:** 
+   ```bash
+   export PYTHONPATH=$PYTHONPATH:$(pwd)/packages
+   python cmd/agent/run_agent_main.py
+   ```
+4. **Open Mac PWA:** Visit [aegismac.projectalpha.in](https://aegismac.projectalpha.in) and start talking.
 
-See the **Monorepo structure after refactor** section below for the updated directory layout.
+See the **Monorepo structure** section below for the updated directory layout.
 
 ## Live Deployments
 
@@ -147,14 +156,13 @@ Harshit Singh Bhandari
 
 Built for the Gemini Live Agent Challenge — March 2026
 
-## Monorepo structure after refactor
-Aegis has been refactored into a scalable monorepo structure utilizing absolute imports and centralized configs for better scalability.
+## Monorepo structure
 
 - `apps/` (dashboard, mac-app, mobile-app, landing)
 - `services/` (backend)
 - `packages/aegis/` (agent, perception, tools, runtime, interfaces)
 - `configs/` (agent, backend)
-- `cmd/` (entrypoints like run_agent.py, run_backend.py, run_menubar.py)
+- `cmd/` (entrypoints like run_agent_main.py, run_backend.py, run_menubar.py)
 - `docs/`
 - `scripts/`
 - `env/`

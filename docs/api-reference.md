@@ -6,8 +6,11 @@ The Aegis backend is built using FastAPI. It handles routing auth requests, main
 The backend is typically deployed at: `https://apiaegis.projectalpha.in`
 
 ## Authentication
-Most endpoints require a user to be identified. This is done via an HTTP header:
-*   `X-User-ID`: The unique string identifier for the user (e.g., `harshitbhandari0318`).
+Most endpoints require a user to be identified. This is done via two primary methods:
+*   **Header:** `X-User-ID: <string>`
+*   **Query Parameter:** `user_id=<string>`
+
+If neither is provided, the backend defaults to `harshitbhandari0318`.
 
 ---
 
@@ -17,7 +20,7 @@ Most endpoints require a user to be identified. This is done via an HTTP header:
 Logs an action executed (or blocked) by the local Mac agent.
 
 *   **Headers:** `X-User-ID: <string>`
-*   **Body:**
+*   **Body (ActionLog):**
     ```json
     {
       "timestamp": "2023-10-27T10:00:00Z",
@@ -35,13 +38,13 @@ Logs an action executed (or blocked) by the local Mac agent.
       "device": "harshit-macbook"
     }
     ```
-*   **Response:** `200 OK` `{"status": "logged", "id": "<doc_id>"}`
+*   **Response:** `200 OK` `{"status": "logged"}`
 
 ### `GET /audit/stream`
 A Server-Sent Events (SSE) endpoint used by the Dashboard PWA to stream logs in real-time.
 
 *   **Headers:** `X-User-ID: <string>`
-*   **Response:** `text/event-stream` stream yielding JSON strings.
+*   **Response:** `text/event-stream` stream yielding JSON strings. Includes a `comment: keepalive` every 25 seconds if active.
 
 ### `GET /audit/log`
 Retrieves historical audit logs.
@@ -55,10 +58,10 @@ Retrieves historical audit logs.
 ## 2. Authentication Flow Endpoints (The "Gate")
 
 ### `POST /auth/request`
-Called by the local agent when a RED action is intercepted. Creates a pending auth request.
+Called by the local agent when a RED action is intercepted. Creates a pending auth request and triggers an FCM push notification.
 
 *   **Headers:** `X-User-ID: <string>`
-*   **Body:**
+*   **Body (AuthRequest):**
     ```json
     {
       "action": "Delete downloads folder",
@@ -67,43 +70,37 @@ Called by the local agent when a RED action is intercepted. Creates a pending au
       "speak": "I need to check something before I do that.",
       "tool": "keyboard_type_sensitive",
       "arguments": {},
-      "device": "harshit-macbook",
-      "visual_context": {
-         "base64_image": "iVBORw0KG...",
-         "mime_type": "image/jpeg",
-         "action_description": "Delete downloads folder",
-         "element_label": "keyboard_type_sensitive"
-      }
+      "device": "harshit-macbook"
     }
     ```
-*   **Response:** `200 OK` `{"status": "requested", "request_id": "<uuid>"}`
+*   **Response:** `200 OK` `{"request_id": "<uuid>"}`
 
 ### `GET /auth/status/{request_id}`
 Called by the local agent to poll for the result of an auth request.
 
 *   **Headers:** `X-User-ID: <string>`
-*   **Response:**
+*   **Behavior:** Auto-denies after 30 seconds if still pending.
+*   **Response (AuthStatus):**
     ```json
     {
-      "request_id": "<uuid>",
-      "status": "pending" | "approved" | "denied" | "expired",
+      "status": "pending" | "approved" | "denied",
       "resolved_at": "timestamp or null"
     }
     ```
 
 ### `GET /auth/pending`
-Called by the Mobile PWA to check if there are any pending RED actions requiring biometric approval.
+Called by the Mobile PWA to check for the oldest pending RED action.
 
 *   **Headers:** `X-User-ID: <string>`
 *   **Query Params:** `device` (optional)
-*   **Response:** List of pending request objects including `visual_context`.
+*   **Response:** Oldest pending request object or `{"request_id": null}`.
 
 ### `POST /auth/approve/{request_id}`
-(Legacy/Fallback) Endpoint to manually approve/deny a request without WebAuthn.
+Manually approve or deny an auth request.
 
 *   **Headers:** `X-User-ID: <string>`
-*   **Body:** `{"approved": true}`
-*   **Response:** `200 OK`
+*   **Body (AuthApproval):** `{"approved": true}`
+*   **Response:** `{"status": "updated"}`
 
 ---
 
@@ -118,20 +115,20 @@ Step 1 of registering Face ID. Returns challenge options.
 *   **Response:** JSON PublicKeyCredentialCreationOptions.
 
 ### `POST /webauthn/register/verify`
-Step 2 of registering. Verifies the assertion from the device and saves the public key to Firestore.
+Step 2 of registering. Verifies the assertion and saves the public key to Firestore.
 
 *   **Headers:** `X-User-ID: <string>`
 *   **Body:** `{"credential": { ... }}`
 *   **Response:** `{"verified": true}`
 
 ### `POST /webauthn/auth/options`
-Step 1 of authenticating a specific pending request.
+Step 1 of authenticating. Retrieves registered credential and generates options.
 
 *   **Headers:** `X-User-ID: <string>`
 *   **Response:** JSON PublicKeyCredentialRequestOptions.
 
 ### `POST /webauthn/auth/verify`
-Step 2 of authenticating. Verifies the signed payload using the stored public key and approves the associated `request_id`.
+Step 2 of authenticating. Verifies signature and approves the associated `request_id`.
 
 *   **Headers:** `X-User-ID: <string>`
 *   **Body:** `{"credential": { ... }, "request_id": "<uuid>"}`
@@ -140,7 +137,6 @@ Step 2 of authenticating. Verifies the signed payload using the stored public ke
 ### `GET /webauthn/registered/{user_id_path}`
 Checks if the user has a registered Face ID credential.
 
-*   **Headers:** `X-User-ID: <string>`
 *   **Response:** `{"registered": true|false}`
 
 ---
@@ -148,30 +144,35 @@ Checks if the user has a registered Face ID credential.
 ## 4. PIN Fallback Authentication
 
 ### `POST /auth/register-pin`
-Registers a fallback PIN for the user. (No `X-User-ID` header required, payload contains ID).
+Registers or updates a user PIN.
 
-*   **Body:** `{"user_id": "harshitbhandari0318", "pin": "1234"}`
+*   **Body:** `{"user_id": "string", "pin": "string"}`
 *   **Response:** `{"success": true}`
 
 ### `POST /auth/verify-pin`
 Verifies the PIN (rate-limited to 5/minute).
 
-*   **Body:** `{"user_id": "harshitbhandari0318", "pin": "1234"}`
-*   **Response:** `{"success": true, "user_id": "harshitbhandari0318"}`
+*   **Body:** `{"user_id": "string", "pin": "string"}`
+*   **Response:** `{"success": true, "user_id": "string"}`
+
+### `GET /auth/exists/{user_id}`
+Checks if a user has already registered a PIN.
+
+*   **Response:** `{"exists": true|false}`
 
 ---
 
 ## 5. Session & Device Management
 
 ### `POST /device/register`
-Registers an FCM (Firebase Cloud Messaging) token for the mobile app (used for push notifications if configured).
+Registers an FCM token for the mobile app.
 
 *   **Headers:** `X-User-ID: <string>`
-*   **Body:** `{"device_id": "iphone", "fcm_token": "..."}`
+*   **Body (DeviceRegistration):** `{"device_id": "string", "fcm_token": "string"}`
 *   **Response:** `{"status": "registered"}`
 
 ### `GET /session/status`
-Checks if the local Mac agent is currently active.
+Checks if the local Mac agent is current active.
 
 *   **Headers:** `X-User-ID: <string>`
 *   **Response:** `{"is_active": true|false}`
@@ -180,7 +181,7 @@ Checks if the local Mac agent is currently active.
 Updates the active status of the local agent.
 
 *   **Headers:** `X-User-ID: <string>`
-*   **Body:** `{"is_active": true}`
+*   **Body (SessionUpdate):** `{"is_active": true}`
 *   **Response:** `{"status": "updated", "is_active": true}`
 
 ### `POST /session/stop`
@@ -194,6 +195,6 @@ Forces the session to stop.
 ## 6. System
 
 ### `GET /health`
-Returns system health, including the status of dependencies like Firestore.
+Returns system health and dependency status.
 
-*   **Response:** `{"status": "ok", "timestamp": "...", "dependencies": {"firestore": "ok"}}`
+*   **Response:** `{"status": "ok", "timestamp": "...", "dependencies": {"gemini": "closed", "firestore": "closed", "composio": "closed"}}`

@@ -53,9 +53,12 @@ If you prefer not to use the automated script, perform the following steps:
     ```
 
 4.  **Start the Local Agent:**
-    The Python helper server handles audio, video streaming, and native computer execution.
+    Aegis consists of the core agent and a helper server that bridges it to the Mac PWA.
     ```bash
     export PYTHONPATH=$PYTHONPATH:$(pwd)/packages
+    # Start the helper server (required for PWA control)
+    python3 packages/aegis/interfaces/helper_server.py &
+    # Start the core agent
     python3 cmd/agent/run_agent_main.py
     ```
 

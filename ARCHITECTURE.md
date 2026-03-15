@@ -5,7 +5,7 @@ Aegis was designed from the ground up to be a **local-first, cloud-secured** AI 
 
 ### Why Local-First?
 An agent capable of "Native ComputerUse" (moving the mouse, taking screenshots, clicking buttons) must reside on the host machine. Streaming continuous desktop frames to a generic web server is not only a privacy nightmare but also introduces unacceptable latency.
-Aegis runs a local Python helper server (`voice.py`) that captures the screen and audio locally. It manages its own state machine (`LISTENING/THINKING/EXECUTING/BUSY`) and handles execution locally using tools like `pyautogui` and `mss`.
+Aegis runs a local Python agent (`cmd/agent/run_agent_main.py`) that captures the screen and audio locally. It manages its own state machine (`LISTENING/THINKING/EXECUTING/BUSY`) and handles execution locally using tools like `pyautogui` and `mss`.
 
 ### Why Native Screen Control?
 Aegis interacts with the host OS and applications directly utilizing `screen_executor.py` and the Gemini Live API with high-resolution screenshot crops (`cursor_crop`, `get_annotated_elements`). This allows Aegis to navigate any app that is visible on the screen, just like a human, without needing brittle third-party integrations or OAuth tokens. It's a true "Trusted Pilot."
@@ -15,14 +15,16 @@ Aegis interacts with the host OS and applications directly utilizing `screen_exe
 ### 1. Local Mac Agent (`packages/aegis/`)
 This is the heart of Aegis, running entirely on the user's macOS device.
 
-*   **`interfaces/voice.py`**: Handles real-time duplex streaming to the Gemini Live API. It captures audio input and continuously sends delta-based screenshot streams (every 2-3 seconds) to the LLM, giving it persistent visual context.
-*   **`agent/classifier.py`**: The "brain" of the trust boundary. It uses a secondary LLM call (Gemini 2.5 Flash) to parse an intent and classify it as GREEN, YELLOW, or RED based on irreversibility.
-*   **`agent/gate.py`**: The Auth Router. It takes the output from the classifier and enforces the rules. If GREEN, it executes immediately. If YELLOW, it requests verbal confirmation. If RED, it blocks execution, captures the visual context, and pings the Cloud Backend for remote biometric authentication, falling back to local Touch ID if necessary.
+*   **`cmd/agent/run_agent_main.py`**: The main entry point for the agent. Handles real-time duplex streaming to the Gemini Live API, screen capture, and audio I/O.
+*   **`agent/classifier.py`**: The "brain" of the trust boundary. It uses a secondary LLM call (Gemini 2.5 Flash) to parse an intent and classify it as GREEN, YELLOW, or RED.
+*   **`agent/gate.py`**: The Auth Router. Enforces the security tier rules and manages authentication handshakes.
 *   **`runtime/screen_executor.py`**: The native execution engine. Maps commands like `cursor_click` or `keyboard_type` to actual OS-level commands.
-*   **`interfaces/ws_server.py`**: The Local WebSocket Server.
+*   **`interfaces/helper_server.py`**: The Control Bridge (port 8766). A FastAPI server that allows the Mac PWA to start/stop the agent and perform maintenance tasks.
 
-### 2. Local Communication: Why WebSockets?
-To provide real-time UI feedback (like state changes, waveform data, and action logs) without the overhead of HTTP polling, Aegis uses a local WebSocket server (`ws://localhost:8765`). The Mac PWA connects to this local server. This architecture guarantees zero-latency UI updates when Aegis transitions between `LISTENING` and `EXECUTING` states, ensuring the user always knows what the agent is doing.
+### 2. Local Communication: WebSockets & HTTP
+Aegis uses two local ports for communication with the Mac PWA:
+*   **Port 8765 (WebSocket)**: The agent (`run_agent_main.py`) streams live state, waveforms, and action logs directly to the PWA.
+*   **Port 8766 (HTTP)**: The helper server (`helper_server.py`) provides an API for the PWA to control the agent's lifecycle (Start/Stop/Status).
 
 ### 3. The Frontends (React PWAs)
 Aegis uses Progressive Web Apps (PWAs) instead of native applications.

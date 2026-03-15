@@ -10,29 +10,29 @@ graph TD
     classDef gemini fill:#4c1d95,stroke:#7c3aed,stroke-width:2px,color:#fff;
 
     User["👤 USER"]:::userbox
-    MacPWA["💻 Mac PWA<br/>(Local UI)"]:::local
-    Helper["⚙️ Helper Server<br/>(localhost:8766)"]:::local
+    MacApp["💻 Mac App (PWA)"]:::local
+    Helper["⚙️ Helper Server<br/>(localhost:8766 HTTP)"]:::local
 
-    User -- "Speaks / Interacts" --> MacPWA
-    MacPWA -- "Start/Stop" --> Helper
+    User -- "Voice / UI Interaction" --> MacApp
+    MacApp -- "Start/Stop" --> Helper
 
-    subgraph "Local Mac Agent"
-        WsServer["📡 WebSocket Server<br/>(ws://localhost:8765)"]:::local
-        Voice["🎙️ voice.py<br/>(Audio & Video I/O)"]:::gemini
+    subgraph "Local Mac Agent (Runtime)"
+        WsServer["📡 WebSocket Server<br/>(localhost:8765 WS)"]:::local
+        Voice["🎙️ voice.py<br/>(Multimodal Hub)"]:::gemini
         Gemini{"✨ Gemini Live API"}:::gemini
-        Classifier["🧠 classifier.py<br/>(Risk Analysis)"]:::local
-        Gate["🛡️ gate.py<br/>(Auth Router)"]:::local
+        Classifier["🧠 classifier.py<br/>(Risk Tiers)"]:::local
+        Gate["🛡️ gate.py<br/>(Security Gate)"]:::local
         
-        State["🔄 State Machine<br/>(LISTENING/THINKING/EXECUTING/BUSY)"]:::local
+        State["🔄 State Machine<br/>(LISTENING -> THINKING -> EXECUTING)"]:::local
 
-        TierG["🟢 GREEN<br/>(Silent)"]:::green
-        TierY["🟡 YELLOW<br/>(Voice Confirm)"]:::yellow
-        TierR["🔴 RED<br/>(Biometric Auth)"]:::red
+        TierG["🟢 GREEN (Silent)"]:::green
+        TierY["🟡 YELLOW (Voice)"]:::yellow
+        TierR["🔴 RED (Biometric)"]:::red
         
-        Executor["⚡ screen_executor.py<br/>(Native ComputerUse)"]:::local
-        Screen[/"🖥️ macOS Screen Control<br/>pyautogui, mss, clipboard"/]:::local
+        Executor["⚡ screen_executor.py<br/>(Native Driver)"]:::local
+        Tools[/"🖥️ OS Interaction<br/>pyautogui, mss, clipboard"/]:::local
 
-        MacPWA -. "Live State / Waveforms" .-> WsServer
+        MacApp -. "State / Waveforms" .-> WsServer
         WsServer -.-> Voice
         Voice <--> Gemini
         Voice --> Classifier
@@ -42,24 +42,23 @@ graph TD
         State --> TierY
         State --> TierR
         TierG --> Executor
-        TierY -- "Confirmed by Voice" --> Executor
-        TierR -- "Approved by Mobile/TouchID" --> Executor
-        Executor --> Screen
+        TierY -- "Confirmed Verbally" --> Executor
+        TierR -- "Approved via FaceID/TouchID" --> Executor
+        Executor --> Tools
     end
 
     subgraph "GCP Backend (Cloud Run)"
         Backend["☁️ FastAPI Server"]:::cloud
-        DB[("🗄️ Firestore<br/>users/{user_id}/*")]:::cloud
+        DB[("🗄️ Firestore<br/>Security State & Audit")]:::cloud
         
-        Gate -- "POST /action<br/>POST /auth/request" --> Backend
+        Gate -- "Auth Handshake & Logging" --> Backend
         Backend --> DB
     end
     
-    subgraph "User Devices"
-        Dashboard["📊 Dashboard<br/>(Web Hub)"]:::userbox
-        Mobile["📱 Mobile PWA<br/>(Companion App)"]:::userbox
+    subgraph "Remote Monitoring & Auth"
+        Dashboard["📊 Audit Dashboard"]:::userbox
+        Mobile["📱 Mobile PWA"]:::userbox
         
-        Backend -- "GET /audit/stream<br/>(SSE)" --> Dashboard
-        Backend -- "GET /auth/pending" --> Mobile
-        Mobile -- "POST /webauthn/auth/verify" --> Backend
+        Backend -- "Real-time Stream (SSE)" --> Dashboard
+        Backend <--> Mobile
     end

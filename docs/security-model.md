@@ -10,19 +10,7 @@ The classification logic resides in `packages/aegis/agent/classifier.py`. It use
 
 Before any tool is executed, the `gate_action` function pauses the execution flow and asks the classifier to evaluate the intent.
 
-The prompt (defined in `configs/agent/prompts.yaml`) is structured strictly:
-```yaml
-CLASSIFY_WITH_HINT_PROMPT_TEMPLATE: |
-  You are a security classifier for Aegis, an AI agent controlling a Mac.
-
-  Selected tool: {tool_hint}
-  User intent: {proposed_action}
-
-  Tier rules:
-  {tier_rules_summary}
-
-  Respond ONLY with valid JSON...
-```
+The prompt is structured to ensure strict adherence to the tier rules, evaluating the "Selected tool" and "User intent" against a set of predefined security guidelines.
 
 The classifier must output the tier, a reason for its decision, and what Aegis should say to the user before proceeding.
 
@@ -33,43 +21,38 @@ The defining metric for classification is **irreversibility**. Can the user easi
 ### 🟢 GREEN: Silent Execution (No Confirmation)
 *   **Criterion:** The action is read-only, navigational, or purely informative. It cannot alter state in a meaningful or destructive way.
 *   **Examples:** Opening an app, navigating to a URL, scrolling a page, reading screen text, taking a screenshot.
-*   **Tool Mapping:** `screen_capture`, `screen_read`, `cursor_move`, `keyboard_hotkey` (e.g., Command+Tab).
+*   **Common Tools:** `navigation_tools`, `screen_tools.screen_capture`, `screen_tools.screen_read`.
 *   **Execution:** Immediate and silent. Aegis behaves autonomously.
 
 ### 🟡 YELLOW: Verbal Confirmation Required
-*   **Criterion:** The action mutates state or interacts with the UI in a way that *could* be unwanted, but is not critically destructive. It can usually be undone (e.g., deleting a character in a text box, clicking a non-committal button).
-*   **Examples:** Clicking a "Sign In" button (assuming credentials are auto-filled), typing a draft message into a text field, liking a post.
-*   **Tool Mapping:** `cursor_click`, `cursor_drag`, `keyboard_type`.
-*   *(Exception: If a click is purely navigational, like clicking a search result link, the classifier is instructed to downgrade it to GREEN).*
+*   **Criterion:** The action mutates state or interacts with the UI in a way that *could* be unwanted, but is not critically destructive. It can usually be undone.
+*   **Examples:** Clicking a "Sign In" button, typing a draft message, liking a post, creating a new folder.
+*   **Common Tools:** `cursor_tools.cursor_click`, `cursor_tools.cursor_drag`, `keyboard_tools.keyboard_type`.
+*   *(Exception: If a click is purely navigational, the classifier can downgrade it to GREEN).*
 *   **Execution:** Aegis pauses, explains its intent ("I am about to click 'Submit'"), and waits for the user to verbally say "Yes" or "Proceed" over the audio stream.
 
 ### 🔴 RED: Biometric Authentication Required
 *   **Criterion:** The action is highly sensitive, destructive, or irreversible. It involves financial data, security settings, or sending communications on the user's behalf.
-*   **Examples:** Deleting files permanently (`rm -rf`), sending an email, transferring funds, revealing a saved password.
-*   **Tool Mapping:** `keyboard_type_sensitive` (a specialized tool for entering critical data), or any standard tool (`cursor_click`) if the intent is classified as destructive (e.g., clicking the final "Send" button on an email).
-*   **Execution:** Execution is hard-blocked. An out-of-band request is generated and sent to the cloud backend. The user must physically authenticate using Face ID on their companion mobile app (or Touch ID on the Mac natively).
+*   **Examples:** Deleting files permanently, sending an email, merging a PR, revealing a password.
+*   **Common Tools:** `keyboard_tools.keyboard_type_sensitive`, or any tool where the intent is destructive.
+*   **Execution:** Execution is hard-blocked. An out-of-band request is generated and sent to the cloud backend. The user must authenticate using Face ID on their mobile app or Touch ID natively on the Mac.
 
 ## 3. Concrete Examples
 
-Let's look at how the same underlying task (interacting with Gmail or GitHub) escalates through the tiers based on the specific action.
-
 | App / Context | Action | Classifier Tier | Why? |
 | :--- | :--- | :--- | :--- |
-| **GitHub** | *"Aegis, open my pull requests."* | **GREEN** | Purely navigational. `cursor_click` or `navigation_tools`. Undoing is just clicking 'Back'. |
-| **GitHub** | *"Aegis, write a comment saying 'LGTM'."* | **YELLOW** | State mutating. `keyboard_type`. The comment is drafted, but usually requires a separate click to post. Aegis asks for voice confirmation before typing. |
-| **GitHub** | *"Aegis, merge this pull request."* | **RED** | Irreversible (or difficult to reverse) and highly impactful. Even if using a simple `cursor_click` on the "Merge" button, the intent triggers a Face ID challenge. |
-| **Gmail** | *"Aegis, read the subject of the latest email."* | **GREEN** | Read-only. `screen_read`. No harm possible. |
-| **Gmail** | *"Aegis, draft a reply saying I'll be late."* | **YELLOW** | State mutating. `keyboard_type`. Creates a draft but does not send it. |
-| **Gmail** | *"Aegis, send the email."* | **RED** | Irreversible. Sending communication on behalf of the user is the highest risk action. Requires Face ID. |
+| **Finder** | *"Open my Downloads folder."* | **GREEN** | Navigational. No state change. |
+| **Notes** | *"Create a new note titled 'Ideas'."* | **YELLOW** | State change (creation), but easily reversible. |
+| **Terminal** | *"Delete all files in the tmp folder."* | **RED** | Destructive and irreversible. |
+| **Email** | *"Draft a reply to John."* | **YELLOW** | State change, but only a draft. |
+| **Email** | *"Send the email to John."* | **RED** | Irreversible communication. |
 
 ## 4. The Fallback Mechanism
 
-If the classifier fails to parse the Gemini response, or if the API times out, Aegis employs a strict **fail-secure** architecture.
+If the classifier fails to parse the response or encounters an error, Aegis employs a strict **fail-secure** architecture. Any uncertainty automatically escalates the action to RED, ensuring that bugs or hallucinations cannot bypass the trust boundary.
 
-```python
-# packages/aegis/agent/classifier.py
-if not classification:
-    # Fallback to safe state
-    return {"tier": "RED", "reason": "Failed to parse classification", "upgraded": True, "speak": "I encountered an error and must block this action for safety.", "tool": None, "arguments": {}}
-```
-Any uncertainty automatically escalates the action to RED, ensuring that bugs or hallucinations cannot bypass the trust boundary.
+## 5. Implementation Reference
+- Classifier: `packages/aegis/agent/classifier.py`
+- Gatekeeper: `packages/aegis/agent/gate.py`
+- Local Auth: `packages/aegis/auth.py`
+boundary.
