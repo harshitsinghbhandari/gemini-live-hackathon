@@ -148,3 +148,12 @@ analyze_repo.py
 *.jsonl
 aegis_audit.jsonl
 data/
+
+# =========================
+# Additional Cleanup Items
+# =========================
+.agent/
+.agents/
+.jules/
+archive/
+references/
