@@ -21,6 +21,7 @@ from aegis.runtime.context import AegisContext, SessionState
 from aegis.utils.session_recorder import recorder
 from aegis.agent.gate import gate_action
 from aegis.runtime.screen_executor import is_screen_tool, get_current_view
+from aegis.utils.confirmation_listener import ConfirmationListener
 from aegis.tools.declarations import get_screen_tool_declarations
 from aegis.perception.screen.capture import capture_screen
 from aegis.perception.screen.ocr import ocr_background_loop
@@ -57,6 +58,7 @@ class AegisVoiceAgent:
         self.text_only_mode = text_only_mode
         self.bridge = SessionBridge()
         self.send_lock = asyncio.Lock()
+        self.confirmation_listener = ConfirmationListener()
         # Define Core Tools for initial config
         core_function_declarations = [
             {
@@ -235,6 +237,7 @@ class AegisVoiceAgent:
                 await self._send_to_session(
                     audio=types.Blob(data=data, mime_type=f"audio/pcm;rate={config.SEND_SAMPLE_RATE}")
                 )
+                self.confirmation_listener.add_audio(data)
         except Exception as e:
             if self.alive:
                 logger.error(f"Error in send_audio_loop: {e}")
@@ -335,80 +338,46 @@ class AegisVoiceAgent:
                                         if result.get("needs_confirmation"):
                                             logger.info("🤖 Needs confirmation")
                                             tool_response = {"result": "ACTION BLOCKED PENDING CONFIRMATION. You MUST ask the user to confirm: " + result['speak']}
+                                        elif result.get("needs_passive_confirmation"):
+                                            logger.info("🤖 Action needs passive voice confirmation")
+                                            self._update_status("confirmation")
+                                            await self.confirmation_listener.start_listening()
+                                            
+                                            # Wait for intent (with timeout)
+                                            try:
+                                                # Use a long wait for the user to react
+                                                # We just wait for a fixed duration or until some silence logic
+                                                # For simpler flow, we collect for 4 seconds then check.
+                                                await asyncio.sleep(5) 
+                                                confirmed = await self.confirmation_listener.detect_intent()
+                                                
+                                                if confirmed:
+                                                    logger.info("✅ Passive confirmation RECEIVED")
+                                                    # Re-call gate_action with pre_confirmed=True to actually execute
+                                                    result = await gate_action(
+                                                        f"Run tool {fn.name} with args {json.dumps(arguments)}",
+                                                        self.context,
+                                                        tool_name=fn.name,
+                                                        tool_args=arguments,
+                                                        pre_confirmed=True,
+                                                        call_id=fn.id
+                                                    )
+                                                else:
+                                                    logger.warning("❌ Passive confirmation FAILED or DENIED")
+                                                    result = {
+                                                        "success": False, 
+                                                        "error": "Action cancelled by user or no confirmation detected.",
+                                                        "speak": "Okay, I've cancelled that."
+                                                    }
+                                            finally:
+                                                self.confirmation_listener.stop_listening()
+                                                self._update_status("listening")
                                         else:
                                             logger.info("🤖 No confirmation needed")
                                             if result.get("blocked") and result.get("tier") == "RED":
                                                 self._update_status("blocked")
 
-                                        # Update Context with Smart Plan
-                                        if fn.name == "smart_plan" and result.get("success"):
-                                            plan = result.get("plan")
-                                            if isinstance(plan, list):
-                                                self.context.execution_plan = plan
-                                                self.context.plan_index = 0
-                                                self.context.plan_halted = False
-                                                self.context.verification_passed = False
-                                                logger.info(f"📋 Plan captured: {len(self.context.execution_plan)} steps")
-                                            else:
-                                                logger.warning(f"⚠️  Smart Plan returned invalid plan format: {type(plan)}")
-
-                                        if fn.name == "plan_complete":
-                                            self.context.execution_plan = None
-                                            self.context.plan_index = 0
-                                            self.context.verification_passed = False
-                                            logger.info("🏁 Plan completed and cleared.")
-
-                                        # ─── Phase 3: Automated Verification Gate ───
-                                        # If we are executing a plan step (and it's not the smart_plan/verify
-                                        # tools themselves), and the step has a "verify" criterion, run it.
-                                        plan_verify_criteria = None
-                                        if (
-                                            self.context.execution_plan
-                                            and not self.context.plan_halted
-                                            and fn.name not in ("smart_plan", "verify_ui_state", "plan_complete", "screen_capture", "screen_read")
-                                            and result.get("success")
-                                        ):
-                                            current_step_idx = self.context.plan_index
-                                            plan = self.context.execution_plan
-                                            if current_step_idx < len(plan):
-                                                current_step = plan[current_step_idx]
-                                                plan_verify_criteria = current_step.get("verify")
-
-                                        if plan_verify_criteria:
-                                            logger.info(f"🔍 Auto-verifying step {self.context.plan_index + 1}: '{plan_verify_criteria}'")
-                                            verify_result = await gate_action(
-                                                f"Verify UI state: {plan_verify_criteria}",
-                                                self.context,
-                                                tool_name="verify_ui_state",
-                                                tool_args={"expected": plan_verify_criteria},
-                                                call_id=f"auto_verify_{fn.id}"
-                                            )
-                                            verified = verify_result.get("output", {})
-                                            # verify_ui_state returns {"verified": bool, ...} nested in output
-                                            if isinstance(verified, dict):
-                                                is_success = verified.get("verified", False)
-                                            else:
-                                                # Parse from raw result string
-                                                is_success = "true" in str(verify_result.get("output", "")).lower() or verify_result.get("success", False)
-
-                                            if is_success:
-                                                logger.info(f"✅ Verification passed for step {self.context.plan_index + 1}")
-                                                self.context.verification_passed = True
-                                                self.context.plan_index += 1
-                                                tool_response = {"result": json.dumps(result) + f'\n[SYSTEM: Verification PASSED for step {self.context.plan_index}. Criterion met: "{plan_verify_criteria}". Proceed to the next step.]'}
-                                            else:
-                                                reason = verify_result.get("output", {})
-                                                if isinstance(reason, dict):
-                                                    reason = reason.get("reason", "Unknown")
-                                                logger.warning(f"❌ Verification FAILED for step {self.context.plan_index + 1}: {reason}")
-                                                self.context.plan_halted = True
-                                                self.context.plan_halt_reason = str(reason)
-                                                self.context.execution_plan = None
-                                                self.context.verification_passed = False
-                                                ws_server.broadcast("plan_halted", data={"step": self.context.plan_index + 1, "criterion": plan_verify_criteria, "reason": str(reason)})
-                                                tool_response = {"result": f'[SYSTEM: VERIFICATION FAILED. The screen does NOT show: "{plan_verify_criteria}". Reason: {reason}. HALT the plan. Tell the user EXACTLY what step failed and what you saw. Do NOT say Done, Finished, or Complete. Ask the user how to proceed.]'}
-                                        else:
-                                            tool_response = {"result": json.dumps(result)}
+                                        tool_response = {"result": json.dumps(result)}
 
                                     f_resp = types.FunctionResponse(id=fn.id, name=fn.name, response=tool_response)
                                     

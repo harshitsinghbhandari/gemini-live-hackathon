@@ -39,9 +39,6 @@ const Header = ({ status, isOffline, lastActive }) => {
             <span className="material-symbols-outlined text-lg">logout</span>
             <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">Sign Out</span>
           </button>
-          <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden">
-            <span className="material-symbols-outlined text-primary text-lg">person</span>
-          </div>
         </div>
       </div>
     </header>

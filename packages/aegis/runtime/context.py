@@ -16,15 +16,6 @@ class AegisContext:
     resumption_handle: Optional[Any] = None
     ocr_cache: dict = None  # populated by aegis.screen.ocr background loop
     ocr_idle_delay: float = 0.5 # Default idle delay for OCR loop
-    
-    # Smart Planning
-    execution_plan: list = None  # List of dicts [{"action": "...", "verify": "...", ...}]
-    plan_index: int = 0
-
-    # Verification Gate (Phase 3)
-    plan_halted: bool = False      # Set True when a verification step fails
-    plan_halt_reason: str = ""     # Human-readable explanation for the halt
-    verification_passed: bool = False  # Set True when verify_ui_state returns SUCCESS
 
     @property
     def is_executing_tool(self) -> bool:

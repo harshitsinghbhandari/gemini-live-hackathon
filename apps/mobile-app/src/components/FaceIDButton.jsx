@@ -118,7 +118,7 @@ export function FaceIDButton({ requestId, onApprove, onDeny }) {
                 transition: "background 0.2s"
             }}
         >
-            {loading ? "Verifying..." : needsSetup ? "Setup Face ID" : "Approve with Face ID 👤"}
+            {loading ? "Verifying..." : needsSetup ? "Setup Face ID" : "Approve with Face ID"}
         </button>
     );
 }

@@ -53,13 +53,6 @@ export function IdlePage({ isConnected, onStart }) {
 
     return (
         <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display relative overflow-hidden">
-            {/* macOS style Traffic Lights (Visual only) */}
-            <div className="absolute top-4 left-4 flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-slate-700/50"></div>
-                <div className="w-3 h-3 rounded-full bg-slate-700/50"></div>
-                <div className="w-3 h-3 rounded-full bg-slate-700/50"></div>
-            </div>
-
             <div className="layout-container flex h-full grow flex-col items-center justify-center px-6">
                 <div className="w-full max-w-[440px] flex flex-col items-center">
                     {/* Logo Section */}
@@ -67,8 +60,8 @@ export function IdlePage({ isConnected, onStart }) {
                         <div className="w-20 h-20 mb-6 flex items-center justify-center rounded-2xl bg-slate-800/40 border border-slate-700/50">
                             <span className="material-symbols-outlined text-slate-400 !text-5xl">shield</span>
                         </div>
-                        <h1 className="text-3xl font-semibold tracking-tight text-slate-100">Aegis</h1>
-                        <p className="text-slate-500 mt-2 text-sm">Secure local environment</p>
+                        <h1 className="text-3xl font-semibold tracking-tight text-slate-100 uppercase">Aegis</h1>
+                        <p className="text-slate-500 mt-2 text-sm uppercase tracking-widest font-bold">Secure Local Environment</p>
                     </div>
 
                     {/* Status List */}
@@ -79,10 +72,10 @@ export function IdlePage({ isConnected, onStart }) {
                                 <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800/40 text-slate-400">
                                     <span className="material-symbols-outlined !text-xl">database</span>
                                 </div>
-                                <span className="text-slate-300 text-sm font-medium">Helper Server</span>
+                                <span className="text-slate-300 text-sm font-medium uppercase">Helper Server</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-slate-500 text-xs">{helperReady ? 'Online' : 'Offline'}</span>
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-tight">{helperReady ? 'Online' : 'Offline'}</span>
                                 <div className={`w-2 h-2 rounded-full ${helperReady ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-slate-600'}`}></div>
                             </div>
                         </div>
@@ -93,10 +86,10 @@ export function IdlePage({ isConnected, onStart }) {
                                 <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800/40 text-slate-400">
                                     <span className="material-symbols-outlined !text-xl">person</span>
                                 </div>
-                                <span className="text-slate-300 text-sm font-medium">Agent</span>
+                                <span className="text-slate-300 text-sm font-medium uppercase">Agent Connection</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-slate-500 text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
+                                <span className="text-slate-500 text-xs font-bold uppercase tracking-tight">{isConnected ? 'Connected' : 'Disconnected'}</span>
                                 <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-slate-600'}`}></div>
                             </div>
                         </div>
@@ -105,22 +98,12 @@ export function IdlePage({ isConnected, onStart }) {
                     {/* Actions */}
                     <div className="w-full flex flex-col gap-3">
                         <button
-                            className={`w-full h-12 flex items-center justify-center rounded-lg border border-slate-700 transition-colors font-medium text-sm ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800/50 text-slate-200'}`}
+                            className={`w-full h-12 flex items-center justify-center rounded-lg border border-slate-700 transition-colors font-bold text-xs uppercase tracking-widest ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800/50 text-slate-200'}`}
                             onClick={handleStart}
                             disabled={loading}
                         >
                             {loading ? 'Starting Session...' : 'Start Session'}
                         </button>
-                        <div className="flex items-center justify-center gap-4 mt-4">
-                            <button className="flex items-center gap-1 text-slate-500 hover:text-slate-300 text-xs transition-colors">
-                                <span className="material-symbols-outlined !text-sm">settings</span>
-                                Preferences
-                            </button>
-                            <button className="flex items-center gap-1 text-slate-500 hover:text-slate-300 text-xs transition-colors">
-                                <span className="material-symbols-outlined !text-sm">help</span>
-                                Documentation
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>

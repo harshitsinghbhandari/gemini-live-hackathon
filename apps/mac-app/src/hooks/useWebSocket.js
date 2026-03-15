@@ -11,7 +11,6 @@ export function useWebSocket() {
     const [isConnected, setIsConnected] = useState(false);
     const [status, setStatus] = useState('idle');        // idle | listening | executing | auth | blocked | error
     const [actions, setActions] = useState([]);
-    const [pendingYellow, setPendingYellow] = useState(null);
     const [pendingRed, setPendingRed] = useState(null);
     const [waveform, setWaveform] = useState(Array(20).fill(0.05));
 
@@ -51,10 +50,6 @@ export function useWebSocket() {
                             }
                             break;
 
-                        case 'yellow_confirm':
-                            setPendingYellow(data || null);
-                            break;
-
                         case 'red_auth_started':
                             setPendingRed(data || null);
                             break;
@@ -74,7 +69,6 @@ export function useWebSocket() {
 
                         case 'session_ended':
                             setStatus('idle');
-                            setPendingYellow(null);
                             setPendingRed(null);
                             break;
 
@@ -130,11 +124,9 @@ export function useWebSocket() {
         isConnected,
         status,
         actions,
-        pendingYellow,
         pendingRed,
         waveform,
         sendMessage,
-        clearPendingYellow: () => setPendingYellow(null),
         clearPendingRed: () => setPendingRed(null),
         setActions,
     };

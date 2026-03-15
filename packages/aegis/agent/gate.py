@@ -84,9 +84,9 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
             # 1. Request Auth with visual context
             auth_data = {
                 "action": proposed_action,
-                "tier": classification["tier"],
-                "reason": classification["reason"],
-                "speak": classification["speak"],
+                "tier": classification.get("tier", "RED"),
+                "reason": classification.get("reason", "Aegis requires authentication"),
+                "speak": classification.get("speak", "Aegis requires authentication for this action."),
                 "tool": classification.get("tool", ""),
                 "arguments": classification.get("arguments", {}),
                 "device": config.DEVICE_ID,
@@ -97,7 +97,7 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
                 if resp.status != 200:
                     logger.warning("status: %s", resp.status)
                     logger.warning("body: %s", await resp.text())
-                    return await request_touch_id(f"Aegis: {classification['speak']}")
+                    return await request_touch_id(f"Aegis: {classification.get('speak', 'Authentication required')}")
 
                 res_json = await resp.json()
                 request_id = res_json.get("request_id")
@@ -128,11 +128,11 @@ async def request_remote_auth(proposed_action: str, classification: dict) -> boo
                 await asyncio.sleep(2)
 
             logger.warning("Remote auth timed out, falling back to local")
-            return await request_touch_id(f"Aegis: {classification['speak']}")
+            return await request_touch_id(f"Aegis: {classification.get('speak', 'Authentication required')}")
 
     except Exception as e:
         logger.error(f"Error in remote auth flow: {e}, falling back to local")
-        return await request_touch_id(f"Aegis: {classification['speak']}")
+        return await request_touch_id(f"Aegis: {classification.get('speak', 'Authentication required')}")
 
 async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed: bool = False, on_auth_request: callable = None, tool_name: str = None, tool_args: dict = None, call_id: str = None) -> Dict[str, Any]:
     """
@@ -207,11 +207,11 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
 
         elif tier == "YELLOW":
             if not pre_confirmed:
-                # Don't block — return to voice layer to handle conversationally
-                logger.info("� YELLOW — returning to voice for confirmation")
-                result["needs_confirmation"] = True
+                # Return to voice layer to handle passively
+                logger.info("🟡 YELLOW — requesting passive confirmation")
+                result["needs_passive_confirmation"] = True
                 
-                # Broadcast YELLOW confirm request
+                # Broadcast YELLOW confirm request (for UI status indication)
                 ws_server.broadcast("yellow_confirm", data={
                     "id": str(uuid.uuid4()),
                     "speak": speak,
@@ -222,8 +222,8 @@ async def gate_action(proposed_action: str, context: AegisContext, pre_confirmed
                 })
                 return result
             else:
-                # User already confirmed verbally via Gemini
-                logger.info("🟡 YELLOW — pre-confirmed, executing")
+                # User already confirmed verbally via Gemini context or listener
+                logger.info("🟡 YELLOW — confirmed, executing")
 
         elif tier == "GREEN":
             logger.info("🟢 GREEN — proceeding with execution")

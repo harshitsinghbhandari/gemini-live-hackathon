@@ -10,16 +10,6 @@ export function PostAuthPage({ result, onDismiss }) {
 
     return (
         <div className="bg-background-dark font-display antialiased flex flex-col min-h-screen relative overflow-hidden">
-            {/* Status Bar Mock */}
-            <div className="h-10 w-full flex justify-between items-center px-8 pt-4 shrink-0">
-                <span className="text-xs font-semibold dark:text-slate-100">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                <div className="flex gap-1">
-                    <span className="material-symbols-outlined text-[16px] dark:text-slate-100">signal_cellular_4_bar</span>
-                    <span className="material-symbols-outlined text-[16px] dark:text-slate-100">wifi</span>
-                    <span className="material-symbols-outlined text-[16px] dark:text-slate-100">battery_full</span>
-                </div>
-            </div>
-
             {/* Header */}
             <div className="flex items-center p-4 pt-6 justify-between shrink-0">
                 <div
@@ -58,25 +48,6 @@ export function PostAuthPage({ result, onDismiss }) {
                     </button>
                 </div>
             </div>
-
-            {/* Bottom Nav Mockup */}
-            <div className="flex gap-2 border-t border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark px-4 pb-8 pt-2 shrink-0 opacity-50">
-                <div className="flex flex-1 flex-col items-center justify-end gap-1 text-primary">
-                    <span className="material-symbols-outlined">analytics</span>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">Monitor</p>
-                </div>
-                <div className="flex flex-1 flex-col items-center justify-end gap-1 text-slate-400">
-                    <span className="material-symbols-outlined">list_alt</span>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">Logs</p>
-                </div>
-                <div className="flex flex-1 flex-col items-center justify-end gap-1 text-slate-400">
-                    <span className="material-symbols-outlined">settings</span>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">Settings</p>
-                </div>
-            </div>
-
-            {/* Home Indicator */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-800 rounded-full"></div>
         </div>
     );
 }

@@ -10,7 +10,6 @@ import { useSessionTimer } from './hooks/useSessionTimer.js';
 import { IdlePage } from './pages/IdlePage.jsx';
 import { ListeningPage } from './pages/ListeningPage.jsx';
 import { ActivityPage } from './pages/ActivityPage.jsx';
-import { YellowPausePage } from './pages/YellowPausePage.jsx';
 import { RedAuthPage } from './pages/RedAuthPage.jsx';
 import PinGate from './components/PinGate.jsx';
 import { CONFIG } from './config.js';
@@ -19,7 +18,6 @@ const STATES = {
     IDLE: 'IDLE',
     LISTENING: 'LISTENING',
     ACTIVITY: 'ACTIVITY',
-    YELLOW_PAUSE: 'YELLOW_PAUSE',
     RED_AUTH: 'RED_AUTH',
 };
 
@@ -31,11 +29,9 @@ export default function App() {
         isConnected,
         status,
         actions,
-        pendingYellow,
         pendingRed,
         waveform,
         sendMessage,
-        clearPendingYellow,
         clearPendingRed,
     } = useWebSocket();
 
@@ -65,13 +61,6 @@ export default function App() {
         }
     }, [actions.length]);
 
-    // YELLOW confirm
-    useEffect(() => {
-        if (pendingYellow && appState !== STATES.YELLOW_PAUSE) {
-            setPrevState(appState);
-            setAppState(STATES.YELLOW_PAUSE);
-        }
-    }, [pendingYellow]);
 
     // RED auth
     useEffect(() => {
@@ -88,11 +77,6 @@ export default function App() {
 
     function handleStop() {
         setAppState(STATES.IDLE);
-    }
-
-    function handleYellowResolve() {
-        clearPendingYellow();
-        setAppState(STATES.ACTIVITY);
     }
 
     function handleRedApproved() {
@@ -124,7 +108,7 @@ export default function App() {
                         onStop={handleStop}
                     />
                 )}
-                {(appState === STATES.ACTIVITY || appState === STATES.YELLOW_PAUSE || appState === STATES.RED_AUTH) && (
+                {(appState === STATES.ACTIVITY || appState === STATES.RED_AUTH) && (
                     <ActivityPage
                         actions={actions}
                         sessionSeconds={sessionSeconds}
@@ -133,18 +117,7 @@ export default function App() {
                     />
                 )}
 
-                {/* Layer 2: YELLOW overlay */}
-                {appState === STATES.YELLOW_PAUSE && pendingYellow && (
-                    <YellowPausePage
-                        pending={pendingYellow}
-                        actions={actions}
-                        sessionSeconds={sessionSeconds}
-                        sendMessage={sendMessage}
-                        onResolve={handleYellowResolve}
-                    />
-                )}
-
-                {/* Layer 3: RED AUTH overlay */}
+                {/* Layer 2: RED AUTH overlay */}
                 {appState === STATES.RED_AUTH && pendingRed && (
                     <RedAuthPage
                         pending={pendingRed}

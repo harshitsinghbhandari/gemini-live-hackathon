@@ -3,6 +3,17 @@ import TierBadge from './TierBadge';
 import { formatTimestamp, formatDuration, formatArguments } from '../utils/formatters';
 
 const ActionDetail = ({ entry, onClose }) => {
+  const handleExportJSON = () => {
+    if (!entry) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(entry, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `aegis_audit_${entry.id || entry.timestamp}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   if (!entry) {
     return (
       <div className="bg-white dark:bg-slate-900/40 rounded border border-slate-200 dark:border-slate-800 h-[600px] flex flex-col items-center justify-center p-12 text-center shadow-xl">
@@ -25,7 +36,7 @@ const ActionDetail = ({ entry, onClose }) => {
       <div className="px-6 py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131b26]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Incident Detail</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Entry Detail</span>
             <TierBadge tier={entry.tier} />
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-100 transition-colors">
@@ -44,21 +55,21 @@ const ActionDetail = ({ entry, onClose }) => {
         {/* Metadata Grid */}
         <div className="grid grid-cols-2 gap-x-8 gap-y-6">
           <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Risk Classification</span>
+            <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Security Tier</span>
             <div className="font-mono text-[11px] font-bold text-slate-900 dark:text-slate-100 border-l-2 border-primary pl-3 py-0.5 uppercase">
-              {entry.tier}_SECURITY_POLICY
+              {entry.tier}
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Auth Device</span>
             <div className="font-mono text-[11px] font-bold text-slate-900 dark:text-slate-100 border-l-2 border-slate-300 dark:border-slate-700 pl-3 py-0.5 uppercase">
-              {entry.device || 'LOCAL_MAC_AGENT'}
+              {entry.device || 'LOCAL_AGENT'}
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Outcome</span>
             <div className={`font-mono text-[11px] font-black border-l-2 pl-3 py-0.5 uppercase ${entry.success ? 'text-sage border-sage' : 'text-crimson border-crimson'}`}>
-              {entry.blocked ? 'BLOCKED_BY_POLICY' : entry.success ? 'EXECUTED_SUCCESS' : 'FAILED_ERROR'}
+              {entry.blocked ? 'BLOCKED' : entry.success ? 'SUCCESS' : 'FAILED'}
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -99,7 +110,10 @@ const ActionDetail = ({ entry, onClose }) => {
 
       {/* Action Footer */}
       <div className="mt-auto p-6 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-3">
-        <button className="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 text-xs font-black uppercase tracking-widest rounded transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700">
+        <button 
+          onClick={handleExportJSON}
+          className="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 text-xs font-black uppercase tracking-widest rounded transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700"
+        >
           <span className="material-symbols-outlined text-sm">terminal</span>
           Export Entry (JSON)
         </button>

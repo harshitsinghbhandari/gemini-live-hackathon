@@ -103,8 +103,6 @@ export function MirrorPage({ onStopSession }) {
                 >
                     Stop Session
                 </button>
-                {/* Home Indicator */}
-                <div className="w-32 h-1.5 bg-slate-700 rounded-full mt-2"></div>
             </div>
 
             {/* Background Subtle Gradient Decor */}

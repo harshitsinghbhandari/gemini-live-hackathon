@@ -49,16 +49,6 @@ export function RedAuthPage({ request, onResolve }) {
 
     return (
         <div className="relative w-full h-full bg-background-dark overflow-hidden flex flex-col font-display">
-            {/* Top Status Bar Mockup */}
-            <div className="flex justify-between items-center px-8 pt-4 pb-2 w-full text-xs font-semibold shrink-0">
-                <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                <div className="flex gap-1.5 items-center">
-                    <span className="material-symbols-outlined text-[14px]">signal_cellular_4_bar</span>
-                    <span className="material-symbols-outlined text-[14px]">wifi</span>
-                    <span className="material-symbols-outlined text-[14px]">battery_full</span>
-                </div>
-            </div>
-
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col items-center justify-center px-6 relative">
                 {/* Authorization Card */}
@@ -101,17 +91,10 @@ export function RedAuthPage({ request, onResolve }) {
                     <div className="flex flex-col items-center gap-2 py-2">
                         <div className="flex gap-3 font-mono">
                             <div className="flex flex-col items-center">
-                                <div className="bg-slate-800/50 w-14 h-16 rounded-lg flex items-center justify-center text-2xl font-bold text-danger border border-danger/10 shadow-inner">
-                                    00
-                                </div>
-                                <span className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-bold">Min</span>
-                            </div>
-                            <div className="text-2xl font-bold text-slate-700 self-center -mt-6">:</div>
-                            <div className="flex flex-col items-center">
-                                <div className="bg-slate-800/50 w-14 h-16 rounded-lg flex items-center justify-center text-2xl font-bold text-danger border border-danger/10 shadow-inner">
+                                <div className="bg-slate-800/50 w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-black text-danger border border-danger/10 shadow-inner">
                                     {seconds.toString().padStart(2, '0')}
                                 </div>
-                                <span className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-bold">Sec</span>
+                                <span className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-bold">Seconds remaining</span>
                             </div>
                         </div>
                     </div>
@@ -140,16 +123,6 @@ export function RedAuthPage({ request, onResolve }) {
                     </div>
                 </div>
             </div>
-
-            {/* Bottom Navigation Mockup */}
-            <div className="bg-card-dark border-t border-slate-800 px-8 pt-3 pb-8 flex justify-between items-center mt-auto shrink-0 opacity-50">
-                <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
-                <span className="material-symbols-outlined text-slate-500">history</span>
-                <span className="material-symbols-outlined text-slate-500">settings</span>
-            </div>
-
-            {/* iPhone Home Indicator */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-700 rounded-full"></div>
         </div>
     );
 }

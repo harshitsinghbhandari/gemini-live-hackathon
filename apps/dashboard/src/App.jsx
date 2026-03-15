@@ -44,10 +44,6 @@ const App = () => {
     }, { total: 0, green: 0, yellow: 0, red: 0, blocked: 0 });
   }, [entries]);
 
-  if (window.location.pathname === '/setup') {
-    return <SetupPage />;
-  }
-
   if (loading && entries.length === 0) {
     return (
       <div className="flex flex-col h-screen overflow-hidden text-slate-100 bg-background-dark font-display items-center justify-center">
@@ -108,15 +104,12 @@ const App = () => {
             </div>
           </main>
 
-          <footer className="px-8 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+          <footer className="px-8 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 font-mono">
             <div className="flex items-center gap-4">
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">Aegis Core v2.4.0</p>
-              <span className="text-slate-700 dark:text-slate-800 text-xs">|</span>
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">Encrypted Connection</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Aegis Core v2.4.0</p>
             </div>
             <div className="flex gap-6">
-              <a className="text-[10px] font-mono text-slate-500 hover:text-primary uppercase tracking-widest font-bold transition-colors" href="#">Docs</a>
-              <a className="text-[10px] font-mono text-slate-500 hover:text-primary uppercase tracking-widest font-bold transition-colors" href="#">Support</a>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Secure Dashboard</p>
             </div>
           </footer>
         </div>

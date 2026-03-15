@@ -34,15 +34,24 @@ If you prefer not to use the automated script, perform the following steps:
     ```
 
 2.  **Environment Variables:**
-    Create a `.env` file in the root directory.
+    Aegis uses `.env` files for configuration. A template `.env` and `.env.production` have been created in the repository root.
+
     ```bash
-    touch .env
+    # Open and edit the local env file
+    code .env
     ```
-    Open `.env` and fill in:
-    *   `GOOGLE_API_KEY`: Your Gemini API key.
-    *   `USER_ID`: A unique identifier (e.g., your username).
-    *   `AEGIS_PIN`: A secure PIN used for fallback authentication.
-    *   `BACKEND_URL`: `https://apiaegis.projectalpha.in` (default) or your own deployed Cloud Run URL.
+
+    **Required Variables:**
+    *   `GOOGLE_API_KEY`: Your Gemini API key from AI Studio.
+    *   `USER_ID`: A unique identifier (e.g., `harshitbhandari0318`).
+    *   `AEGIS_PIN`: A 4-6 digit fallback PIN.
+    *   `BACKEND_URL`: URL of the deployed Aegis backend.
+    *   `PROJECT_ID`: Your GCP Project ID (used for Firestore).
+    *   `WEBAUTHN_RP_ID`: The domain of your mobile PWA (e.g., `aegismobile.projectalpha.in`).
+    *   `WEBAUTHN_ORIGIN`: The full origin URL of your mobile PWA.
+
+    **Production:**
+    When deploying to Cloud Run, use the values defined in `.env.production`. Ensure `LOG_FORMAT=json` is set for structured logging.
 
 3.  **Install Python Dependencies:**
     Aegis requires specific dependencies, including `pyautogui` and `mss` for screen capture, and `google-genai` for the Gemini API.

@@ -18,8 +18,7 @@ def get_client() -> genai.Client:
     return _client
 
 def parse_response(text: str) -> Optional[Dict[str, Any]]:
-    
-    """Robustly parse JSON from Gemini's text response."""
+    """Robustly parse JSON from Gemini's text response, including healing truncated JSON."""
     try:
         # Try finding JSON block first
         json_match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
@@ -29,6 +28,22 @@ def parse_response(text: str) -> Optional[Dict[str, Any]]:
             clean = text.strip()
             # Basic cleanup if no markdown block
             clean = re.sub(r"```", "", clean).strip()
+
+        # JSON Healing: Fix common truncation issues
+        # 1. Unterminated string
+        if clean.count('"') % 2 != 0:
+            clean += '"'
+        
+        # 2. Unterminated objects/arrays
+        open_braces = clean.count('{')
+        close_braces = clean.count('}')
+        if open_braces > close_braces:
+            clean += '}' * (open_braces - close_braces)
+            
+        open_brackets = clean.count('[')
+        close_brackets = clean.count(']')
+        if open_brackets > close_brackets:
+            clean += ']' * (open_brackets - close_brackets)
 
         return json.loads(clean)
     except (json.JSONDecodeError, AttributeError) as e:
@@ -60,7 +75,8 @@ async def classify_action(proposed_action: str, tool_hint: str = None) -> Dict[s
             contents=[prompt_text],
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
-                max_output_tokens=1024
+                max_output_tokens=1024,
+                response_mime_type="application/json"
             )
         )
 

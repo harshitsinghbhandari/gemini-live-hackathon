@@ -3,11 +3,16 @@ import { ActionCard } from '../components/ActionCard.jsx';
 import { SessionTimer } from '../components/SessionTimer.jsx';
 
 export function ActivityPage({ actions, sessionSeconds, agentStatus, onStop }) {
+    const [stopping, setStopping] = useState(false);
+
     async function handleStop() {
+        if (stopping) return;
+        setStopping(true);
         try {
             await fetch(`${CONFIG.HELPER_URL}/stop`, { method: 'POST', signal: AbortSignal.timeout(3000) });
         } catch {/* ignore */ }
         onStop();
+        setStopping(false);
     }
 
     return (
@@ -21,20 +26,6 @@ export function ActivityPage({ actions, sessionSeconds, agentStatus, onStop }) {
                         </div>
                         <h2 className="text-slate-900 dark:text-slate-100 text-lg font-bold tracking-tight uppercase">Aegis</h2>
                     </div>
-                    <nav className="flex items-center gap-6">
-                        <a className="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
-                        <a className="text-primary text-sm font-medium border-b-2 border-primary py-1" href="#">Active Session</a>
-                        <a className="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
-                    </nav>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-                        <input className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg pl-9 pr-4 py-1.5 text-sm w-64 focus:ring-1 focus:ring-primary placeholder:text-slate-500" placeholder="Search logs..." type="text" />
-                    </div>
-                    <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 border border-slate-300 dark:border-slate-600">
-                        <span className="material-symbols-outlined text-sm">person</span>
-                    </div>
                 </div>
             </header>
 
@@ -47,25 +38,13 @@ export function ActivityPage({ actions, sessionSeconds, agentStatus, onStop }) {
                         </div>
                         <div>
                             <p className="text-sm font-semibold">Aegis Core</p>
-                            <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Stable v2.4</p>
+                            <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">v2.4.0</p>
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
-                            <span className="material-symbols-outlined text-[20px]">grid_view</span>
-                            <span className="text-sm font-medium">Overview</span>
-                        </a>
-                        <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
-                            <span className="material-symbols-outlined text-[20px]">security</span>
-                            <span className="text-sm font-medium">Shield</span>
-                        </a>
                         <a className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary border border-primary/10" href="#">
                             <span className="material-symbols-outlined text-[20px]">play_arrow</span>
-                            <span className="text-sm font-medium">Execute</span>
-                        </a>
-                        <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
-                            <span className="material-symbols-outlined text-[20px]">monitoring</span>
-                            <span className="text-sm font-medium">Analysis</span>
+                            <span className="text-sm font-medium">Active Session</span>
                         </a>
                     </div>
                     <div className="mt-auto p-4 rounded-xl bg-primary/5 border border-primary/10">
@@ -73,9 +52,6 @@ export function ActivityPage({ actions, sessionSeconds, agentStatus, onStop }) {
                         <div className="flex items-center gap-2 mb-1">
                             <div className={`size-2 rounded-full ${agentStatus === 'idle' ? 'bg-slate-600' : 'bg-emerald-500 animate-pulse'}`}></div>
                             <p className="text-xs font-medium uppercase">{agentStatus}</p>
-                        </div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 h-1 rounded-full mt-3 overflow-hidden">
-                            <div className="bg-primary h-full w-[65%]" />
                         </div>
                     </div>
                 </aside>
@@ -96,7 +72,7 @@ export function ActivityPage({ actions, sessionSeconds, agentStatus, onStop }) {
                             <div className="w-20 h-20 mb-6 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
                                 <span className="material-symbols-outlined text-primary text-4xl">shield</span>
                             </div>
-                            <h2 className="text-xl font-bold mb-2">Real-time Security Engine</h2>
+                            <h2 className="text-xl font-bold mb-2 uppercase">Secure Gateway</h2>
                             <p className="text-slate-500 text-sm max-w-sm">Every action is classified and validated against your defined security boundaries.</p>
                         </div>
 
@@ -106,17 +82,13 @@ export function ActivityPage({ actions, sessionSeconds, agentStatus, onStop }) {
                                     <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1 font-bold">Duration</p>
                                     <SessionTimer seconds={sessionSeconds} className="font-mono text-lg font-bold" />
                                 </div>
-                                <div className="w-px h-10 bg-slate-200 dark:bg-slate-800"></div>
-                                <div className="text-center">
-                                    <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1 font-bold">Threats</p>
-                                    <p className="font-mono text-lg text-emerald-500 font-bold uppercase">None</p>
-                                </div>
                             </div>
                             <button
                                 onClick={handleStop}
-                                className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white px-6 py-2 rounded-lg font-bold text-xs transition-all border border-red-500/20 uppercase tracking-widest"
+                                disabled={stopping}
+                                className={`bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white px-6 py-2 rounded-lg font-bold text-xs transition-all border border-red-500/20 uppercase tracking-widest ${stopping ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
-                                Stop Process
+                                {stopping ? 'Stopping...' : 'Stop Process'}
                             </button>
                         </div>
                     </div>
@@ -141,16 +113,6 @@ export function ActivityPage({ actions, sessionSeconds, agentStatus, onStop }) {
                                     dim={i >= 3}
                                 />
                             ))}
-                        </div>
-                        <div className="p-4 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800">
-                            <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono font-bold mb-2 uppercase">
-                                <span>Resources Monitoring</span>
-                                <span>Active</span>
-                            </div>
-                            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden flex">
-                                <div className="bg-primary h-full w-1/4"></div>
-                                <div className="bg-sage h-full w-1/6"></div>
-                            </div>
                         </div>
                     </div>
                 </section>

@@ -116,9 +116,9 @@ const PinGate = ({ children, backendUrl }) => {
                         </button>
                     </form>
                 </div>
-
-                <p className="text-center text-slate-600 text-[10px] uppercase tracking-widest mt-8 font-medium">
-                    Secure Infrastructure v2.4.0
+ 
+                <p className="text-center text-slate-600 text-[10px] uppercase tracking-widest py-8 font-bold">
+                    Aegis Core v2.4.0
                 </p>
             </div>
         </div>

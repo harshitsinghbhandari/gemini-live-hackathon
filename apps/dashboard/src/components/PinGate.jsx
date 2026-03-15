@@ -113,9 +113,6 @@ const PinGate = ({ children, backendUrl }) => {
                     </form>
                 </div>
 
-                <p className="text-center text-slate-600 text-[9px] uppercase tracking-[0.2em] mt-8 font-mono">
-                    Private Infrastructure Module v2.4
-                </p>
             </div>
         </div>
     );
