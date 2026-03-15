@@ -72,7 +72,7 @@ def is_screen_tool(tool_name: str) -> bool:
     Returns True if the tool name belongs to the screen executor.
     Used by gate.py to route to the correct executor.
     """
-    return tool_name.startswith(("screen_", "cursor_", "keyboard_", "browser_")) or tool_name in ["smart_plan", "verify_ui_state", "plan_complete", "get_environment_context"]
+    return tool_name.startswith(("screen_", "cursor_", "keyboard_")) or tool_name in ["smart_plan", "verify_ui_state", "plan_complete", "get_environment_context"]
 
 
 # ─────────────────────────────────────────────

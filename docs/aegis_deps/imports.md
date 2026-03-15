@@ -3,7 +3,6 @@ graph TD
   subgraph Interfaces
     aegis_interfaces_voice["aegis.interfaces.voice"]
     aegis_interfaces["aegis.interfaces"]
-    aegis_browser_manager["aegis.browser_manager"]
     aegis_computer_use["aegis.computer_use"]
   end
   subgraph Perception
@@ -23,7 +22,6 @@ graph TD
     aegis_tools["aegis.tools"]
     aegis_tools_base["aegis.tools.base"]
     aegis_tools_declarations["aegis.tools.declarations"]
-    aegis_tools_browser_tools["aegis.tools.browser_tools"]
     aegis_tools_keyboard_tools["aegis.tools.keyboard_tools"]
     aegis_tools_navigation_tools["aegis.tools.navigation_tools"]
     aegis_tools_context["aegis.tools.context"]
@@ -47,7 +45,6 @@ graph TD
   aegis_computer_use --> aegis_agent_gate
   aegis_computer_use --> aegis_perception_screen_capture
   aegis_interfaces_voice --> aegis_agent_gate
-  aegis_interfaces_voice --> aegis_browser_manager
   aegis_interfaces_voice --> aegis_computer_use
   aegis_interfaces_voice --> aegis_interfaces
   aegis_interfaces_voice --> aegis_perception_screen_capture
@@ -71,9 +68,6 @@ graph TD
   aegis_runtime_tool_manager --> aegis_tools_declarations
   aegis_tools --> aegis_tools
   aegis_tools --> aegis_tools_base
-  aegis_tools_browser_tools --> aegis_browser_manager
-  aegis_tools_browser_tools --> aegis_interfaces
-  aegis_tools_browser_tools --> aegis_tools_base
   aegis_tools_context --> aegis_perception_screen_capture
   aegis_tools_cursor_tools --> aegis_perception_cursor
   aegis_tools_cursor_tools --> aegis_perception_screen_capture

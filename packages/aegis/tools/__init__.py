@@ -4,6 +4,5 @@ from aegis.tools import screen_tools
 from aegis.tools import cursor_tools
 from aegis.tools import keyboard_tools
 from aegis.tools import navigation_tools
-from aegis.tools import browser_tools
 
-__all__ = ["registry", "screen_tools", "cursor_tools", "keyboard_tools", "navigation_tools", "browser_tools"]
+__all__ = ["registry", "screen_tools", "cursor_tools", "keyboard_tools", "navigation_tools"]

@@ -7,8 +7,8 @@ load_dotenv()
 
 # API Keys
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-USER_ID = os.environ.get("USER_ID", "harshitbhandari0318")
-AEGIS_PIN = os.environ.get("AEGIS_PIN", "")
+USER_ID = os.environ.get("USER_ID", "default-user")
+AEGIS_PIN = os.environ.get("AEGIS_PIN", "000000")
 
 # Model Names
 GEMINI_MODEL = "gemini-2.5-flash"
@@ -35,7 +35,7 @@ VISION_FALLBACK_TO_FULLSCREEN = True  # Fall back to full screen if window detec
 # Backend Config
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://apiaegis.projectalpha.in")
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "https://aegisdashboard.projectalpha.in")
-DEVICE_ID = os.environ.get("DEVICE_ID", "harshit-macbook")
+DEVICE_ID = os.environ.get("DEVICE_ID", "aegis-device")
 
 class LevelFilter(logging.Filter):
     """Filters logs to be exactly of a certain level (exclusive)."""

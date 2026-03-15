@@ -430,6 +430,12 @@ async def webauthn_auth_verify(request: Request, user_id: str = Depends(get_user
         logger.error(f"WebAuthn auth error: {e}")
         return {"verified": False, "error": str(e)}
 
+@app.get("/auth/exists/{user_id}")
+async def check_user_exists(user_id: str, db: AsyncClient = Depends(get_db)):
+    """Check if a user has already registered a PIN."""
+    doc = await db.collection("users").document(user_id).collection("config").document("auth").get()
+    return {"exists": doc.exists}
+
 @app.get("/webauthn/registered/{user_id_path}")
 async def check_registered(user_id_path: str, user_id: str = Depends(get_user_id), db: AsyncClient = Depends(get_db)):
     """Check if user has registered Face ID"""

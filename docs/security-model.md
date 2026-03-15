@@ -33,13 +33,13 @@ The defining metric for classification is **irreversibility**. Can the user easi
 ### 🟢 GREEN: Silent Execution (No Confirmation)
 *   **Criterion:** The action is read-only, navigational, or purely informative. It cannot alter state in a meaningful or destructive way.
 *   **Examples:** Opening an app, navigating to a URL, scrolling a page, reading screen text, taking a screenshot.
-*   **Tool Mapping:** `screen_capture`, `screen_read`, `cursor_move`, `browser_navigate`, `browser_read`, `keyboard_hotkey` (e.g., Command+Tab).
+*   **Tool Mapping:** `screen_capture`, `screen_read`, `cursor_move`, `keyboard_hotkey` (e.g., Command+Tab).
 *   **Execution:** Immediate and silent. Aegis behaves autonomously.
 
 ### 🟡 YELLOW: Verbal Confirmation Required
 *   **Criterion:** The action mutates state or interacts with the UI in a way that *could* be unwanted, but is not critically destructive. It can usually be undone (e.g., deleting a character in a text box, clicking a non-committal button).
 *   **Examples:** Clicking a "Sign In" button (assuming credentials are auto-filled), typing a draft message into a text field, liking a post.
-*   **Tool Mapping:** `cursor_click`, `cursor_drag`, `keyboard_type`, `browser_click`, `browser_type`.
+*   **Tool Mapping:** `cursor_click`, `cursor_drag`, `keyboard_type`.
 *   *(Exception: If a click is purely navigational, like clicking a search result link, the classifier is instructed to downgrade it to GREEN).*
 *   **Execution:** Aegis pauses, explains its intent ("I am about to click 'Submit'"), and waits for the user to verbally say "Yes" or "Proceed" over the audio stream.
 
@@ -55,8 +55,8 @@ Let's look at how the same underlying task (interacting with Gmail or GitHub) es
 
 | App / Context | Action | Classifier Tier | Why? |
 | :--- | :--- | :--- | :--- |
-| **GitHub** | *"Aegis, open my pull requests."* | **GREEN** | Purely navigational. `browser_navigate` or `cursor_click`. Undoing is just clicking 'Back'. |
-| **GitHub** | *"Aegis, write a comment saying 'LGTM'."* | **YELLOW** | State mutating. `browser_type`. The comment is drafted, but usually requires a separate click to post. Aegis asks for voice confirmation before typing. |
+| **GitHub** | *"Aegis, open my pull requests."* | **GREEN** | Purely navigational. `cursor_click` or `navigation_tools`. Undoing is just clicking 'Back'. |
+| **GitHub** | *"Aegis, write a comment saying 'LGTM'."* | **YELLOW** | State mutating. `keyboard_type`. The comment is drafted, but usually requires a separate click to post. Aegis asks for voice confirmation before typing. |
 | **GitHub** | *"Aegis, merge this pull request."* | **RED** | Irreversible (or difficult to reverse) and highly impactful. Even if using a simple `cursor_click` on the "Merge" button, the intent triggers a Face ID challenge. |
 | **Gmail** | *"Aegis, read the subject of the latest email."* | **GREEN** | Read-only. `screen_read`. No harm possible. |
 | **Gmail** | *"Aegis, draft a reply saying I'll be late."* | **YELLOW** | State mutating. `keyboard_type`. Creates a draft but does not send it. |

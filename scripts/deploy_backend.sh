@@ -13,13 +13,9 @@ echo "🚀 Starting deployment for $SERVICE_NAME..."
 echo "📦 Configuring Docker for Artifact Registry..."
 gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-# 2. Build and Push Image
-echo "🛠️ Building Docker image..."
-# Following the fix in deploy-backend.yml: build from services/backend context
-docker build -t "$IMAGE_URL" ./services/backend
-
-echo "⬆️ Pushing image to Artifact Registry..."
-docker push "$IMAGE_URL"
+# 2. Build and Push Image (Using Cloud Build to avoid local DNS/Docker issues)
+echo "🛠️ Building and Pushing image via Cloud Build..."
+gcloud builds submit --tag "$IMAGE_URL" ./services/backend
 
 # 3. Deploy to Cloud Run
 echo "☁️ Deploying to Cloud Run..."
