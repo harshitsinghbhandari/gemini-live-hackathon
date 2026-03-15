@@ -24,7 +24,7 @@ if [ ! -d "gemini-live-hackathon" ]; then
         echo "✅ Already in the Aegis repository directory."
     else
         echo "🐙 Cloning Aegis repository..."
-        git clone https://github.com/projectalpha-dev/gemini-live-hackathon.git
+        git clone https://github.com/harshitsinghbhandari/gemini-live-hackathon.git
         cd gemini-live-hackathon
     fi
 else
@@ -33,7 +33,7 @@ else
 fi
 
 if [ ! -f "../.env" ] && [ ! -f ".env" ]; then
-    echo "⚠️  No .env file found. Please download it from the Dashboard Setup Page and place it in this directory or the parent directory."
+    echo "⚠️  No .env file found. Please create a .env file with your GOOGLE_API_KEY and other required variables."
     exit 1
 fi
 
@@ -53,8 +53,9 @@ echo "🚀 Starting Aegis Agent..."
 pkill -f "python -m aegis.main" || true
 pkill -f "python -m aegis.helper_server" || true
 
-nohup python -m aegis.helper_server > helper.log 2>&1 &
-nohup python -m aegis.main > aegis.log 2>&1 &
+export PYTHONPATH=$PYTHONPATH:$(pwd)/packages
+nohup python -m aegis.interfaces.helper_server > helper.log 2>&1 &
+nohup python cmd/agent/run_agent_main.py > aegis.log 2>&1 &
 echo "✅ Agent and Helper Server are running in the background."
 
 echo "🌐 Opening Aegis Dashboard..."
