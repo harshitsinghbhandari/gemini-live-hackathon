@@ -2,6 +2,11 @@
 
 This document summarizes the major version history of Aegis during the hackathon, based on the repository's git tags.
 
+### [v3.2.0-screen-only-no-browser] - Final Cleanup
+*   **Refactor:** Completely removed Playwright, DOM extraction, and all sub-agents that relied on browser-specific tools.
+*   **Cleanup:** Removed the setup page and all its references from the landing page.
+*   **Feature:** Integrated direct GitHub repository link for easier access to source code.
+
 ### [v3.0.0-navigation-stable] - Latest Stable Release
 *   **Feature:** Reliable navigation via OCR + `label_id` clicking. The system successfully stabilizes the Native ComputerUse capabilities using purely visual analysis.
 

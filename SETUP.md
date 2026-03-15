@@ -5,7 +5,7 @@ This guide walks you through the complete process of setting up Aegis on your lo
 ## Prerequisites
 Before you begin, ensure you have the following installed on your machine:
 *   **macOS** (This is required for native ComputerUse and local Touch ID support.)
-*   **Python 3.10 or 3.11** (`python --version`)
+*   **Python 3.10, 3.11, or 3.12** (`python --version`)
 *   **Node.js 18+ and npm** (If you intend to run the PWAs locally.)
 *   **Google Cloud CLI (`gcloud`)** (If you are deploying the backend yourself.)
 *   **A Google Gemini API Key** (Accessible from Google AI Studio.)
@@ -15,40 +15,48 @@ Before you begin, ensure you have the following installed on your machine:
 ## 1. Local Agent Setup
 
 ### Automatic Setup (Recommended)
-1.  Visit the Aegis Setup Page: [https://aegis.projectalpha.in/setup](https://aegis.projectalpha.in/setup)
-2.  Follow the prompts to create your profile, input your `GOOGLE_API_KEY`, and create your `AEGIS_PIN`.
-3.  The setup page will generate an installation command for your terminal. Run it in the root of the repository.
+1.  Open your terminal.
+2.  Clone the repository and run the install script:
+    ```bash
+    git clone https://github.com/harshitsinghbhandari/gemini-live-hackathon.git
+    cd gemini-live-hackathon
+    ./apps/landing/public/install.sh
+    ```
+3.  The script will handle dependencies and set up the local environment.
 
 ### Manual Setup
 If you prefer not to use the automated script, perform the following steps:
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/[your-repo]/aegis.git
-    cd aegis
+    git clone https://github.com/harshitsinghbhandari/gemini-live-hackathon.git
+    cd gemini-live-hackathon
     ```
 
 2.  **Environment Variables:**
-    Copy the `.env.example` file and configure your keys.
+    Create a `.env` file in the root directory.
     ```bash
-    cp env/.env.example .env
+    touch .env
     ```
     Open `.env` and fill in:
     *   `GOOGLE_API_KEY`: Your Gemini API key.
     *   `USER_ID`: A unique identifier (e.g., your username).
     *   `AEGIS_PIN`: A secure PIN used for fallback authentication.
-    *   `BACKEND_URL`: Leave as default (https://apiaegis.projectalpha.in) or your deployed Cloud Run URL.
+    *   `BACKEND_URL`: `https://apiaegis.projectalpha.in` (default) or your own deployed Cloud Run URL.
 
 3.  **Install Python Dependencies:**
     Aegis requires specific dependencies, including `pyautogui` and `mss` for screen capture, and `google-genai` for the Gemini API.
     ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
     pip install -r requirements.txt
     ```
 
-4.  **Start the Local Helper Server:**
+4.  **Start the Local Agent:**
     The Python helper server handles audio, video streaming, and native computer execution.
     ```bash
-    PYTHONPATH=. python3 cmd/agent/run_agent.py
+    export PYTHONPATH=$PYTHONPATH:$(pwd)/packages
+    python3 cmd/agent/run_agent_main.py
     ```
 
 ---
@@ -57,7 +65,7 @@ If you prefer not to use the automated script, perform the following steps:
 
 1.  **Mac Control Interface:**
     Open the Mac PWA in Chrome or Edge: [https://aegismac.projectalpha.in](https://aegismac.projectalpha.in)
-    *   This interface communicates with `run_agent.py` via WebSockets (`ws://localhost:8765`).
+    *   This interface communicates with your local agent via WebSockets (`ws://localhost:8765`).
     *   Click "Start Aegis" and allow microphone permissions. You should see the audio waveform react to your voice.
 
 2.  **Dashboard:**
@@ -85,12 +93,12 @@ Now that everything is running, test the Three-Tier Security Model:
     *   Say aloud: *"Open a new tab and search for the weather."*
     *   *Expected behavior:* Aegis will classify this as a UI interaction. It will say, "I am about to open a new tab. Is that okay?" Reply "Yes." It will then execute the action.
 3.  **Red Action (Biometric Verification):**
-    *   Say aloud: *"Aegis, delete the `requirements.txt` file."*
-    *   *Expected behavior:* Aegis will classify this as a destructive action. The execution will pause. Your iPhone will display an Auth Request. You must use Face ID on your iPhone to approve it. If approved, the file will be deleted. If denied (or if you don't respond), Aegis will say, "Authentication failed. Action blocked."
+    *   Say aloud: *"Aegis, remove the temporary log files from my downloads."* 
+    *   *Expected behavior:* Aegis will classify this as a sensitive action. The execution will pause. Your iPhone will display an Auth Request. You must use Face ID on your iPhone to approve it. If approved, the action proceeds. If denied, Aegis will say, "Authentication failed. Action blocked."
 
 ## Common Errors & Troubleshooting
 
-*   **"WebSocket Connection Failed" in Mac PWA:** Ensure `cmd/agent/run_agent.py` is running locally. Check terminal logs for port binding errors (`Address already in use`).
-*   **Screen Actions Not Working (macOS):** Ensure your Terminal (or VS Code) has **Screen Recording** and **Accessibility** permissions enabled in `System Settings > Privacy & Security`.
+*   **"WebSocket Connection Failed" in Mac PWA:** Ensure the agent is running locally. Check terminal logs for port binding errors (`Address already in use`).
+*   **Screen Actions Not Working (macOS):** Ensure your Terminal (or IDE) has **Screen Recording** and **Accessibility** permissions enabled in `System Settings > Privacy & Security`.
 *   **Face ID Registration Fails:** Ensure you are accessing the Mobile PWA via `https://` on Safari, and that you have added the site to your Home Screen.
 *   **"Authentication failed" immediately:** The backend URL might be misconfigured in your `.env`. Verify it points to the correct deployed backend.

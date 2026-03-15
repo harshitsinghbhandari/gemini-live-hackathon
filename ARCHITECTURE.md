@@ -7,8 +7,8 @@ Aegis was designed from the ground up to be a **local-first, cloud-secured** AI 
 An agent capable of "Native ComputerUse" (moving the mouse, taking screenshots, clicking buttons) must reside on the host machine. Streaming continuous desktop frames to a generic web server is not only a privacy nightmare but also introduces unacceptable latency.
 Aegis runs a local Python helper server (`voice.py`) that captures the screen and audio locally. It manages its own state machine (`LISTENING/THINKING/EXECUTING/BUSY`) and handles execution locally using tools like `pyautogui` and `mss`.
 
-### Why Native ComputerUse over Composio?
-Initially, Aegis relied on Composio toolkits (like the Gmail or GitHub integrations). However, a pivot was made to pure **Native ComputerUse**. By utilizing `screen_executor.py` and the Gemini Live API with high-resolution screenshot crops (`cursor_crop`, `get_annotated_elements`), Aegis interacts with the UI directly. This removes the need for brittle third-party integrations or OAuth tokens, allowing Aegis to navigate any app that is visible on the screen, just like a human. It's a true "Trusted Pilot."
+### Why Native Screen Control?
+Aegis interacts with the host OS and applications directly utilizing `screen_executor.py` and the Gemini Live API with high-resolution screenshot crops (`cursor_crop`, `get_annotated_elements`). This allows Aegis to navigate any app that is visible on the screen, just like a human, without needing brittle third-party integrations or OAuth tokens. It's a true "Trusted Pilot."
 
 ## System Components
 
