@@ -5,6 +5,7 @@ import logging
 import pyaudio
 import time
 import hashlib
+import subprocess
 from google import genai
 from google.genai import types
 from google.genai.types import (
@@ -341,6 +342,12 @@ class AegisVoiceAgent:
                                         elif result.get("needs_passive_confirmation"):
                                             logger.info("🤖 Action needs passive voice confirmation")
                                             self._update_status("confirmation")
+                                            
+                                            # Speak the prompt before listening
+                                            speak_text = result.get("speak", "Please confirm if I should proceed.")
+                                            logger.info(f"🗣️ Speaking confirmation prompt: {speak_text}")
+                                            await asyncio.to_thread(subprocess.run, ["say", speak_text])
+                                            
                                             await self.confirmation_listener.start_listening()
                                             
                                             # Wait for intent (with timeout)

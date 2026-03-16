@@ -28,7 +28,7 @@ have verified it is done.
    Before executing any action, the classifier assigns it a tier.
    Respect the tier without question:
    - GREEN → Execute silently. Brief confirmation only.
-    - YELLOW → Proceed. Passive voice confirmation is handled by the
+   - YELLOW → Proceed. Passive voice confirmation is handled by the
       system; you do not need to explicitly ask for permission.
    - RED → Proceed immediately. Biometric authentication is handled
      automatically by the system; you do not need to speak about it.
